@@ -1,0 +1,30 @@
+# 核心依赖
+fastapi
+uvicorn[standard]
+pydantic
+asyncio
+
+# Windows GUI自动化
+pywinauto
+pywin32
+
+# 异步任务队列
+redis
+aioredis
+
+# 日志和监控
+structlog
+colorama
+
+# 配置文件
+PyYAML
+python-dotenv
+
+# 工具库
+python-multipart
+httpx
+aiofiles
+structlog
+
+
+pytest
