@@ -3,6 +3,7 @@ from src.automation.operation_manager import OperationManager
 from src.automation.tonghuashun_automator import TonghuashunAutomator
 from src.utils.config_loader import load_config
 from src.automation.operations.buy_operation import BuyOperation
+from src.automation.operations.sell_operation import SellOperation
 import asyncio
 
 PROJECT_DIR = "D:/ProgramCodes/QuantTrader"
@@ -33,6 +34,19 @@ def test_buy_op():
     }
     buy_op = BuyOperation(automator, config)
     loop.run_until_complete( buy_op.run(params))
+    loop.run_until_complete(automator.disconnect())
+
+
+def test_sell_op():
+    app = automator.app
+    params = {
+        "stock_code": "000001",
+        "price": 11.55,
+        "quantity": 100
+
+    }
+    sell_op = SellOperation(automator, config)
+    loop.run_until_complete( sell_op.run(params))
     loop.run_until_complete(automator.disconnect())
 
 
