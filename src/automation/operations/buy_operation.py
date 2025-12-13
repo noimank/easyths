@@ -86,19 +86,16 @@ class BuyOperation(BaseOperation):
             self.logger.exception("参数验证异常", error=str(e))
             return False
 
-    def handle_pop_dialogs(self):
-        handler = PopDialogHandler(self.automator.app)
 
-        while self.automator.is_exist_pop_dialog():
-            try:
-                title = self.automator.get_pop_dialog_title()
-            except pywinauto.findwindows.ElementNotFoundError:
-                return {"message": "success"}
 
-            result = handler.handle(title)
-            if result:
-                return result
-        return {"message": "success"}
+    def _extract_pop_dialog_content(self,pop_dialog_title):
+        top_window = self.get_top_window()
+        if pop_dialog_title.strip() in ["委托确认", "提示信息"]:
+            return top_window.child_window(control_id=0x410).window_text()
+        if "提示" == pop_dialog_title.strip():
+            return top_window.child_window(control_id=0x3EC).window_text()
+
+        return "解析弹窗内容失败，请检查"
 
     async def execute(self, params: Dict[str, Any]) -> OperationResult:
         """执行买入操作"""
@@ -107,83 +104,79 @@ class BuyOperation(BaseOperation):
         price =  "{:.2f}".format(float(params["price"]))
         print("price=", price)
         quantity = params["quantity"]
-        market = params.get("market", "SH")
         start_time = time.time()
         try:
             self.logger.info(
                 f"执行买入操作",
                 stock_code=stock_code,
-                market=market,
                 price=price,
                 quantity=quantity
             )
 
-            top = self.get_top_window()
-            main_window = self.automator.get_main_window()
-            # web_view = self.automator.get_control(parent=main_window,title_re="Internet Explorer.*", found_index=None)
-
-
-            # self.close_pop_dialog()
-
-            print("top=",top)
-            f = self.is_exist_pop_dialog()
-            print("f=",f)
-            title = self.get_pop_dialog_title()
-            print("title=",title)
-
-            self.set_main_window_focus()
-
-            # 打印树
-
-
-
             # 按下 F1键
-            # main_window = await self.automator.get_main_window()
-            # main_window.type_keys("{F1}")
-            #
-            # reset_btn = await self.automator.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EF)
-            # reset_btn.click()
-            #
-            # # 1. 输入股票代码
-            # # 设置股票代码
-            # edit_ts_code = await self.automator.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x408)
-            #
-            # edit_ts_code.type_keys(stock_code)
-            #
-            # await asyncio.sleep(0.5)
-            #
-            # # 输入价格,不能直接设置，只能模拟输入
-            # price_edit = await self.automator.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x409)
-            # price_edit.set_edit_text('')
-            # price_edit.type_keys(str(price))
-            # #  输入数量
-            # quantity_edit = await self.automator.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x40A)
-            # # quantity_edit.set_edit_text('')
-            # quantity_edit.type_keys(str(quantity))
-            #
-            #
-            # #点击买入按钮
-            # buy_button = await self.automator.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EE)
-            # buy_button.click()
-            #
-            # resule = self.handle_pop_dialogs()
-            # print("rrrrrr=",resule)
+            main_window =  self.automator.get_main_window()
+            # self.set_main_window_focus()
+            main_window.type_keys("{F1}")
 
+            reset_btn =  self.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EF)
+            reset_btn.click()
 
+            # 1. 输入股票代码
+            # 设置股票代码
+            edit_ts_code = self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x408)
+
+            edit_ts_code.type_keys(stock_code)
+            # 防抖，因为输入代码后软件会自动获取相关信息，这一步需要时间
+            time.sleep(0.8)
+
+            # 输入价格,不能直接设置，只能模拟输入
+            price_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x409)
+            price_edit.set_edit_text('')
+            price_edit.type_keys(str(price))
+            #  输入数量
+            quantity_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x40A)
+            # quantity_edit.set_edit_text('')
+            quantity_edit.type_keys(str(quantity))
+
+            #点击买入按钮
+            buy_button =  self.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EE)
+            buy_button.click()
+            # 等待弹窗出现
+            time.sleep(0.2)
+
+            is_buy_success = False
+            buy_message = ""
+            # 开始处理各种弹窗
+            count = 0  #防止死循环
+            while self.is_exist_pop_dialog() and count < 4:
+                time.sleep(0.1)
+                pop_dialog_title = self.get_pop_dialog_title()
+                top_window = self.get_top_window()
+                pop_dialog_content = self._extract_pop_dialog_content(pop_dialog_title)
+
+                # 提示窗口只有确认按钮，不具备下一步的操作直接esc退出
+                if "提示" == pop_dialog_title.strip():
+                    top_window.type_keys("{ESC}", set_foreground=False)
+                else:
+                    top_window.type_keys("%Y", set_foreground=False)
+                #等待窗口关闭
+                time.sleep(0.25)
+                buy_message = pop_dialog_content
+                if "成功" in pop_dialog_content:
+                    is_buy_success = True
+                count +=1
 
             # 返回买入结果
             result_data = {
                 "stock_code": stock_code,
-                "market": market,
                 "price": price,
                 "quantity": quantity,
-                "amount": price * quantity,
                 "operation": "buy",
-                "status": "submitted"
+                "success": is_buy_success,
+                "message": buy_message
             }
 
-
-            print("耗时：{}s".format(time.time()-start_time))
+            self.logger.info(f"买入操作完成，耗时{time.time() - start_time}, 操作结果：", **result_data)
             return OperationResult(
                 success=True,
                 data=result_data,

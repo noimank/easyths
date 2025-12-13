@@ -173,16 +173,11 @@ class BaseOperation(ABC):
             return class_name[:-10].lower()
         return class_name.lower()
 
-    def active_main_window(self):
-        """激活窗口"""
-        main_window = self.automator.get_main_window()
-        if main_window:
-            main_window.set_focus()
+
 
     def is_exist_pop_dialog(self):
         """是否存在弹窗"""
         # 标准的弹出窗口id
-        standard_pop_dialog_cid = 1365
         top_window = self.get_top_window()
         childrens = top_window.children()
         return len(childrens) > 0
@@ -217,6 +212,12 @@ class BaseOperation(ABC):
         return self.automator.app.top_window()
 
     def close_pop_dialog(self):
+        main_window = self.automator.get_main_window()
+        top_window = self.get_top_window()
+        # 先尝试关闭可能存在的弹窗
+        top_window.type_keys("{ESC}")
+        time.sleep(0.15)
+        # 更新top_window
         top_window = self.get_top_window()
         childrens = top_window.children()
         # 空控件，就说明没有弹窗
@@ -224,18 +225,24 @@ class BaseOperation(ABC):
             return
         # 不调用close，优雅的关闭就好，以免有些web view类型的弹窗关闭后无法二次打开
         # 而且随便输入esc键也不会造成任何其他影响，反而可以提高稳定性，避免控件被意外关闭
-        while True:
+        count = 0 #防止死循环
+        while count < 3:
             time.sleep(0.1)
             top_window = self.get_top_window()
             childrens = top_window.children()
             if len(childrens) == 0:
-                main_window = self.automator.get_main_window()
                 # 这里再多按两下 esc，让软件处于重置状态，不然可能无法再次打开窗口，比如说 在 资金股票中，可以先打开止盈止损，在打开银证转账就可以得到两个弹窗窗口
                 main_window.type_keys("{ESC}")
                 time.sleep(0.1)
                 main_window.type_keys("{ESC}")
                 return
-            top_window.type_keys("{ESC}")
+            # 特殊窗口特殊处理
+            pop_up_title = self.get_pop_dialog_title()
+            if pop_up_title == "提示信息":
+                top_window.type_keys("%N")
+            else:
+                top_window.type_keys("{ESC}")
+            count += 1
 
     def get_control(self,
                     cache_key: str = None,
