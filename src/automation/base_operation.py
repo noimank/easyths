@@ -173,7 +173,31 @@ class BaseOperation(ABC):
             return class_name[:-10].lower()
         return class_name.lower()
 
+    def _get_left_menus_handle(self):
+        count = 2
+        while True:
+            try:
+                handle = self.automator.get_main_window().child_window(
+                    control_id=129, class_name="SysTreeView32"
+                )
+                if count <= 0:
+                    return handle
+                # sometime can't find handle ready, must retry
+                handle.wait("ready", 2)
+                return handle
+            # pylint: disable=broad-except
+            except Exception as ex:
+                logger.exception("error occurred when trying to get left menus")
+            count = count - 1
 
+    def switch_left_menus(self, path, sleep=0.2):
+        """切换左侧菜单栏
+        用法如下：
+        self.switch_left_menus(["查询[F4]", "资金股票"])
+        """
+        self._get_left_menus_handle().get_item(path).select()
+        self.get_top_window().type_keys('{F5}')
+        time.sleep(sleep)
 
     def is_exist_pop_dialog(self):
         """是否存在弹窗"""

@@ -9,12 +9,16 @@ logger = structlog.get_logger(__name__)
 
 # 插件列表
 __all__ = [
-    "buy_operation"
+    "buy_operation",
+    "sell_operation",
+    "funds_query_operation"
 ]
 
 try:
     # 导入所有插件
     from .buy_operation import BuyOperation
+    from .sell_operation import SellOperation
+    from .funds_query_operation import FundsQueryOperation
 
     logger.info("操作插件包加载成功")
 
