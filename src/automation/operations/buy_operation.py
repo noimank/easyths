@@ -1,12 +1,9 @@
-import asyncio
 import time
 from typing import Dict, Any
 
-import pywinauto
-
 from src.automation.base_operation import BaseOperation, register_operation
-from src.automation.utils.pop_dialog_handle import PopDialogHandler
 from src.models.operations import PluginMetadata, OperationResult
+
 
 @register_operation
 class BuyOperation(BaseOperation):
