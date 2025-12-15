@@ -2,7 +2,7 @@
 API配置相关
 """
 from typing import Dict, Any
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class APISettings(BaseSettings):

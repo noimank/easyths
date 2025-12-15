@@ -28,3 +28,4 @@ structlog
 
 
 pytest
+pydantic_settings

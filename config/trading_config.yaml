@@ -23,6 +23,8 @@ api:
   port: 8000
   rate_limit: 10  # 每秒请求数限制
   cors_origins: ["*"]  # CORS允许的源
+  # API密钥(生产环境建议使用)
+  api_key: null
 
 # 插件配置
 plugins:
@@ -44,17 +46,6 @@ logging:
   audit_file: "logs/audit.log"
   max_size: "100MB"  # 日志文件最大大小
   backup_count: 10  # 备份文件数量
-
-# 安全配置
-security:
-  # API密钥(生产环境建议使用)
-  api_key: null
-
-  # 会话超时(分钟)
-  session_timeout: 30
-
-  # 敏感操作需要确认
-  confirm_operations: ["buy", "sell", "cancel"]
 
 # 监控配置
 monitoring:
