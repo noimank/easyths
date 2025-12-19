@@ -114,24 +114,27 @@ class SellOperation(BaseOperation):
             # self.set_main_window_focus()
             main_window.type_keys("{F2}")
 
-            reset_btn =  self.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EF)
-            reset_btn.click()
+            # reset_btn =  self.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EF)
+            # reset_btn.click()
 
             # 1. 输入股票代码
             # 设置股票代码
             edit_ts_code = self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x408)
-
+            edit_ts_code.set_edit_text('')
+            time.sleep(0.1)
             edit_ts_code.type_keys(stock_code)
             # 防抖，因为输入代码后软件会自动获取相关信息，这一步需要时间
-            time.sleep(0.8)
+            time.sleep(1.1)
 
             # 输入价格,不能直接设置，只能模拟输入
             price_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x409)
             price_edit.set_edit_text('')
+            time.sleep(0.1)
             price_edit.type_keys(str(price))
             #  输入数量
             quantity_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x40A)
-            # quantity_edit.set_edit_text('')
+            quantity_edit.set_edit_text('')
+            time.sleep(0.1)
             quantity_edit.type_keys(str(quantity))
 
             #点击卖出按钮
