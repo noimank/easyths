@@ -6,10 +6,12 @@ from src.automation.operations.buy_operation import BuyOperation
 from src.automation.operations.sell_operation import SellOperation
 from src.automation.operations.funds_query_operation import FundsQueryOperation
 from src.automation.operations.holding_query_operation import HoldingQueryOperation
+from src.automation.operations.order_cancel_operation import OrderCancelOperation
 import asyncio
+from dotenv import load_dotenv
 
 PROJECT_DIR = "D:/ProgramCodes/QuantTrader"
-
+load_dotenv(PROJECT_DIR + "/.env")
 
 settings = get_settings()
 config = settings.to_dict()
@@ -71,6 +73,16 @@ def test_hoding_query():
     }
     query_op = HoldingQueryOperation(automator, config)
     loop.run_until_complete( query_op.run(params))
+    loop.run_until_complete(automator.disconnect())
+
+def test_order_cancel():
+    app = automator.app
+    params = {
+        # "stock_code": "159813",
+        "cancel_type": "all"
+    }
+    op = OrderCancelOperation(automator, config)
+    loop.run_until_complete(op.run(params))
     loop.run_until_complete(automator.disconnect())
 
 
