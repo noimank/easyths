@@ -5,6 +5,7 @@ from src.utils.config_loader import load_config
 from src.automation.operations.buy_operation import BuyOperation
 from src.automation.operations.sell_operation import SellOperation
 from src.automation.operations.funds_query_operation import FundsQueryOperation
+from src.automation.operations.holding_query_operation import HoldingQueryOperation
 import asyncio
 
 PROJECT_DIR = "D:/ProgramCodes/QuantTrader"
@@ -56,9 +57,18 @@ def test_fund_query():
         "stock_code": "000001",
         "price": 11.55,
         "quantity": 100
-
     }
     query_op = FundsQueryOperation(automator, config)
+    loop.run_until_complete( query_op.run(params))
+    loop.run_until_complete(automator.disconnect())
+
+def test_hoding_query():
+    app = automator.app
+    # 返回格式 str、dict、markdown、df、json
+    params = {
+        "return_type": "json"
+    }
+    query_op = HoldingQueryOperation(automator, config)
     loop.run_until_complete( query_op.run(params))
     loop.run_until_complete(automator.disconnect())
 

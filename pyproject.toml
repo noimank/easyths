@@ -26,27 +26,27 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
-
     # Windows GUI自动化
     "pywinauto>=0.6.8",
     "pywin32>=308",
-
     # 异步任务队列
     "redis>=5.2.0",
     "aioredis>=2.0.1",
-
     # 日志和监控
     "structlog>=24.4.0",
     "colorama>=0.4.6",
-
     # 配置文件
     "PyYAML>=6.0.2",
     "python-dotenv>=1.0.1",
-
     # 工具库
     "python-multipart>=0.0.12",
     "httpx>=0.28.0",
     "aiofiles>=24.1.0",
+    "pytesseract>=0.3.13",
+    "pillow>=12.0.0",
+    "pyautogui>=0.9.54",
+    "pandas>=2.3.3",
+    "tabulate>=0.9.0",
 ]
 
 [project.optional-dependencies]

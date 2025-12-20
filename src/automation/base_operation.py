@@ -3,11 +3,14 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, Any, Optional, Type
-
+import pyautogui
 import structlog
-
+from PIL import Image
+import pandas as pd
+import json
 from src.automation.tonghuashun_automator import TonghuashunAutomator
 from src.models.operations import OperationResult, PluginMetadata
+from src.core.ocr_service import get_ocr_service
 
 logger = structlog.get_logger(__name__)
 
@@ -285,6 +288,99 @@ class BaseOperation(ABC):
                                           control_id=control_id,
                                           found_index=found_index)
 
+
+    def _text_format_convert(self, text:str, format:str):
+        """文本格式转换"""
+        if format == "str":
+            return text
+        #以下操作开始尝试解析为pandas
+        try:
+            text_lines = text.split("\n")
+            columns = text_lines[0].split()
+            data = []
+            for line in text_lines[1:]:
+                data.append(line.split())
+            df = pd.DataFrame(data, columns=columns)
+            if format == "df":
+                return df
+            elif format == "json" or format == "dict":
+                return df.to_dict(orient="records")
+            elif format == "markdown":
+                return df.to_markdown()
+
+        except Exception as e:
+            self.logger.error(
+                "文本格式转换失败",
+                text=text,
+                format=format,
+                error=str(e)
+                )
+            return text
+
+
+    def get_table_data(self, table_type, return_type, control_id=0x417):
+        """根据控件ID获取表格数据
+
+        Args:
+            table_type: 表格类型，用于OCR后处理, 和后处理操作判断强相关，具体可以看ocr_service.py
+            return_type: 返回类型，目前支持str、dict、markdown、df、json
+            control_id: 控件ID，默认为0x417
+
+        Returns:
+            str: OCR识别并处理后的文本数据
+        """
+        try:
+            # 1. 获取控件对象
+            control = self.get_control(control_id=control_id,class_name="CVirtualGridCtrl")
+
+            # 2. 获取控件位置和大小
+            # 使用 native_properties 获取实际的屏幕坐标
+            rect = control.element_info.rectangle
+            left = rect.left
+            top = rect.top
+            right = rect.right
+            bottom = rect.bottom
+            width = right - left
+            height = bottom - top
+
+            self.logger.info(
+                "获取控件位置信息",
+                control_id=hex(control_id),
+                left=left,
+                top=top,
+                width=width,
+                height=height
+            )
+
+            # 3. 截取控件区域的屏幕截图
+            screenshot = pyautogui.screenshot(region=(left, top, width, height))
+
+            # 4. 使用OCR服务识别文本
+            ocr_service = get_ocr_service()
+            recognized_text = ocr_service.recognize_text(
+                image=screenshot,
+                post_process_type=table_type
+            )
+
+            self.logger.info(
+                "表格数据OCR识别完成",
+                table_type=table_type,
+                control_id=hex(control_id),
+                text_length=len(recognized_text)
+            )
+
+            table_data = self._text_format_convert(recognized_text, return_type)
+
+            return table_data
+
+        except Exception as e:
+            self.logger.error(
+                "获取表格数据失败",
+                table_type=table_type,
+                control_id=hex(control_id),
+                error=str(e)
+            )
+            raise
 
 class OperationRegistry:
     """操作注册表
