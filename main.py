@@ -15,7 +15,7 @@ from src.automation.operation_manager import OperationManager
 from src.automation.tonghuashun_automator import TonghuashunAutomator
 from src.core.operation_queue import OperationQueue
 from src.api.app import TradingAPIApp
-from src.utils.config_loader import load_config
+from src.utils.env_config import get_settings
 
 
 
@@ -49,7 +49,8 @@ async def initialize_components(config: dict):
 def main():
     """主函数"""
     # 加载配置
-    config = load_config()
+    settings = get_settings()
+    config = settings.to_dict()
 
     # 初始化日志
     logger = structlog.get_logger(__name__)

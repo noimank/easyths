@@ -1,10 +1,10 @@
 import importlib
 import importlib.util
+import json
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 import structlog
-import yaml
 
 from src.automation.base_operation import BaseOperation, operation_registry
 
@@ -37,7 +37,7 @@ class OperationManager:
             self._load_plugins_from_dir(plugin_dir)
 
         loaded_count = len(self._loaded_plugins)
-        self.logger.info(f"插件加载完成，共加载 {loaded_count} 个插件")
+        self.logger.info("插件加载完成", loaded_count=loaded_count)
 
     def _load_plugins_from_dir(self, plugin_dir: str) -> None:
         """从目录加载插件
@@ -47,7 +47,7 @@ class OperationManager:
         """
         plugin_path = Path(plugin_dir)
         if not plugin_path.exists():
-            self.logger.warning(f"插件目录不存在: {plugin_dir}")
+            self.logger.warning("插件目录不存在", plugin_dir=plugin_dir)
             return
 
         # 遍历Python文件
@@ -67,7 +67,7 @@ class OperationManager:
             # 动态导入模块
             spec = importlib.util.spec_from_file_location("plugin_module", file_path)
             if not spec or not spec.loader:
-                self.logger.error(f"无法创建模块规范: {file_path}")
+                self.logger.error("无法创建模块规范", file_path=file_path)
                 return
 
             module = importlib.util.module_from_spec(spec)
@@ -87,19 +87,19 @@ class OperationManager:
 
                         # 检查白名单
                         if self.whitelist and plugin_name not in self.whitelist:
-                            self.logger.info(f"插件不在白名单中，跳过加载: {plugin_name}")
+                            self.logger.info("插件不在白名单中，跳过加载", plugin_name=plugin_name)
                             continue
 
                         # 注册插件
                         operation_registry.register(attr)
                         self._loaded_plugins[plugin_name] = file_path
-                        self.logger.info(f"成功加载插件: {plugin_name}", file=file_path)
+                        self.logger.info("成功加载插件", plugin_name=plugin_name, file=file_path)
 
                     except Exception as e:
-                        self.logger.error(f"加载插件失败: {attr_name}", error=str(e))
+                        self.logger.error("加载插件失败", attr_name=attr_name, error=str(e))
 
         except Exception as e:
-            self.logger.error(f"加载插件文件失败: {file_path}", error=str(e))
+            self.logger.error("加载插件文件失败", file_path=file_path, error=str(e))
 
     def reload_plugin(self, plugin_name: str) -> bool:
         """重新加载插件
@@ -111,7 +111,7 @@ class OperationManager:
             bool: 是否成功重新加载
         """
         if plugin_name not in self._loaded_plugins:
-            self.logger.error(f"插件未找到: {plugin_name}")
+            self.logger.error("插件未找到", plugin_name=plugin_name)
             return False
 
         file_path = self._loaded_plugins[plugin_name]
@@ -141,11 +141,11 @@ class OperationManager:
             if plugin_name in self._loaded_plugins:
                 del self._loaded_plugins[plugin_name]
 
-            self.logger.info(f"成功卸载插件: {plugin_name}")
+            self.logger.info("成功卸载插件", plugin_name=plugin_name)
             return True
 
         except Exception as e:
-            self.logger.error(f"卸载插件失败: {plugin_name}", error=str(e))
+            self.logger.error("卸载插件失败", plugin_name=plugin_name, error=str(e))
             return False
 
     def get_loaded_plugins(self) -> List[str]:
@@ -231,7 +231,7 @@ class OperationManager:
             # 验证插件
             validation = self.validate_plugin(plugin_file)
             if not validation["valid"]:
-                self.logger.error(f"插件验证失败: {validation['error']}")
+                self.logger.error("插件验证失败", error=validation['error'])
                 return False
 
             # 确定目标目录
@@ -255,11 +255,11 @@ class OperationManager:
             # 加载插件
             self._load_plugin_from_file(str(dest_path))
 
-            self.logger.info(f"成功安装插件: {plugin_name}")
+            self.logger.info("成功安装插件", plugin_name=plugin_name)
             return True
 
         except Exception as e:
-            self.logger.error(f"安装插件失败: {plugin_file}", error=str(e))
+            self.logger.error("安装插件失败", plugin_file=plugin_file, error=str(e))
             return False
 
     def export_plugin_config(self, output_file: str) -> bool:
@@ -282,11 +282,11 @@ class OperationManager:
                     config["plugins"][plugin_name] = plugin_info.dict()
 
             with open(output_file, 'w', encoding='utf-8') as f:
-                yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+                json.dump(config, f, indent=2, ensure_ascii=False)
 
-            self.logger.info(f"成功导出插件配置: {output_file}")
+            self.logger.info("成功导出插件配置", output_file=output_file)
             return True
 
         except Exception as e:
-            self.logger.error(f"导出插件配置失败: {output_file}", error=str(e))
+            self.logger.error("导出插件配置失败", output_file=output_file, error=str(e))
             return False

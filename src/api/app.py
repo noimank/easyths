@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
-from src.api.config import APISettings
+from src.utils.env_config import get_settings
 from src.api.middleware import LoggingMiddleware, RateLimitMiddleware
 from src.api.routes import system_router, operations_router, queue_router
 from src.api.dependencies.common import set_global_instances
@@ -20,7 +20,9 @@ class TradingAPIApp:
 
     def __init__(self, config: dict, automator, operation_queue, operation_manager):
         self.config = config
-        self.settings = APISettings(**config.get('api', {}))
+        # Use environment-based settings
+        env_settings = get_settings()
+        self.api_config = env_settings.api
         self.automator = automator
         self.operation_queue = operation_queue
         self.operation_manager = operation_manager
@@ -30,9 +32,9 @@ class TradingAPIApp:
         """创建FastAPI应用"""
         # 创建应用实例
         self.app = FastAPI(
-            title=self.settings.title,
-            description=self.settings.description,
-            version=self.settings.version,
+            title="同花顺交易自动化API",
+            description="提供同花顺交易软件自动化操作接口",
+            version=get_settings().app.version,
             lifespan=self.lifespan
         )
 
@@ -56,20 +58,20 @@ class TradingAPIApp:
         # CORS中间件
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=self.settings.cors_origins,
+            allow_origins=self.api_config.cors_origins,
             allow_credentials=True,
             allow_methods=["*"],
-            allow_headers=["*"],
+            allow_headers=["*"]
         )
 
         # 日志中间件
         self.app.add_middleware(LoggingMiddleware)
 
         # 速率限制中间件
-        if self.settings.rate_limit > 0:
+        if self.api_config.rate_limit > 0:
             self.app.add_middleware(
                 RateLimitMiddleware,
-                calls=self.settings.rate_limit,
+                calls=self.api_config.rate_limit,
                 period=1
             )
 
@@ -80,7 +82,7 @@ class TradingAPIApp:
         async def root():
             return {
                 "message": "同花顺交易自动化API",
-                "version": self.settings.version,
+                "version": get_settings().app.version,
                 "docs": "/docs"
             }
 
@@ -120,7 +122,7 @@ class TradingAPIApp:
 
         uvicorn.run(
             self.app,
-            host=self.settings.host,
-            port=self.settings.port,
-            log_level="info" if not self.settings.debug else "debug"
+            host=self.api_config.host,
+            port=self.api_config.port,
+            log_level="info"  # Always use info level as debug is controlled by logging settings
         )

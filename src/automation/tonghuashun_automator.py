@@ -59,12 +59,14 @@ class TonghuashunAutomator:
                    - timeout: 全局超时时间（秒）
                    - retry_count: 重试次数
                    - retry_delay: 重试间隔（秒）
+                   - backend: GUI自动化后端类型
         """
         self.config = config
         self.app_path = config.get('app_path', '')
         self.timeout = config.get('timeout', 30)
         self.retry_count = config.get('retry_count', 3)
         self.retry_delay = config.get('retry_delay', 1.0)
+        self.backend = config.get('backend', 'win32')
 
         self.app: Optional[Application] = None
         self.main_window = None

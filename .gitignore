@@ -140,3 +140,7 @@ test_results/
 *.bak
 *.old
 nul
+openspec
+.claude
+CLAUDE.md
+AGENTS.md

@@ -1,7 +1,7 @@
 
 from src.automation.operation_manager import OperationManager
 from src.automation.tonghuashun_automator import TonghuashunAutomator
-from src.utils.config_loader import load_config
+from src.utils.env_config import get_settings
 from src.automation.operations.buy_operation import BuyOperation
 from src.automation.operations.sell_operation import SellOperation
 from src.automation.operations.funds_query_operation import FundsQueryOperation
@@ -11,7 +11,8 @@ import asyncio
 PROJECT_DIR = "D:/ProgramCodes/QuantTrader"
 
 
-config = load_config(f"{PROJECT_DIR}/config/trading_config.yaml")
+settings = get_settings()
+config = settings.to_dict()
 
 
 # print(config.get('trading', {}))

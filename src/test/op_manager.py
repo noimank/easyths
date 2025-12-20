@@ -1,12 +1,15 @@
 from src.automation.operation_manager import OperationManager
-from src.utils.config_loader import load_config
+from src.utils.env_config import get_settings
+from dotenv import load_dotenv
 
+load_dotenv()
 
 
 PROJECT_DIR = "D:/ProgramCodes/QuantTrader"
 
 
-config = load_config(f"{PROJECT_DIR}/config/trading_config.yaml")
+settings = get_settings()
+config = settings.to_dict()
 
 operation_manager = OperationManager(config.get('plugins', {}))
 
