@@ -156,6 +156,9 @@ class BuyOperation(BaseOperation):
                 # 提示窗口只有确认按钮，不具备下一步的操作直接esc退出
                 if "提示" == pop_dialog_title.strip():
                     top_window.type_keys("{ESC}", set_foreground=False)
+                # 处理ST类型的股票的购买
+                elif "提示信息" == pop_dialog_title.strip() and "该证券为风险警示股票" in pop_dialog_content:
+                    top_window.type_keys("{ENTER}", set_foreground=False)
                 else:
                     top_window.type_keys("%Y", set_foreground=False)
                 #等待窗口关闭
