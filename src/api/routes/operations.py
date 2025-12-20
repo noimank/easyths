@@ -1,16 +1,17 @@
 """
 操作相关路由
 """
-from typing import Dict, Any, List
+from typing import Dict, Any
+
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
-from src.models.operations import (
-    Operation, OperationStatus, OperationType, APIResponse,
-    BatchOperationRequest
-)
 from src.api.dependencies.common import get_operation_queue, get_operation_manager
 from src.automation.base_operation import operation_registry
+from src.models.operations import (
+    Operation, OperationType, APIResponse,
+    BatchOperationRequest
+)
 
 router = APIRouter(prefix="/api/v1/operations", tags=["操作"])
 
@@ -24,14 +25,14 @@ class ExecuteOperationRequest(BaseModel):
 
 @router.post("/{operation_name}")
 async def execute_operation(
-    operation_name: str,
-    request: ExecuteOperationRequest,
-    background_tasks: BackgroundTasks,
-    queue = Depends(get_operation_queue)
+        operation_name: str,
+        request: ExecuteOperationRequest,
+        background_tasks: BackgroundTasks,
+        queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """执行操作"""
     # 验证操作是否存在
-    operation_class = queue.operation_registry.get_operation_class(operation_name)
+    operation_class = operation_registry.get_operation_class(operation_name)
     if not operation_class:
         raise HTTPException(
             status_code=404,
@@ -68,16 +69,16 @@ async def execute_operation(
 
 @router.post("/batch")
 async def execute_batch_operations(
-    request: BatchOperationRequest,
-    background_tasks: BackgroundTasks,
-    queue = Depends(get_operation_queue)
+        request: BatchOperationRequest,
+        background_tasks: BackgroundTasks,
+        queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """执行批量操作"""
     operations = []
 
     for op_info in request.operations:
         # 验证操作是否存在
-        operation_class = queue.operation_registry.get_operation_class(op_info["name"])
+        operation_class = operation_registry.get_operation_class(op_info["name"])
         if not operation_class:
             raise HTTPException(
                 status_code=404,
@@ -125,8 +126,8 @@ async def execute_batch_operations(
 
 @router.get("/{operation_id}/status")
 async def get_operation_status(
-    operation_id: str,
-    queue = Depends(get_operation_queue)
+        operation_id: str,
+        queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """获取操作状态"""
     operation = queue.get_operation(operation_id)
@@ -154,8 +155,8 @@ async def get_operation_status(
 
 @router.delete("/{operation_id}")
 async def cancel_operation(
-    operation_id: str,
-    queue = Depends(get_operation_queue)
+        operation_id: str,
+        queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """取消操作"""
     success = await queue.cancel_operation(operation_id)
@@ -174,8 +175,8 @@ async def cancel_operation(
 
 @router.post("/{operation_id}/retry")
 async def retry_operation(
-    operation_id: str,
-    queue = Depends(get_operation_queue)
+        operation_id: str,
+        queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """重试失败的操作"""
     success = await queue.retry_operation(operation_id)
@@ -194,7 +195,7 @@ async def retry_operation(
 
 @router.get("/")
 async def list_operations(
-    manager = Depends(get_operation_manager)
+        manager=Depends(get_operation_manager)
 ) -> APIResponse:
     """获取所有可用操作"""
     operations = manager.get_plugin_info()
