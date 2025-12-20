@@ -71,6 +71,10 @@ target/
 profile_default/
 ipython_config.py
 
+# uv
+.uv_cache/
+.python-version
+
 # pyenv
 .python-version
 

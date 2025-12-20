@@ -30,13 +30,27 @@ REST API Layer -> Request Queue -> Task Orchestrator -> Operation Serializer -> 
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 安装uv (如果尚未安装)
 
 ```bash
-pip install -r requirements.txt
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 或者使用 winget
+winget install -e --id astral-sh.uv
 ```
 
-### 2. 配置系统
+### 2. 安装项目依赖
+
+```bash
+# 安装生产依赖
+uv sync
+
+# 或者安装包含开发依赖
+uv sync --dev
+```
+
+### 3. 配置系统
 
 编辑 `config/trading_config.yaml`，配置同花顺路径和其他参数：
 
@@ -52,9 +66,14 @@ api:
   port: 8000
 ```
 
-### 3. 启动服务
+### 4. 启动服务
 
 ```bash
+# 使用uv运行
+uv run python main.py
+
+# 或者激活虚拟环境后运行
+uv shell
 python main.py
 ```
 
@@ -211,7 +230,7 @@ QuantTrader/
 │   └── trading_config.yaml      # 配置文件
 ├── logs/                        # 日志目录
 ├── plugins/                     # 外部插件目录
-├── requirements.txt
+├── pyproject.toml               # 项目配置和依赖管理
 └── main.py                      # 主程序入口
 ```
 
