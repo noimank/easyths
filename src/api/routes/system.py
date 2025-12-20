@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
 from src.api.dependencies.common import get_automator, get_operation_manager
+from src.api.dependencies.auth import verify_api_key
 from src.models.operations import APIResponse
 
 router = APIRouter(prefix="/api/v1/system", tags=["系统"])
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/api/v1/system", tags=["系统"])
 
 @router.get("/health")
 async def health_check(
+    api_valid: bool = Depends(verify_api_key),
     automator = Depends(get_automator),
     operation_manager = Depends(get_operation_manager)
 ) -> APIResponse:
@@ -39,6 +41,7 @@ async def health_check(
 
 @router.get("/status")
 async def get_system_status(
+    api_valid: bool = Depends(verify_api_key),
     automator = Depends(get_automator),
     operation_manager = Depends(get_operation_manager)
 ) -> APIResponse:
@@ -62,7 +65,9 @@ async def get_system_status(
 
 
 @router.get("/info")
-async def get_system_info() -> APIResponse:
+async def get_system_info(
+    api_valid: bool = Depends(verify_api_key)
+) -> APIResponse:
     """获取系统信息"""
     return APIResponse(
         success=True,

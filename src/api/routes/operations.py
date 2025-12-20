@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
 from src.api.dependencies.common import get_operation_queue, get_operation_manager
+from src.api.dependencies.auth import verify_api_key
 from src.automation.base_operation import operation_registry
 from src.models.operations import (
     Operation, OperationType, APIResponse,
@@ -28,6 +29,7 @@ async def execute_operation(
         operation_name: str,
         request: ExecuteOperationRequest,
         background_tasks: BackgroundTasks,
+        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """执行操作"""
@@ -71,6 +73,7 @@ async def execute_operation(
 async def execute_batch_operations(
         request: BatchOperationRequest,
         background_tasks: BackgroundTasks,
+        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """执行批量操作"""
@@ -127,6 +130,7 @@ async def execute_batch_operations(
 @router.get("/{operation_id}/status")
 async def get_operation_status(
         operation_id: str,
+        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """获取操作状态"""
@@ -156,6 +160,7 @@ async def get_operation_status(
 @router.delete("/{operation_id}")
 async def cancel_operation(
         operation_id: str,
+        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """取消操作"""
@@ -176,6 +181,7 @@ async def cancel_operation(
 @router.post("/{operation_id}/retry")
 async def retry_operation(
         operation_id: str,
+        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """重试失败的操作"""
@@ -195,6 +201,7 @@ async def retry_operation(
 
 @router.get("/")
 async def list_operations(
+        api_valid: bool = Depends(verify_api_key),
         manager=Depends(get_operation_manager)
 ) -> APIResponse:
     """获取所有可用操作"""
