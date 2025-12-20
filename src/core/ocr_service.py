@@ -135,7 +135,7 @@ class OCRService:
             return result
 
         if post_process_type == "持仓列表":
-            special_list = ["“", '，', ',', ")", "(", "：", ":", "；", ";", "《", '”']
+            special_list = ["“", '，', ',', ")", "(", "：", ":", "；", ";", "《", '”','。','%']
             result = self._clear_special_chars(result, special_list)
             #尝试将识别错误的表格重新命名
             result = result.replace("RS", "盈亏比例(%)")
@@ -143,7 +143,14 @@ class OCRService:
             #删除最后一行，汇总一行不需要
             result = result.split("\n")[:-1]
             result = "\n".join(result)
-
+        elif post_process_type == "委托列表":
+            special_list = ["“", '，','口', ',', ")", "(", ";", "《", '”']
+            result = self._clear_special_chars(result, special_list)
+            #尝试将识别错误的委托表格重新命名
+            result = result.replace("Be", "撤档数量")
+            #删除最后一行，汇总一行不需要
+            result = result.split("\n")[:-1]
+            result = "\n".join(result)
         return result
 
 
@@ -177,6 +184,7 @@ if __name__ == '__main__':
     ocr_service = get_ocr_service()
     img_path = r"C:\Users\noima\Desktop\1.png"
     # text = ocr_service.recognize_text(ocr_service.preprocess_image(img_path, resize_factor=2),config="--oem 3 --psm 6  -c tessedit_char_whitelist=0123456789.%+-*/")
-    text = ocr_service.recognize_text(img_path, post_process_type="持仓列表")
+    text = ocr_service.recognize_text(img_path, post_process_type="委托列表")
+    # text = ocr_service.recognize_text(img_path, post_process_type="持仓列表")
     # 读取图片并识别文本
     print(text)
