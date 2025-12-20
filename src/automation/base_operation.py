@@ -119,39 +119,73 @@ class BaseOperation(ABC):
             OperationResult: 操作结果
         """
         start_time = datetime.now()
+        operation_name = self.metadata.operation_name
+        stage = "初始化"
+
         try:
-            self.logger.info(f"开始执行操作: {self.metadata.operation_name}", params=params)
+            self.logger.info(f"开始执行操作: {operation_name}", params=params)
 
-            # 参数验证
-            if not await self.validate(params):
-                error_msg = "参数验证失败"
-                self.logger.error(error_msg, params=params)
+            # 阶段1：参数验证
+            stage = "参数验证"
+            try:
+                is_param_valid = await self.validate(params)
+                if not is_param_valid:
+                    error_msg = f"{stage}失败：参数验证失败，请检查接口参数"
+                    self.logger.error(error_msg, params=params)
+                    return OperationResult(success=False, error=error_msg, timestamp=start_time)
+            except Exception as e:
+                error_msg = f"{stage}异常: {str(e)}"
+                self.logger.error(error_msg, params=params, exc_info=True)
                 return OperationResult(success=False, error=error_msg, timestamp=start_time)
 
-            # 执行前钩子
-            if not await self.pre_execute(params):
-                error_msg = "执行前检查失败"
-                self.logger.error(error_msg, params=params)
+            # 阶段2：执行前检查
+            stage = "执行前检查"
+            try:
+                pre_execute_result = await self.pre_execute(params)
+                if not pre_execute_result:
+                    error_msg = f"{stage}失败：同花顺未连接或环境准备失败"
+                    self.logger.error(error_msg, params=params)
+                    return OperationResult(success=False, error=error_msg, timestamp=start_time)
+            except Exception as e:
+                error_msg = f"{stage}异常: {str(e)}"
+                self.logger.error(error_msg, params=params, exc_info=True)
                 return OperationResult(success=False, error=error_msg, timestamp=start_time)
 
-            # 执行操作
-            result = await self.execute(params)
+            # 阶段3：执行核心操作
+            stage = "核心操作执行"
+            try:
+                result = await self.execute(params)
+            except Exception as e:
+                error_msg = f"{stage}异常: {str(e)}"
+                self.logger.error(error_msg, params=params, exc_info=True)
+                return OperationResult(success=False, error=error_msg, timestamp=start_time)
 
-            # 执行后钩子
-            result = await self.post_execute(params, result)
+            # 阶段4：执行后处理
+            stage = "执行后处理"
+            try:
+                result = await self.post_execute(params, result)
+            except Exception as e:
+                error_msg = f"{stage}异常: {str(e)}"
+                self.logger.error(error_msg, params=params, exc_info=True)
+                # 即使后处理失败，操作本身可能已成功，记录警告但不影响结果
+                if result.success:
+                    self.logger.warning(f"操作成功但{stage}失败: {error_msg}")
+                else:
+                    return OperationResult(success=False, error=error_msg, timestamp=start_time)
 
             # 记录执行结果
             end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
             self.logger.info(
-                f"操作执行完成: {self.metadata.operation_name}",
+                f"操作执行完成: {operation_name}",
                 success=result.success,
-                duration=(end_time - start_time).total_seconds()
+                duration=duration
             )
 
             return result
 
         except Exception as e:
-            error_msg = f"操作执行异常: {str(e)}"
+            error_msg = f"操作执行异常（{stage}阶段）: {str(e)}"
             self.logger.exception(error_msg, params=params)
             return OperationResult(success=False, error=error_msg, timestamp=start_time)
 
