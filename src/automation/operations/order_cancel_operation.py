@@ -98,7 +98,7 @@ class OrderCancelOperation(BaseOperation):
             edit_stock_code = self.get_control(parent=main_window, class_name="Edit", found_index=None,
                                                control_id=0xD14)
             # 模拟清空
-            edit_stock_code.type_keys('^a{BACKSPACE}')
+            edit_stock_code.type_keys('{BACKSPACE} {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}')
             time.sleep(0.1)
             if stock_code:
                 # 查找并选择指定股票的委托
@@ -134,7 +134,7 @@ class OrderCancelOperation(BaseOperation):
                     top_window = self.get_top_window()
                     top_window.type_keys("%Y", set_foreground=False)
                 # 细化判定
-                if "提示信息" == pop_dialog_title.strip() and "您确定要撤销" in pop_dialog_content:
+                if "提示信息" == pop_dialog_title.strip() and "您确认要撤销" in pop_dialog_content:
                     top_window = self.get_top_window()
                     top_window.type_keys("%Y", set_foreground=False)
 
