@@ -300,7 +300,8 @@ class BaseOperation(ABC):
             # 特殊窗口特殊处理
             pop_up_title = self.get_pop_dialog_title()
             if pop_up_title == "提示信息":
-                top_window.type_keys("%N")
+                # top_window.type_keys("%N")
+                top_window.close()
             else:
                 top_window.type_keys("{ESC}")
             count += 1
