@@ -3,6 +3,7 @@ import time
 from typing import Dict, Any
 
 from src.automation.base_operation import BaseOperation, register_operation
+from src.automation.utils import df_format_convert,text2df
 from src.models.operations import PluginMetadata, OperationResult
 
 @register_operation
@@ -17,12 +18,12 @@ class HoldingQueryOperation(BaseOperation):
             author="noimank",
             operation_name="holding_query",
             parameters={
-                "query_type": {
+                "return_type": {
                     "type": "string",
                     "required": False,
-                    "description": "查询类型：all（所有持仓）、available（可卖持仓）、frozen（冻结持仓）",
-                    "enum": ["all", "available", "frozen"],
-                    "default": "all"
+                    "description": "结果返回类型",
+                    "enum": ["str", "json", "dict", "df", "markdown"],
+                    "default": "json"
                 }
             }
         )
@@ -30,9 +31,9 @@ class HoldingQueryOperation(BaseOperation):
     async def validate(self, params: Dict[str, Any]) -> bool:
         """验证查询参数"""
         try:
-            query_type = params.get("return_type")
-            if query_type not in ["str", "json", "dict","df", "markdown"]:
-                self.logger.error("参数query_type无效，有效值为：str、json、dict、df、markdown")
+            return_type = params.get("return_type")
+            if return_type not in ["str", "json", "dict","df", "markdown"]:
+                self.logger.error("参数return_type无效，有效值为：str、json、dict、df、markdown")
                 return False
             return True
 
@@ -49,7 +50,31 @@ class HoldingQueryOperation(BaseOperation):
             # 切换到持仓菜单
             self.switch_left_menus(["查询[F4]", "资金股票"])
 
-            table_data = self.get_table_data("持仓列表",return_type=return_type, control_id=0x417)
+            # 获取表格控件
+            table_control = self.get_control(control_id=0x417,class_name="CVirtualGridCtrl")
+
+            # 鼠标左键点击
+            table_control.click()
+
+            # 按下 Ctrl+A Ctrl+ C  触发复制
+            table_control.type_keys("^a")
+            time.sleep(0.05)
+            table_control.type_keys("^c")
+            time.sleep(0.1)
+
+            # 处理触发复制的限制提示框
+            self.process_captcha_dialog()
+            # 获取剪贴板数据
+            table_data = self.get_clipboard_data()
+            table_data = text2df(table_data)
+            # 丢弃多余列
+            table_data = table_data.drop(columns=["操作", "Unnamed: 19"], errors="ignore")
+
+            is_op_success = not self.is_exist_pop_dialog()  #没有弹窗了，说明没有其他意外情况发生
+            if is_op_success:
+                # 获取表格数据
+                table_data = df_format_convert(table_data, return_type)
+
             # 准备返回数据
             result_data = {
                 "holdings": table_data,
@@ -61,7 +86,7 @@ class HoldingQueryOperation(BaseOperation):
                            holding=table_data)
 
             return OperationResult(
-                success=True,
+                success=is_op_success,
                 data=result_data
             )
 

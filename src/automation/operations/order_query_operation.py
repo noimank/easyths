@@ -1,6 +1,7 @@
 import datetime
 import time
 from typing import Dict, Any
+from src.automation.utils import df_format_convert,text2df
 
 from src.automation.base_operation import BaseOperation, register_operation
 from src.models.operations import PluginMetadata, OperationResult
@@ -74,7 +75,7 @@ class OrderQueryOperation(BaseOperation):
             if stock_code:
                 edit_stock_code = self.get_control(parent=main_window, class_name="Edit", found_index=None, control_id=0xD14)
                 # 清空并输入股票代码
-                edit_stock_code.type_keys('{BACKSPACE} {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}')
+                edit_stock_code.type_keys('{BACKSPACE 6}')
                 time.sleep(0.1)
                 edit_stock_code.type_keys(str(stock_code))
 
@@ -85,29 +86,50 @@ class OrderQueryOperation(BaseOperation):
             else:
                 # 如果没有指定股票代码，清空查询框以显示所有委托
                 edit_stock_code = self.get_control(parent=main_window, class_name="Edit", found_index=None, control_id=0xD14)
-                edit_stock_code.type_keys('{BACKSPACE} {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}')
+                edit_stock_code.type_keys('{BACKSPACE 6} ')
                 time.sleep(0.1)
                 query_btn = self.get_control(parent=main_window, class_name="Button", found_index=None, control_id=0xD15)
                 query_btn.click()
                 time.sleep(0.1)
 
             # 3. 根据查询类型获取委托数据
-            # 委托列表使用相同的控件ID 0x417
-            table_data = self.get_table_data("委托列表", return_type=return_type, control_id=0x417)
+            # 获取表格控件
+            table_control = self.get_control(control_id=0x417, class_name="CVirtualGridCtrl")
+            # 鼠标左键点击
+            table_control.click()
+
+            # 按下 Ctrl+A Ctrl+ C  触发复制
+            table_control.type_keys("^a")
+            time.sleep(0.05)
+            table_control.type_keys("^c")
+            time.sleep(0.1)
+
+            # 处理触发复制的限制提示框
+            self.process_captcha_dialog()
+            # 获取剪贴板数据
+            table_data = self.get_clipboard_data()
+            table_data = text2df(table_data)
+            # 丢弃多余列
+            table_data = table_data.drop(columns=["Unnamed: 12"], errors="ignore")
+
+            is_op_success = not self.is_exist_pop_dialog()  # 没有弹窗了，说明没有其他意外情况发生
+            if is_op_success:
+                # 获取表格数据
+                table_data = df_format_convert(table_data, return_type)
 
             # 4. 准备返回数据
             result_data = {
                 "orders": f"没有对应的委托订单" if len(table_data) ==0 else table_data,
                 "stock_code": stock_code,
                 "timestamp": datetime.datetime.now().isoformat(),
-                "success": True
+                "success": is_op_success
             }
 
             self.logger.info(f"委托查询完成，耗时{time.time() - start_time}秒",
                            stock_code=stock_code or "全部")
 
             return OperationResult(
-                success=True,
+                success=is_op_success,
                 data=result_data
             )
 

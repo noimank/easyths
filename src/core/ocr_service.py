@@ -135,23 +135,14 @@ class OCRService:
         if post_process_type is None:
             return result
 
-        if post_process_type == "持仓列表":
-            special_list = ["“", '，', ',', ")", "(", "：", ":", "；", ";", "《", '”','。','%']
-            result = self._clear_special_chars(result, special_list)
-            #尝试将识别错误的表格重新命名
-            result = result.replace("RS", "盈亏比例(%)")
-            result = result.replace("Sat", "当前价")
-            #删除最后一行，汇总一行不需要
-            result = result.split("\n")[:-1]
-            result = "\n".join(result)
-        elif post_process_type == "委托列表":
-            special_list = ["“", '，','口', ',', ")", "(", ";", "《", '”']
-            result = self._clear_special_chars(result, special_list)
-            #尝试将识别错误的委托表格重新命名
-            result = result.replace("Be", "撤档数量")
-            #删除最后一行，汇总一行不需要
-            result = result.split("\n")[:-1]
-            result = "\n".join(result)
+        if post_process_type == "验证码":
+            # 仅保留数字和字母，过滤掉其他字符
+            filtered_result = ''.join(char for char in result if char.isalnum())
+            # 截取后4个字符，目前验证码类型就 4个，确保返回4个长度，免得其他情况发生
+            if len(filtered_result) > 4:
+                filtered_result = filtered_result[-4:]
+            result = filtered_result
+
         return result
 
 

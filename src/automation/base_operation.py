@@ -11,6 +11,7 @@ import json
 from src.automation.tonghuashun_automator import TonghuashunAutomator
 from src.models.operations import OperationResult, PluginMetadata
 from src.core.ocr_service import get_ocr_service
+import pywinauto.clipboard
 
 logger = structlog.get_logger(__name__)
 
@@ -240,6 +241,10 @@ class BaseOperation(ABC):
         """是否存在弹窗"""
         # 标准的弹出窗口id
         top_window = self.get_top_window()
+        window_title = top_window.window_text()
+        if  "网上股票交易系统" in  window_title:
+            return False
+        # 不是主窗口再按子窗口来判断
         childrens = top_window.children()
         return len(childrens) > 0
 
@@ -305,6 +310,35 @@ class BaseOperation(ABC):
             else:
                 top_window.type_keys("{ESC}")
             count += 1
+    def process_captcha_dialog(self):
+        retry_count = 3
+        time.sleep(0.05)
+        while self.is_exist_pop_dialog() and retry_count > 0:
+            pop_dialog_title = self.get_pop_dialog_title()
+            top_window = self.get_top_window()
+            if pop_dialog_title == "提示":
+                # 先看是否有错误提示
+                captcha_pic_control = self.get_control(parent=top_window, control_id=0x965, class_name="Static")
+                captcha_edit = self.get_control(parent=top_window, control_id=0x964, class_name="Edit")
+                old_captcha_value = captcha_edit.texts()[1]
+                # 验证码错误，重新输入验证码
+                if len(old_captcha_value) > 0:
+                    # 刷新验证码
+                    captcha_pic_control.click()
+                    time.sleep(0.05)
+                    # 清空可能存在的旧验证码
+                    captcha_edit.type_keys("{BACKSPACE 5}")
+
+                captcha_code = self.ocr_taget_control_to_text(captcha_pic_control, "验证码")
+                # 输入验证码
+                captcha_edit.type_keys(captcha_code)
+                # 点击确定
+                self.get_control(parent=top_window, control_id=0x1, class_name="Button").click()
+                # 等待提示框消失
+                time.sleep(0.15)
+            else:
+                break
+            retry_count -= 1
 
     def get_control(self,
                     cache_key: str = None,
@@ -324,52 +358,23 @@ class BaseOperation(ABC):
                                           found_index=found_index)
 
 
-    def _text_format_convert(self, text:str, format:str):
-        """文本格式转换"""
-        if format == "str":
-            return text
-        #以下操作开始尝试解析为pandas
-        try:
-            text_lines = text.split("\n")
-            columns = text_lines[0].split()
-            data = []
-            for line in text_lines[1:]:
-                data.append(line.split())
-            df = pd.DataFrame(data, columns=columns)
-            if format == "df":
-                return df
-            elif format == "json" or format == "dict":
-                return df.to_dict(orient="records")
-            elif format == "markdown":
-                return df.to_markdown()
 
-        except Exception as e:
-            self.logger.error(
-                "文本格式转换失败",
-                text=text,
-                format=format,
-                error=str(e)
-                )
-            return text
-
-
-    def get_table_data(self, table_type, return_type, control_id=0x417):
-        """根据控件ID获取表格数据
+    def ocr_taget_control_to_text(self, control, post_process_type=None):
+        """根据控件获取OCR文本结果
 
         Args:
-            table_type: 表格类型，用于OCR后处理, 和后处理操作判断强相关，具体可以看ocr_service.py
-            return_type: 返回类型，目前支持str、dict、markdown、df、json
-            control_id: 控件ID，默认为0x417
+            control: 控件对象
+            post_process_type: 后处理类型
 
         Returns:
-            str: OCR识别并处理后的文本数据
+            tuple: OCR目标区域的左上角和右下角坐标
         """
         try:
-            # 1. 获取控件对象
-            control = self.get_control(control_id=control_id,class_name="CVirtualGridCtrl")
 
-            # 2. 获取控件位置和大小
-            # 使用 native_properties 获取实际的屏幕坐标
+            #判断控件是否有效
+            if control is None:
+                raise Exception("控件对象为空")
+            # 1. 获取控件位置和大小
             rect = control.element_info.rectangle
             left = rect.left
             top = rect.top
@@ -377,45 +382,27 @@ class BaseOperation(ABC):
             bottom = rect.bottom
             width = right - left
             height = bottom - top
-
-            self.logger.info(
-                "获取控件位置信息",
-                control_id=hex(control_id),
-                left=left,
-                top=top,
-                width=width,
-                height=height
-            )
-
-            # 3. 截取控件区域的屏幕截图
+            # 2. 截取控件区域的屏幕截图
             screenshot = pyautogui.screenshot(region=(left, top, width, height))
 
-            # 4. 使用OCR服务识别文本
+            # 3. 使用OCR服务识别文本
             ocr_service = get_ocr_service()
             recognized_text = ocr_service.recognize_text(
                 image=screenshot,
-                post_process_type=table_type
+                post_process_type=post_process_type
             )
-
-            self.logger.info(
-                "表格数据OCR识别完成",
-                table_type=table_type,
-                control_id=hex(control_id),
-                text_length=len(recognized_text)
-            )
-
-            table_data = self._text_format_convert(recognized_text, return_type)
-
-            return table_data
-
+            return recognized_text
         except Exception as e:
             self.logger.error(
-                "获取表格数据失败",
-                table_type=table_type,
-                control_id=hex(control_id),
+                "OCR识别失败",
+                control=control,
+                post_process_type=post_process_type,
                 error=str(e)
             )
             raise
+    def get_clipboard_data(self):
+        return pywinauto.clipboard.GetData()
+
 
 class OperationRegistry:
     """操作注册表
