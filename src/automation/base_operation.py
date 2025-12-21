@@ -3,15 +3,13 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, Any, Optional, Type
-import pyautogui
+
+import pyperclip
 import structlog
-from PIL import Image
-import pandas as pd
-import json
+
 from src.automation.tonghuashun_automator import TonghuashunAutomator
-from src.models.operations import OperationResult, PluginMetadata
 from src.core.ocr_service import get_ocr_service
-import pywinauto.clipboard
+from src.models.operations import OperationResult, PluginMetadata
 
 logger = structlog.get_logger(__name__)
 
@@ -242,7 +240,7 @@ class BaseOperation(ABC):
         # 标准的弹出窗口id
         top_window = self.get_top_window()
         window_title = top_window.window_text()
-        if  "网上股票交易系统" in  window_title:
+        if "网上股票交易系统" in window_title:
             return False
         # 不是主窗口再按子窗口来判断
         childrens = top_window.children()
@@ -291,7 +289,7 @@ class BaseOperation(ABC):
             return
         # 不调用close，优雅的关闭就好，以免有些web view类型的弹窗关闭后无法二次打开
         # 而且随便输入esc键也不会造成任何其他影响，反而可以提高稳定性，避免控件被意外关闭
-        count = 0 #防止死循环
+        count = 0  # 防止死循环
         while count < 3:
             time.sleep(0.1)
             top_window = self.get_top_window()
@@ -310,6 +308,7 @@ class BaseOperation(ABC):
             else:
                 top_window.type_keys("{ESC}")
             count += 1
+
     def process_captcha_dialog(self):
         retry_count = 3
         time.sleep(0.05)
@@ -357,8 +356,6 @@ class BaseOperation(ABC):
                                           control_id=control_id,
                                           found_index=found_index)
 
-
-
     def ocr_taget_control_to_text(self, control, post_process_type=None):
         """根据控件获取OCR文本结果
 
@@ -371,7 +368,7 @@ class BaseOperation(ABC):
         """
         try:
 
-            #判断控件是否有效
+            # 判断控件是否有效
             if control is None:
                 raise Exception("控件对象为空")
             # 1. 获取控件位置和大小
@@ -383,12 +380,13 @@ class BaseOperation(ABC):
             width = right - left
             height = bottom - top
             # 2. 截取控件区域的屏幕截图
-            screenshot = pyautogui.screenshot(region=(left, top, width, height))
-
+            # 定义截图区域
+            monitor = {"top": top, "left": left, "width": width, "height": height}
+            # 截取屏幕区域
             # 3. 使用OCR服务识别文本
             ocr_service = get_ocr_service()
             recognized_text = ocr_service.recognize_text(
-                image=screenshot,
+                image_or_loc=monitor,
                 post_process_type=post_process_type
             )
             return recognized_text
@@ -400,8 +398,9 @@ class BaseOperation(ABC):
                 error=str(e)
             )
             raise
+
     def get_clipboard_data(self):
-        return pywinauto.clipboard.GetData()
+        return pyperclip.paste()
 
 
 class OperationRegistry:

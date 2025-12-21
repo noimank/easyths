@@ -10,6 +10,7 @@ from src.utils.env_config import get_settings
 from src.api.middleware import LoggingMiddleware, RateLimitMiddleware
 from src.api.routes import system_router, operations_router, queue_router
 from src.api.dependencies.common import set_global_instances
+from src.core import mss_screen_capture_instance
 from src.utils.logger import init_audit_logger
 
 logger = structlog.get_logger(__name__)
@@ -114,6 +115,8 @@ class TradingAPIApp:
         logger.info("正在关闭交易API服务...")
         await self.operation_queue.stop()
         await self.automator.disconnect()
+        mss_screen_capture_instance.close()
+        logger.info("mss屏幕截图单例已关闭")
         logger.info("交易API服务已关闭")
 
     def run(self):

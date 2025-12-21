@@ -12,43 +12,23 @@ from typing import Optional, Union, Dict, Any
 import pytesseract
 from PIL import Image
 import structlog
-
+import mss
 logger = structlog.get_logger(__name__)
 
+#直接全局单例模式，在fastapi中关闭时销毁
+mss_screen_capture_instance = mss.mss()
 
 class OCRService:
-    """OCR图像识别服务类（单例模式）
-
-    提供图像文字识别功能，基于pytesseract实现
-    使用线程安全的单例模式确保全局只有一个实例
+    """OCR图像识别服务类
     """
-
-    _instance = None
-    _lock = threading.Lock()
-    _initialized = False
-
-    def __new__(cls):
-        """单例模式实现
-
-        Returns:
-            OCRService: 单例实例
-        """
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self):
         """初始化OCR服务"""
-        if not self._initialized:
-            self._logger = structlog.get_logger(__name__)
-            OCRService._initialized = True
-            self._logger.info("OCR服务初始化完成")
+        self._logger = structlog.get_logger(__name__)
+        self._logger.info("OCR服务初始化完成")
 
     def recognize_text(
         self,
-        image: Union[str, Path, Image.Image],
+        image_or_loc: Union[str, Path, Image.Image, dict],
         config: Optional[str] = None,
         post_process_type = None,
         **kwargs
@@ -56,7 +36,7 @@ class OCRService:
         """识别图像中的文字
 
         Args:
-            image: 图像路径、PIL Image对象或numpy数组
+            image_or_loc: 图像路径、PIL Image对象或numpy数组， 如果是字典，则表示屏幕截图区域如：{"top": top, "left": left, "width": width, "height": height}
             config: tesseract配置字符串
             post_process_type: 识别结果后处理类型
             **kwargs: 其他pytesseract参数
@@ -70,13 +50,19 @@ class OCRService:
             # lang: 语言设置，默认中文简体
             # lang: str = 'chi_sim+eng'
             lang: str = 'chi_sim'
+            image = None
 
             # 如果是路径，转换为PIL Image
-            if isinstance(image, (str, Path)):
-                image_path = str(image)
+            if isinstance(image_or_loc, (str, Path)):
+                image_path = str(image_or_loc)
                 if not os.path.exists(image_path):
                     raise FileNotFoundError(f"图像文件不存在: {image_path}")
                 image = Image.open(image_path)
+            if isinstance(image_or_loc, dict):
+                # 截取屏幕区域
+                sct_img = mss_screen_capture_instance.grab(image_or_loc)
+                # 转换为PIL Image
+                image = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
 
             # 执行OCR识别
             text = pytesseract.image_to_string(

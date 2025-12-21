@@ -1,1 +1,1 @@
-from .ocr_service import get_ocr_service,ocr_service
+from .ocr_service import get_ocr_service,ocr_service, mss_screen_capture_instance
