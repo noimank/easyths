@@ -328,7 +328,7 @@ class BaseOperation(ABC):
                     # 清空可能存在的旧验证码
                     captcha_edit.type_keys("{BACKSPACE 5}")
 
-                captcha_code = self.ocr_taget_control_to_text(captcha_pic_control, "验证码")
+                captcha_code = self.ocr_target_control_to_text(captcha_pic_control, "验证码")
                 # 输入验证码
                 captcha_edit.type_keys(captcha_code)
                 # 点击确定
@@ -356,7 +356,7 @@ class BaseOperation(ABC):
                                           control_id=control_id,
                                           found_index=found_index)
 
-    def ocr_taget_control_to_text(self, control, post_process_type=None):
+    def ocr_target_control_to_text(self, control, post_process_type=None):
         """根据控件获取OCR文本结果
 
         Args:
