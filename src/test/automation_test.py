@@ -8,6 +8,7 @@ from src.automation.operations.funds_query_operation import FundsQueryOperation
 from src.automation.operations.holding_query_operation import HoldingQueryOperation
 from src.automation.operations.order_cancel_operation import OrderCancelOperation
 from src.automation.operations.order_query_operation import OrderQueryOperation
+from src.automation.operations.historical_commission_query_operation import HistoricalCommissionQueryOperation
 import asyncio
 from dotenv import load_dotenv
 
@@ -94,6 +95,18 @@ def test_order_query():
         # "stock_code": "159814"
     }
     op = OrderQueryOperation(automator, config)
+    loop.run_until_complete(op.run(params))
+    loop.run_until_complete(automator.disconnect())
+
+def test_historical_commission_query():
+    app = automator.app
+    # 返回格式 str、dict、markdown、df、json
+    params = {
+        # "return_type": "json",
+        # "stock_code": "000001",
+        "time_range": "近一月"
+    }
+    op = HistoricalCommissionQueryOperation(automator, config)
     loop.run_until_complete(op.run(params))
     loop.run_until_complete(automator.disconnect())
 
