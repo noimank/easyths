@@ -67,8 +67,9 @@ class OCRService:
         try:
             # 配置参数
             custom_config = config or r'--oem 3 --psm 6'
-            # lang: 语言设置，默认中文简体 + 英文
-            lang: str = 'chi_sim+eng'
+            # lang: 语言设置，默认中文简体
+            # lang: str = 'chi_sim+eng'
+            lang: str = 'chi_sim'
 
             # 如果是路径，转换为PIL Image
             if isinstance(image, (str, Path)):
