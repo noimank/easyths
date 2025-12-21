@@ -38,7 +38,7 @@ def setup_logging(config: Dict[str, Any]):
     ]
 
     if log_format == 'json':
-        processors.append(structlog.processors.JSONRenderer())
+        processors.append(structlog.processors.JSONRenderer(ensure_ascii=False))
     else:
         processors.append(structlog.dev.ConsoleRenderer())
 
