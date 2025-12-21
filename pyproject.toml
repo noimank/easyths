@@ -1,6 +1,8 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+[tool.uv]
+index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project]
 name = "quanttrader"
