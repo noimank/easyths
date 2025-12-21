@@ -6,17 +6,15 @@ from pathlib import Path
 from typing import Any, Dict
 import json
 from datetime import datetime
-
+from .config import project_config_instance
 # 确保日志目录存在
 log_dir = Path("logs")
 log_dir.mkdir(exist_ok=True)
 
-def setup_logging(config: Dict[str, Any]):
+def setup_logging():
     """设置日志系统
-
-    Args:
-        config: 日志配置
     """
+    config = project_config_instance.get_logging_config()
     level = config.get('level', 'INFO')
     log_format = config.get('format', 'text')
     log_file = config.get('file', 'logs/trading.log')
@@ -197,13 +195,11 @@ class AuditLogger:
 audit_logger: AuditLogger = None
 
 
-def init_audit_logger(config: Dict[str, Any]):
+def init_audit_logger():
     """初始化审计日志
 
-    Args:
-        config: 日志配置
     """
-    logger = setup_logging(config)
+    logger = setup_logging()
     global audit_logger
     audit_logger = AuditLogger(logger)
     return audit_logger

@@ -51,6 +51,7 @@ dependencies = [
     "python-dateutil>=2.8.2",
     "pyperclip>=1.11.0",
     "mss>=10.1.0",
+    "toml>=0.10.2",
 ]
 
 [project.optional-dependencies]

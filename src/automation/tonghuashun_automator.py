@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any, List
 import structlog
 from pywinauto.application import Application, ProcessNotFoundError
 from pywinauto.findwindows import ElementNotFoundError
-from pywinauto import findwindows, timings
+from src.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
 
@@ -26,13 +26,8 @@ class TonghuashunAutomator:
 
     使用示例：
         # 初始化并连接
-        config = {
-            'app_path': 'C:\\同花顺\\xiadan.exe',
-            'timeout': 30,
-            'retry_count': 3,
-            'retry_delay': 1.0
-        }
-        automator = TonghuashunAutomator(config)
+
+        automator = TonghuashunAutomator()
         await automator.connect()
 
         # 执行操作
@@ -50,23 +45,14 @@ class TonghuashunAutomator:
     """
 
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self):
         """初始化自动化器
-
-        Args:
-            config: 配置字典，支持以下键：
-                   - app_path: 同花顺应用程序路径
-                   - timeout: 全局超时时间（秒）
-                   - retry_count: 重试次数
-                   - retry_delay: 重试间隔（秒）
-                   - backend: GUI自动化后端类型
         """
-        self.config = config
-        self.app_path = config.get('app_path', '')
-        self.timeout = config.get('timeout', 30)
-        self.retry_count = config.get('retry_count', 3)
-        self.retry_delay = config.get('retry_delay', 1.0)
-        self.backend = config.get('backend', 'win32')
+        self.app_path = project_config_instance.trading_app_path
+        self.timeout = project_config_instance.trading_timeout
+        self.retry_count = project_config_instance.trading_retry_count
+        self.retry_delay = project_config_instance.trading_retry_delay
+        self.backend = project_config_instance.trading_backend
 
         self.app: Optional[Application] = None
         self.main_window = None

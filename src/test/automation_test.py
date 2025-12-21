@@ -1,7 +1,6 @@
 
 from src.automation.operation_manager import OperationManager
 from src.automation.tonghuashun_automator import TonghuashunAutomator
-from src.utils.env_config import get_settings
 from src.automation.operations.buy_operation import BuyOperation
 from src.automation.operations.sell_operation import SellOperation
 from src.automation.operations.funds_query_operation import FundsQueryOperation
@@ -15,13 +14,10 @@ from dotenv import load_dotenv
 PROJECT_DIR = "D:/ProgramCodes/QuantTrader"
 load_dotenv(PROJECT_DIR + "/.env")
 
-settings = get_settings()
-config = settings.to_dict()
-
 
 # print(config.get('trading', {}))
-automator = TonghuashunAutomator(config.get('trading', {}))
-
+automator = TonghuashunAutomator()
+config = None
 loop = asyncio.get_event_loop()
 loop.run_until_complete(automator.connect())
 

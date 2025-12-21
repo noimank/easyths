@@ -1,0 +1,1 @@
+from .config import project_config_instance

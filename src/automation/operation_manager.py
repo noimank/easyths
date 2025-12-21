@@ -17,19 +17,14 @@ class OperationManager:
     负责插件的加载、管理和生命周期控制
     """
 
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
-        self.plugin_dirs = config.get('plugin_dirs', [])
-        self.auto_load = config.get('auto_load', True)
-        self.whitelist = config.get('whitelist', [])
+    def __init__(self):
+        self.plugin_dirs = ["src/automation/operations"]
+        self.whitelist = [] #暂未使用该功能
         self.logger = structlog.get_logger(__name__)
         self._loaded_plugins: Dict[str, str] = {}  # 插件名 -> 文件路径
 
     def load_plugins(self) -> None:
         """加载所有插件"""
-        if not self.auto_load:
-            self.logger.info("自动加载插件已禁用")
-            return
 
         self.logger.info("开始加载插件", plugin_dirs=self.plugin_dirs)
 

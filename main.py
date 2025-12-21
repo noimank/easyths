@@ -16,11 +16,11 @@ from src.automation.operation_manager import OperationManager
 from src.automation.tonghuashun_automator import TonghuashunAutomator
 from src.core.operation_queue import OperationQueue
 from src.api.app import TradingAPIApp
-from src.utils.env_config import get_settings
+from src.utils import project_config_instance
 
 
 
-async def initialize_components(config: dict):
+async def initialize_components():
     """初始化组件
 
     Args:
@@ -30,19 +30,19 @@ async def initialize_components(config: dict):
         tuple: (automator, operation_queue, operation_manager)
     """
     # 创建自动化器
-    automator = TonghuashunAutomator(config.get('trading', {}))
+    automator = TonghuashunAutomator()
 
     # 连接到同花顺
     await automator.connect()
 
     # 创建操作队列
     operation_queue = OperationQueue(
-        config.get('queue', {}),
+        project_config_instance.get_queue_config(),
         automator
     )
 
     # 创建操作管理器
-    operation_manager = OperationManager(config.get('plugins', {}))
+    operation_manager = OperationManager()
 
     return automator, operation_queue, operation_manager
 
@@ -50,8 +50,8 @@ async def initialize_components(config: dict):
 def main():
     """主函数"""
     # 加载配置
-    settings = get_settings()
-    config = settings.to_dict()
+    # settings = get_settings()
+    # config = settings.to_dict()
 
     # 初始化日志
     logger = structlog.get_logger(__name__)
@@ -59,11 +59,11 @@ def main():
 
     # 初始化组件
     automator, operation_queue, operation_manager = asyncio.run(
-        initialize_components(config)
+        initialize_components()
     )
 
     # 创建并运行API服务
-    api_app = TradingAPIApp(config, automator, operation_queue, operation_manager)
+    api_app = TradingAPIApp(automator, operation_queue, operation_manager)
     app = api_app.create_app()
 
     try:
