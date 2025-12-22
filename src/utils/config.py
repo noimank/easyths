@@ -34,40 +34,7 @@ class ProjectConfig:
 
     def __init__(self):
         pass
-    def get_app_config(self):
-        return {
-            "name": self.app_name,
-            "version": self.app_version
-        }
-    def get_trading_config(self):
-        return {
-            "app_path": self.trading_app_path,
-            "backend": self.trading_backend,
-            "timeout": self.trading_timeout,
-            "retry_count": self.trading_retry_count,
-            "retry_delay": self.trading_retry_delay
-        }
-    def get_queue_config(self):
-        return {
-            "max_size": self.queue_max_size,
-            "priority_levels": self.queue_priority_levels,
-            "batch_size": self.queue_batch_size
-        }
-    def get_api_config(self):
-        return {
-            "host": self.api_host,
-            "port": self.api_port,
-            "rate_limit": self.api_rate_limit,
-            "cors_origins": self.api_cors_origins,
-            "key": self.api_key
-        }
-    def get_logging_config(self):
-        return {
-            "level": self.logging_level,
-            "format": self.logging_format,
-            "file": self.logging_file,
-            "audit_file": self.logging_audit_file
-        }
+
     def update_form_toml_file(self, toml_file_path):
         config = toml.load(toml_file_path)
         for key, value in config.items():

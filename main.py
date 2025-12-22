@@ -16,15 +16,11 @@ from src.automation.operation_manager import OperationManager
 from src.automation.tonghuashun_automator import TonghuashunAutomator
 from src.core.operation_queue import OperationQueue
 from src.api.app import TradingAPIApp
-from src.utils import project_config_instance
 
 
 
 async def initialize_components():
     """初始化组件
-
-    Args:
-        config: 配置数据
 
     Returns:
         tuple: (automator, operation_queue, operation_manager)
@@ -37,7 +33,6 @@ async def initialize_components():
 
     # 创建操作队列
     operation_queue = OperationQueue(
-        project_config_instance.get_queue_config(),
         automator
     )
 
@@ -49,9 +44,6 @@ async def initialize_components():
 
 def main():
     """主函数"""
-    # 加载配置
-    # settings = get_settings()
-    # config = settings.to_dict()
 
     # 初始化日志
     logger = structlog.get_logger(__name__)

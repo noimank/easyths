@@ -14,11 +14,10 @@ log_dir.mkdir(exist_ok=True)
 def setup_logging():
     """设置日志系统
     """
-    config = project_config_instance.get_logging_config()
-    level = config.get('level', 'INFO')
-    log_format = config.get('format', 'text')
-    log_file = config.get('file', 'logs/trading.log')
-    audit_file = config.get('audit_file', 'logs/audit.log')
+    level = project_config_instance.logging_level
+    log_format = project_config_instance.logging_format
+    log_file = project_config_instance.logging_file
+    audit_file = project_config_instance.logging_audit_file
 
     # 确保日志目录存在
     Path(log_file).parent.mkdir(parents=True, exist_ok=True)

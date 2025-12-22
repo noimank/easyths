@@ -8,7 +8,7 @@ import structlog
 
 from src.automation.base_operation import operation_registry
 from src.models.operations import Operation, OperationStatus, OperationResult
-
+from src.utils import project_config_instance
 logger = structlog.get_logger(__name__)
 
 
@@ -23,11 +23,10 @@ class OperationQueue:
     负责管理操作的队列、依赖关系和执行顺序
     """
 
-    def __init__(self, config: Dict[str, any], automator=None):
-        self.config = config
+    def __init__(self, automator=None):
         self.automator = automator
-        self.max_size = config.get('max_size', 1000)
-        self.priority_levels = config.get('priority_levels', 5)
+        self.max_size = project_config_instance.queue_max_size
+        self.priority_levels = project_config_instance.queue_priority_levels
 
         # 队列和状态管理
         self._queue: List[tuple] = []  # 优先级队列 (priority, timestamp, operation)

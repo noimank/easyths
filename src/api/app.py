@@ -21,7 +21,7 @@ class TradingAPIApp:
 
     def __init__(self, automator, operation_queue, operation_manager):
         # self.config = config
-        self.api_config = project_config_instance.get_api_config()
+        # self.api_config = project_config_instance.get_api_config()
         self.automator = automator
         self.operation_queue = operation_queue
         self.operation_manager = operation_manager
@@ -57,7 +57,7 @@ class TradingAPIApp:
         # CORS中间件
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=self.api_config.get("cors_origins"),
+            allow_origins=project_config_instance.api_cors_origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"]
@@ -65,12 +65,12 @@ class TradingAPIApp:
 
         # 日志中间件
         self.app.add_middleware(LoggingMiddleware)
-
+        rate_limit = project_config_instance.api_rate_limit
         # 速率限制中间件
-        if self.api_config.get("rate_limit", 0) > 0:
+        if rate_limit > 0:
             self.app.add_middleware(
                 RateLimitMiddleware,
-                calls=self.api_config.get("rate_limit", 0),
+                calls=rate_limit,
                 period=1
             )
 
@@ -123,7 +123,7 @@ class TradingAPIApp:
 
         uvicorn.run(
             self.app,
-            host=self.api_config.get("host"),
-            port=self.api_config.get("port"),
+            host=project_config_instance.api_host,
+            port=project_config_instance.api_port,
             log_level="info"
         )
