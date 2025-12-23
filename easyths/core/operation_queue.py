@@ -12,11 +12,6 @@ from easyths.utils import project_config_instance
 logger = structlog.get_logger(__name__)
 
 
-class DependencyError(Exception):
-    """依赖错误"""
-    pass
-
-
 class OperationQueue:
     """操作队列
 
