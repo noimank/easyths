@@ -20,15 +20,13 @@ class BaseOperation(ABC):
     所有操作插件必须继承此类并实现相应方法
     """
 
-    def __init__(self, automator: TonghuashunAutomator = None, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, automator: TonghuashunAutomator = None):
         """初始化操作
 
         Args:
             automator: 同花顺自动化器实例
-            config: 配置参数
         """
         self.automator: TonghuashunAutomator = automator
-        self.config = config or {}
         self.metadata = self._get_metadata()
         self.logger = structlog.get_logger(f"{__name__}.{self.__class__.__name__}")
 
@@ -448,13 +446,12 @@ class OperationRegistry:
         """
         return self._operations.get(name)
 
-    async def get_operation_instance(self, name: str, automator=None, config=None) -> Optional[BaseOperation]:
+    async def get_operation_instance(self, name: str, automator=None) -> Optional[BaseOperation]:
         """获取操作实例（单例模式）
 
         Args:
             name: 操作名称
             automator: 自动化器实例
-            config: 配置参数
 
         Returns:
             Optional[BaseOperation]: 操作实例
@@ -471,7 +468,7 @@ class OperationRegistry:
 
             operation_class = self.get_operation_class(name)
             if operation_class:
-                self._instances[name] = operation_class(automator, config)
+                self._instances[name] = operation_class(automator)
                 self.logger.info(f"创建操作实例: {name}")
 
             return self._instances.get(name)

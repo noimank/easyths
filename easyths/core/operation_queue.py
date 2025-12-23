@@ -139,7 +139,7 @@ class OperationQueue:
         try:
             # 获取操作实例
             operation_instance = await operation_registry.get_operation_instance(
-                operation.name, self.automator, self.config
+                operation.name, self.automator
             )
 
             if not operation_instance:

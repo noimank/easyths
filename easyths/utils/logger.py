@@ -27,9 +27,6 @@ def setup_logging():
         structlog.processors.format_exc_info,
     ]
 
-    # if log_format == 'json':
-    #     processors.append(structlog.processors.JSONRenderer(ensure_ascii=False))
-    # else:
     processors.append(structlog.dev.ConsoleRenderer())
 
     structlog.configure(
