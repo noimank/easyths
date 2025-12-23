@@ -1,1 +1,3 @@
 from .ocr_service import get_ocr_service,ocr_service
+from .base_operation import BaseOperation, register_operation
+from .tonghuashun_automator import TonghuashunAutomator

@@ -1,18 +1,16 @@
 
-from easyths.automation.operation_manager import OperationManager
-from easyths.automation.tonghuashun_automator import TonghuashunAutomator
-from easyths.automation.operations.buy_operation import BuyOperation
-from easyths.automation.operations.sell_operation import SellOperation
-from easyths.automation.operations.funds_query_operation import FundsQueryOperation
-from easyths.automation.operations.holding_query_operation import HoldingQueryOperation
-from easyths.automation.operations.order_cancel_operation import OrderCancelOperation
-from easyths.automation.operations.order_query_operation import OrderQueryOperation
-from easyths.automation.operations.historical_commission_query_operation import HistoricalCommissionQueryOperation
+from easyths.core.tonghuashun_automator import TonghuashunAutomator
+from easyths.operations.buy_operation import BuyOperation
+from easyths.operations.sell_operation import SellOperation
+from easyths.operations.funds_query_operation import FundsQueryOperation
+from easyths.operations.holding_query_operation import HoldingQueryOperation
+from easyths.operations.order_cancel_operation import OrderCancelOperation
+from easyths.operations.order_query_operation import OrderQueryOperation
+from easyths.operations.historical_commission_query_operation import HistoricalCommissionQueryOperation
 import asyncio
 from dotenv import load_dotenv
 
-PROJECT_DIR = "D:/ProgramCodes/QuantTrader"
-load_dotenv(PROJECT_DIR + "/.env")
+load_dotenv("../.env")
 
 
 # print(config.get('trading', {}))

@@ -1,7 +1,7 @@
 import time
 from typing import Dict, Any
 
-from easyths.automation.base_operation import BaseOperation, register_operation
+from easyths.core import BaseOperation, register_operation
 from easyths.models.operations import PluginMetadata, OperationResult
 
 

@@ -6,7 +6,7 @@ from typing import Dict, List, Any, Optional
 
 import structlog
 
-from easyths.automation.base_operation import BaseOperation, operation_registry
+from easyths.core.base_operation import BaseOperation, operation_registry
 
 logger = structlog.get_logger(__name__)
 
@@ -18,7 +18,7 @@ class OperationManager:
     """
 
     def __init__(self):
-        self.plugin_dirs = ["src/automation/operations"]
+        self.plugin_dirs = ["easyths/operations"]
         self.whitelist = [] #暂未使用该功能
         self.logger = structlog.get_logger(__name__)
         self._loaded_plugins: Dict[str, str] = {}  # 插件名 -> 文件路径
