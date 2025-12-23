@@ -10,7 +10,7 @@ import structlog
 from src.automation.tonghuashun_automator import TonghuashunAutomator
 from src.core.ocr_service import get_ocr_service
 from src.models.operations import OperationResult, PluginMetadata
-
+from src.utils import captcha_ocr_server
 logger = structlog.get_logger(__name__)
 
 
@@ -398,6 +398,10 @@ class BaseOperation(ABC):
                 error=str(e)
             )
             raise
+
+    def ocr_captcha(self, control):
+        return captcha_ocr_server.recognize(control)
+
 
     def get_clipboard_data(self):
         return pyperclip.paste()

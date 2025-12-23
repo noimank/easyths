@@ -12,11 +12,10 @@ from typing import Optional, Union, Dict, Any
 import pytesseract
 from PIL import Image
 import structlog
-import mss
 logger = structlog.get_logger(__name__)
 
-#直接全局单例模式，在fastapi中关闭时销毁
-mss_screen_capture_instance = mss.mss()
+from src.utils.screen_capture import mss_screen_capture_instance
+
 
 class OCRService:
     """OCR图像识别服务类

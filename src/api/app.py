@@ -9,11 +9,11 @@ import structlog
 from src.api.middleware import LoggingMiddleware, RateLimitMiddleware
 from src.api.routes import system_router, operations_router, queue_router
 from src.api.dependencies.common import set_global_instances
-from src.core import mss_screen_capture_instance
 from src.utils.logger import init_audit_logger
 from src.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
+from src.utils.screen_capture import mss_screen_capture_instance
 
 
 class TradingAPIApp:
