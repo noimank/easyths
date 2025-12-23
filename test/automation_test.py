@@ -1,12 +1,12 @@
 
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
-from easyths.operations.buy_operation import BuyOperation
-from easyths.operations.sell_operation import SellOperation
-from easyths.operations.funds_query_operation import FundsQueryOperation
-from easyths.operations.holding_query_operation import HoldingQueryOperation
-from easyths.operations.order_cancel_operation import OrderCancelOperation
-from easyths.operations.order_query_operation import OrderQueryOperation
-from easyths.operations.historical_commission_query_operation import HistoricalCommissionQueryOperation
+from easyths.operations.buy import BuyOperation
+from easyths.operations.sell import SellOperation
+from easyths.operations.funds_query import FundsQueryOperation
+from easyths.operations.holding_query import HoldingQueryOperation
+from easyths.operations.order_cancel import OrderCancelOperation
+from easyths.operations.order_query import OrderQueryOperation
+from easyths.operations.historical_commission_query import HistoricalCommissionQueryOperation
 import asyncio
 from dotenv import load_dotenv
 
