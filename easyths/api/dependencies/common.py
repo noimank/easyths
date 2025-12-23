@@ -1,13 +1,10 @@
 """
 通用依赖项
 """
-from typing import Generator
-from fastapi import Depends
 
-from easyths.core.operation_queue import OperationQueue
 from easyths.core import OperationManager
 from easyths.core import TonghuashunAutomator
-
+from easyths.core.operation_queue import OperationQueue
 
 # 全局实例存储
 _global_state = {
@@ -18,9 +15,9 @@ _global_state = {
 
 
 def set_global_instances(
-    automator: TonghuashunAutomator,
-    operation_queue: OperationQueue,
-    operation_manager: OperationManager
+        automator: TonghuashunAutomator,
+        operation_queue: OperationQueue,
+        operation_manager: OperationManager
 ):
     """设置全局实例"""
     _global_state["automator"] = automator
