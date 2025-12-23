@@ -6,9 +6,9 @@ from typing import Dict, List, Optional, Set
 
 import structlog
 
-from src.automation.base_operation import operation_registry
-from src.models.operations import Operation, OperationStatus, OperationResult
-from src.utils import project_config_instance
+from easyths.automation.base_operation import operation_registry
+from easyths.models.operations import Operation, OperationStatus, OperationResult
+from easyths.utils import project_config_instance
 logger = structlog.get_logger(__name__)
 
 

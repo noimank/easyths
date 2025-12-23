@@ -7,10 +7,10 @@ from typing import Dict, Any, Optional, Type
 import pyperclip
 import structlog
 
-from src.automation.tonghuashun_automator import TonghuashunAutomator
-from src.core.ocr_service import get_ocr_service
-from src.models.operations import OperationResult, PluginMetadata
-from src.utils import captcha_ocr_server
+from easyths.automation.tonghuashun_automator import TonghuashunAutomator
+from easyths.core.ocr_service import get_ocr_service
+from easyths.models.operations import OperationResult, PluginMetadata
+from easyths.utils import captcha_ocr_server
 logger = structlog.get_logger(__name__)
 
 

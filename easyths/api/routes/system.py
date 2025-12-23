@@ -5,9 +5,9 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
-from src.api.dependencies.common import get_automator, get_operation_manager
-from src.api.dependencies.auth import verify_api_key
-from src.models.operations import APIResponse
+from easyths.api.dependencies.common import get_automator, get_operation_manager
+from easyths.api.dependencies.auth import verify_api_key
+from easyths.models.operations import APIResponse
 
 router = APIRouter(prefix="/api/v1/system", tags=["系统"])
 

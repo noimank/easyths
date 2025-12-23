@@ -2,9 +2,9 @@ import datetime
 import time
 from typing import Dict, Any
 
-from src.automation.base_operation import BaseOperation, register_operation
-from src.automation.utils import df_format_convert,text2df
-from src.models.operations import PluginMetadata, OperationResult
+from easyths.automation.base_operation import BaseOperation, register_operation
+from easyths.automation.utils import df_format_convert,text2df
+from easyths.models.operations import PluginMetadata, OperationResult
 
 @register_operation
 class HoldingQueryOperation(BaseOperation):

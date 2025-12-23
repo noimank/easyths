@@ -6,14 +6,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
-from src.api.middleware import LoggingMiddleware, RateLimitMiddleware
-from src.api.routes import system_router, operations_router, queue_router
-from src.api.dependencies.common import set_global_instances
-from src.utils.logger import init_audit_logger
-from src.utils import project_config_instance
+from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware
+from easyths.api.routes import system_router, operations_router, queue_router
+from easyths.api.dependencies.common import set_global_instances
+from easyths.utils.logger import init_audit_logger
+from easyths.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
-from src.utils.screen_capture import mss_screen_capture_instance
+from easyths.utils.screen_capture import mss_screen_capture_instance
 
 
 class TradingAPIApp:

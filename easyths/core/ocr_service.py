@@ -14,7 +14,7 @@ from PIL import Image
 import structlog
 logger = structlog.get_logger(__name__)
 
-from src.utils.screen_capture import mss_screen_capture_instance
+from easyths.utils.screen_capture import mss_screen_capture_instance
 
 
 class OCRService:

@@ -1,22 +1,24 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["easyths"]
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project]
-name = "quanttrader"
+name = "EasyTHS"
 version = "0.1.0"
 description = "同花顺交易自动化系统"
 authors = [
     { name = "noimank", email = "noimank@163.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: Microsoft :: Windows",
 ]
@@ -82,9 +84,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/noimank/QuantTrader"
-Repository = "https://github.com/noimank/QuantTrader.git"
-Issues = "https://github.com/noimank/QuantTrader/issues"
+Homepage = "https://github.com/noimank/easyths"
+Repository = "https://github.com/noimank/easyths.git"
+Issues = "https://github.com/noimank/easyths/issues"
 
 # Black 代码格式化配置
 [tool.black]

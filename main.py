@@ -12,10 +12,10 @@ load_dotenv()
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.automation.operation_manager import OperationManager
-from src.automation.tonghuashun_automator import TonghuashunAutomator
-from src.core.operation_queue import OperationQueue
-from src.api.app import TradingAPIApp
+from easyths.automation.operation_manager import OperationManager
+from easyths.automation.tonghuashun_automator import TonghuashunAutomator
+from easyths.core.operation_queue import OperationQueue
+from easyths.api.app import TradingAPIApp
 
 
 

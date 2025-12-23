@@ -6,10 +6,10 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
-from src.api.dependencies.common import get_operation_queue, get_operation_manager
-from src.api.dependencies.auth import verify_api_key
-from src.automation.base_operation import operation_registry
-from src.models.operations import (
+from easyths.api.dependencies.common import get_operation_queue, get_operation_manager
+from easyths.api.dependencies.auth import verify_api_key
+from easyths.automation.base_operation import operation_registry
+from easyths.models.operations import (
     Operation, OperationType, APIResponse,
     BatchOperationRequest
 )
