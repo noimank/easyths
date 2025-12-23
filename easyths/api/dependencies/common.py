@@ -5,8 +5,8 @@ from typing import Generator
 from fastapi import Depends
 
 from easyths.core.operation_queue import OperationQueue
-from easyths.automation.operation_manager import OperationManager
-from easyths.automation.tonghuashun_automator import TonghuashunAutomator
+from easyths.core import OperationManager
+from easyths.core import TonghuashunAutomator
 
 
 # 全局实例存储

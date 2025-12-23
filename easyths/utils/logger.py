@@ -11,7 +11,6 @@ def setup_logging():
     """设置日志系统
     """
     level = project_config_instance.logging_level
-    log_format = project_config_instance.logging_format
     log_file = project_config_instance.logging_file
 
     # 确保日志目录存在
@@ -28,10 +27,10 @@ def setup_logging():
         structlog.processors.format_exc_info,
     ]
 
-    if log_format == 'json':
-        processors.append(structlog.processors.JSONRenderer(ensure_ascii=False))
-    else:
-        processors.append(structlog.dev.ConsoleRenderer())
+    # if log_format == 'json':
+    #     processors.append(structlog.processors.JSONRenderer(ensure_ascii=False))
+    # else:
+    processors.append(structlog.dev.ConsoleRenderer())
 
     structlog.configure(
         processors=processors,

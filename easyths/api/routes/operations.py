@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from easyths.api.dependencies.common import get_operation_queue, get_operation_manager
 from easyths.api.dependencies.auth import verify_api_key
-from easyths.automation.base_operation import operation_registry
+from easyths.core import operation_registry
 from easyths.models.operations import (
     Operation, OperationType, APIResponse,
     BatchOperationRequest

@@ -4,7 +4,7 @@ from PIL import Image
 import ddddocr
 class CaptchaOCR:
     def __init__(self):
-        self.ocr = ddddocr.DdddOcr()
+        self.ocr = ddddocr.DdddOcr(show_ad=False)
         self.logger = structlog.get_logger(__name__)
 
     def recognize(self, captcha_control) -> str:

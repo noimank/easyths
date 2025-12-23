@@ -49,10 +49,6 @@ class TonghuashunAutomator:
         """初始化自动化器
         """
         self.app_path = project_config_instance.trading_app_path
-        self.timeout = project_config_instance.trading_timeout
-        self.retry_count = project_config_instance.trading_retry_count
-        self.retry_delay = project_config_instance.trading_retry_delay
-        self.backend = project_config_instance.trading_backend
 
         self.app: Optional[Application] = None
         self.main_window = None
@@ -69,7 +65,7 @@ class TonghuashunAutomator:
 
         该方法执行完整的连接流程：
         1. 检查应用程序路径是否存在
-        2. 启动或连接到同花顺进程（使用 _start_application）
+        2. 连接到同花顺进程（使用 _start_application）
         3. 查找并连接到主窗口（使用 _connect_to_main_window）
         4. 更新连接状态
 
@@ -86,8 +82,8 @@ class TonghuashunAutomator:
                 print("连接失败")
 
         Note:
-            - 该方法会自动处理应用未启动的情况，自动启动新进程
-            - 如果同花顺已经在运行，则连接到现有进程
+            - 该方法会连接到现有进程，不会启动新进程
+            - 请确保同花顺已经在运行
             - 连接成功后会自动缓存主窗口对象
             - 建议在执行任何操作前先调用此方法建立连接
         """
@@ -99,12 +95,12 @@ class TonghuashunAutomator:
                 self.logger.error("同花顺应用路径不存在", path=self.app_path)
                 return False
 
-            # 启动应用
-            await self._run_with_retry(self._start_application)
+            # 连接应用
+            await self._start_application()
 
             if self.app:
                 # 连接到主窗口
-                await self._run_with_retry(self._connect_to_main_window)
+                await self._connect_to_main_window()
                 if self.main_window:
                     self._connected = True
                     self.logger.info("成功连接到同花顺")
@@ -118,18 +114,13 @@ class TonghuashunAutomator:
 
 
     async def _start_application(self) -> None:
-        """启动同花顺应用"""
-        try:
-            # 尝试连接现有进程
-            self.app = Application(backend="win32").connect(
-                path=self.app_path,
-                timeout=5
-            )
-            self.logger.info("连接到现有同花顺进程")
-        except (ProcessNotFoundError, ElementNotFoundError):
-            # 启动新进程
-            self.app = Application(backend="win32").start(self.app_path)
-            self.logger.info("启动新的同花顺进程")
+        """连接到同花顺应用"""
+        # 连接到现有进程
+        self.app = Application(backend="win32").connect(
+            path=self.app_path,
+            timeout=5
+        )
+        self.logger.info("连接到同花顺进程")
 
     async def _connect_to_main_window(self) -> None:
         """连接到主窗口"""
@@ -370,27 +361,6 @@ class TonghuashunAutomator:
             for key in keys_to_remove:
                 del self._control_cache[key]
             self.logger.info(f"已清除 {len(keys_to_remove)} 个匹配的缓存项")
-
-    async def _run_with_retry(self, func, *args, **kwargs):
-        """带重试的执行函数"""
-        last_error = None
-
-        for attempt in range(self.retry_count):
-            try:
-                if asyncio.iscoroutinefunction(func):
-                    return await func(*args, **kwargs)
-                else:
-                    return func(*args, **kwargs)
-            except Exception as e:
-                last_error = e
-                if attempt < self.retry_count - 1:
-                    self.logger.warning(
-                        f"操作失败，正在重试... ({attempt + 1}/{self.retry_count})",
-                        error=str(e)
-                    )
-                    await asyncio.sleep(self.retry_delay)
-
-        raise last_error
 
     async def is_connected(self) -> bool:
         """检查是否已连接"""
