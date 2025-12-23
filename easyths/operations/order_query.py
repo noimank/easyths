@@ -3,10 +3,9 @@ import time
 from typing import Dict, Any
 from easyths.utils import df_format_convert,text2df
 
-from easyths.core import BaseOperation, register_operation
+from easyths.core import BaseOperation
 from easyths.models.operations import PluginMetadata, OperationResult
 
-@register_operation
 class OrderQueryOperation(BaseOperation):
     """委托订单查询操作"""
 

@@ -505,16 +505,3 @@ class OperationRegistry:
 
 # 全局操作注册表实例
 operation_registry = OperationRegistry()
-
-
-def register_operation(operation_class: Type[BaseOperation]) -> Type[BaseOperation]:
-    """操作注册装饰器
-
-    Args:
-        operation_class: 操作类
-
-    Returns:
-        Type[BaseOperation]: 原操作类
-    """
-    operation_registry.register(operation_class)
-    return operation_class

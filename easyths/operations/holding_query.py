@@ -2,11 +2,10 @@ import datetime
 import time
 from typing import Dict, Any
 
-from easyths.core import BaseOperation, register_operation
+from easyths.core import BaseOperation
 from easyths.utils import df_format_convert,text2df
 from easyths.models.operations import PluginMetadata, OperationResult
 
-@register_operation
 class HoldingQueryOperation(BaseOperation):
     """持仓查询操作"""
 

@@ -1,11 +1,10 @@
 import time
 from typing import Dict, Any
 
-from easyths.core import BaseOperation, register_operation
+from easyths.core import BaseOperation
 from easyths.models.operations import PluginMetadata, OperationResult
 
 
-@register_operation
 class OrderCancelOperation(BaseOperation):
     """撤单操作"""
 

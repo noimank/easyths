@@ -1,11 +1,10 @@
 import time
 from typing import Dict, Any
 
-from easyths.core import BaseOperation, register_operation
+from easyths.core import BaseOperation
 from easyths.models.operations import PluginMetadata, OperationResult
 
 
-@register_operation
 class FundsQueryOperation(BaseOperation):
     """资金查询操作"""
 
