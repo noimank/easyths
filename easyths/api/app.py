@@ -9,7 +9,7 @@ import structlog
 from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware
 from easyths.api.routes import system_router, operations_router, queue_router
 from easyths.api.dependencies.common import set_global_instances
-from easyths.utils.logger import init_audit_logger
+from easyths.utils.logger import setup_logging
 from easyths.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
@@ -96,8 +96,8 @@ class TradingAPIApp:
         # 启动时执行
         logger.info("正在启动交易API服务...")
 
-        # 初始化审计日志
-        init_audit_logger()
+        # 初始化日志配置
+        setup_logging()
 
         # 加载插件
         self.operation_manager.load_plugins()
