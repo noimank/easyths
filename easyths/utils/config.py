@@ -46,5 +46,20 @@ class ProjectConfig:
             return None
         return [ip.strip() for ip in self.api_ip_whitelist.split(",") if ip.strip()]
 
+    @property
+    def api_cors_origins_list(self) -> list[str]:
+        """获取CORS允许的源列表
+
+        Returns:
+            list[str]: CORS允许的源列表，支持逗号分隔的字符串
+        """
+        if not self.api_cors_origins:
+            return ["*"]
+        # 如果是通配符，直接返回
+        if self.api_cors_origins == "*":
+            return ["*"]
+        # 逗号分隔多个源
+        return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]
+
 
 project_config_instance = ProjectConfig()

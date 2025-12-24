@@ -60,7 +60,7 @@ class TradingAPIApp:
         # CORS中间件
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=project_config_instance.api_cors_origins,
+            allow_origins=project_config_instance.api_cors_origins_list,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"]
