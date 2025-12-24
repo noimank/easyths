@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
-from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware
+from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware, IPWhitelistMiddleware
 from easyths.api.routes import system_router, operations_router, queue_router
 from easyths.api.dependencies.common import set_global_instance
 from easyths.utils import project_config_instance
@@ -51,6 +51,12 @@ class TradingAPIApp:
 
     def _add_middleware(self):
         """添加中间件"""
+        # IP白名单中间件（最先执行）
+        self.app.add_middleware(
+            IPWhitelistMiddleware,
+            allowed_hosts=project_config_instance.api_ip_whitelist_list
+        )
+
         # CORS中间件
         self.app.add_middleware(
             CORSMiddleware,

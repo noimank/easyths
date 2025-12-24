@@ -20,6 +20,7 @@ class ProjectConfig:
     api_rate_limit = int(os.getenv("API_RATE_LIMIT", 10))
     api_cors_origins = os.getenv("API_CORS_ORIGINS", "*")
     api_key = os.getenv("API_KEY", None)
+    api_ip_whitelist = os.getenv("API_IP_WHITELIST", None)  # None表示允许所有，逗号分隔如"127.0.0.1,192.168.1.*"
 
     # Logging配置
     logging_level = os.getenv("LOGGING_LEVEL", "INFO")
@@ -33,6 +34,17 @@ class ProjectConfig:
         config = toml.load(toml_file_path)
         for key, value in config.items():
             setattr(self, key, value)
+
+    @property
+    def api_ip_whitelist_list(self) -> list[str] | None:
+        """获取IP白名单列表
+
+        Returns:
+            list[str] | None: IP白名单列表，None或空列表表示允许所有
+        """
+        if not self.api_ip_whitelist:
+            return None
+        return [ip.strip() for ip in self.api_ip_whitelist.split(",") if ip.strip()]
 
 
 project_config_instance = ProjectConfig()
