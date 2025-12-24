@@ -19,7 +19,7 @@ class ProjectConfig:
     api_port = int(os.getenv("API_PORT", 8000))
     api_rate_limit = int(os.getenv("API_RATE_LIMIT", 10))
     api_cors_origins = os.getenv("API_CORS_ORIGINS", "*")
-    api_key = os.getenv("API_KEY", "your_secure_api_key_here")
+    api_key = os.getenv("API_KEY", None)
 
     # Logging配置
     logging_level = os.getenv("LOGGING_LEVEL", "INFO")

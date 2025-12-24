@@ -1,1 +1,1 @@
-from .operations import OperationResult, Operation,OperationStatus,PluginMetadata, OperationType, APIResponse, BatchOperationRequest
+from .operations import OperationResult, Operation, OperationStatus, PluginMetadata, APIResponse

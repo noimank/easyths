@@ -5,9 +5,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
-from easyths.api.dependencies.common import get_automator, get_operation_manager
+from easyths.api.dependencies.common import get_automator
 from easyths.api.dependencies.auth import verify_api_key
 from easyths.models.operations import APIResponse
+from easyths.core import operation_registry
 
 router = APIRouter(prefix="/api/v1/system", tags=["系统"])
 
@@ -15,12 +16,14 @@ router = APIRouter(prefix="/api/v1/system", tags=["系统"])
 @router.get("/health")
 async def health_check(
     api_valid: bool = Depends(verify_api_key),
-    automator = Depends(get_automator),
-    operation_manager = Depends(get_operation_manager)
+    automator = Depends(get_automator)
 ) -> APIResponse:
     """健康检查"""
     # 检查各个组件状态
     is_connected = await automator.is_connected()
+
+    # 获取已加载的插件数量
+    operations = operation_registry.list_operations()
 
     return APIResponse(
         success=True,
@@ -32,7 +35,7 @@ async def health_check(
                 "automator": "connected" if is_connected else "disconnected",
                 "logged_in": automator._logged_in if is_connected else False,
                 "plugins": {
-                    "loaded": len(operation_manager.get_loaded_plugins())
+                    "loaded": len(operations)
                 }
             }
         }
@@ -42,11 +45,13 @@ async def health_check(
 @router.get("/status")
 async def get_system_status(
     api_valid: bool = Depends(verify_api_key),
-    automator = Depends(get_automator),
-    operation_manager = Depends(get_operation_manager)
+    automator = Depends(get_automator)
 ) -> APIResponse:
     """获取系统详细状态"""
     is_connected = await automator.is_connected()
+
+    # 获取插件信息
+    operations = operation_registry.list_operations()
 
     return APIResponse(
         success=True,
@@ -59,7 +64,11 @@ async def get_system_status(
                 "app_path": automator.app_path,
                 "backend": "win32"
             },
-            "plugins": operation_manager.get_plugin_info()
+            "plugins": {
+                "loaded_plugins": list(operations.keys()),
+                "plugin_count": len(operations),
+                "plugin_details": operations
+            }
         }
     )
 
@@ -78,6 +87,7 @@ async def get_system_info(
             "description": "基于pywinauto的同花顺交易软件自动化系统",
             "features": [
                 "操作串行化",
+                "优先级队列",
                 "插件化架构",
                 "RESTful API",
                 "实时监控"

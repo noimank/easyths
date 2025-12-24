@@ -1,18 +1,15 @@
 """
-操作相关路由
+操作相关路由 - 适配同步队列
 """
 from typing import Dict, Any
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
-from easyths.api.dependencies.common import get_operation_queue, get_operation_manager
+from easyths.api.dependencies.common import get_operation_queue
 from easyths.api.dependencies.auth import verify_api_key
 from easyths.core import operation_registry
-from easyths.models.operations import (
-    Operation, OperationType, APIResponse,
-    BatchOperationRequest
-)
+from easyths.models.operations import Operation, APIResponse
 
 router = APIRouter(prefix="/api/v1/operations", tags=["操作"])
 
@@ -44,85 +41,26 @@ async def execute_operation(
     # 创建操作
     operation = Operation(
         name=operation_name,
-        type=OperationType.CUSTOM,
         params=request.params,
         priority=request.priority
     )
 
-    # 添加到队列
-    success = await queue.put(operation)
-
-    if not success:
+    # 添加到队列（同步方法）
+    try:
+        operation_id = queue.submit(operation)
+    except ValueError as e:
         raise HTTPException(
             status_code=500,
-            detail="队列已满或操作无效"
+            detail=str(e)
         )
 
     return APIResponse(
         success=True,
         message="操作已添加到队列",
         data={
-            "operation_id": operation.id,
+            "operation_id": operation_id,
             "status": operation.status.value,
-            "queue_position": len(queue._queue)
-        }
-    )
-
-
-@router.post("/batch")
-async def execute_batch_operations(
-        request: BatchOperationRequest,
-        background_tasks: BackgroundTasks,
-        api_valid: bool = Depends(verify_api_key),
-        queue=Depends(get_operation_queue)
-) -> APIResponse:
-    """执行批量操作"""
-    operations = []
-
-    for op_info in request.operations:
-        # 验证操作是否存在
-        operation_class = operation_registry.get_operation_class(op_info["name"])
-        if not operation_class:
-            raise HTTPException(
-                status_code=404,
-                detail=f"操作 '{op_info['name']}' 不存在"
-            )
-
-        operation = Operation(
-            name=op_info["name"],
-            type=OperationType.CUSTOM,
-            params=op_info.get("params", {}),
-            priority=op_info.get("priority", 0)
-        )
-
-        # 如果是顺序执行，添加依赖关系
-        if request.mode == "sequential" and operations:
-            operation.dependencies.append(operations[-1].id)
-
-        operations.append(operation)
-
-    # 添加到队列
-    success_count = 0
-    for operation in operations:
-        if await queue.put(operation):
-            success_count += 1
-        elif request.stop_on_error:
-            break
-
-    return APIResponse(
-        success=True,
-        message=f"批量操作已提交，成功添加 {success_count}/{len(operations)} 个操作",
-        data={
-            "operations": [
-                {
-                    "operation_id": op.id,
-                    "name": op.name,
-                    "status": op.status.value
-                }
-                for op in operations
-            ],
-            "success_count": success_count,
-            "total_count": len(operations)
+            "queue_position": queue.get_queue_stats()["queued_count"]
         }
     )
 
@@ -148,11 +86,37 @@ async def get_operation_status(
         data={
             "operation_id": operation_id,
             "name": operation.name,
-            "status": operation.status.value,
+            "status": operation.status.value if operation.status else None,
             "result": operation.result.dict() if operation.result else None,
             "error": operation.error,
-            "timestamp": operation.timestamp.isoformat(),
+            "timestamp": operation.timestamp.isoformat() if operation.timestamp else None,
             "retry_count": operation.retry_count
+        }
+    )
+
+
+@router.get("/{operation_id}/result")
+async def get_operation_result(
+        operation_id: str,
+        timeout: float = None,
+        api_valid: bool = Depends(verify_api_key),
+        queue=Depends(get_operation_queue)
+) -> APIResponse:
+    """获取操作结果（阻塞等待）"""
+    result = queue.get_result(operation_id, timeout=timeout)
+
+    if result is None:
+        raise HTTPException(
+            status_code=408,
+            detail="操作未完成或超时"
+        )
+
+    return APIResponse(
+        success=True,
+        message="查询成功",
+        data={
+            "operation_id": operation_id,
+            "result": result.dict()
         }
     )
 
@@ -164,7 +128,8 @@ async def cancel_operation(
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """取消操作"""
-    success = await queue.cancel_operation(operation_id)
+    # 同步方法
+    success = queue.cancel_operation(operation_id)
 
     if not success:
         raise HTTPException(
@@ -178,37 +143,18 @@ async def cancel_operation(
     )
 
 
-@router.post("/{operation_id}/retry")
-async def retry_operation(
-        operation_id: str,
-        api_valid: bool = Depends(verify_api_key),
-        queue=Depends(get_operation_queue)
-) -> APIResponse:
-    """重试失败的操作"""
-    success = await queue.retry_operation(operation_id)
-
-    if not success:
-        raise HTTPException(
-            status_code=404,
-            detail="操作不存在或无法重试"
-        )
-
-    return APIResponse(
-        success=True,
-        message="操作已重新入队"
-    )
-
-
 @router.get("/")
 async def list_operations(
-        api_valid: bool = Depends(verify_api_key),
-        manager=Depends(get_operation_manager)
+        api_valid: bool = Depends(verify_api_key)
 ) -> APIResponse:
     """获取所有可用操作"""
-    operations = manager.get_plugin_info()
+    operations = operation_registry.list_operations()
 
     return APIResponse(
         success=True,
         message="查询成功",
-        data=operations
+        data={
+            "operations": operations,
+            "count": len(operations)
+        }
     )

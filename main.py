@@ -1,21 +1,29 @@
 #!/usr/bin/env python3
-"""
-同花顺交易自动化系统主入口
+"""同花顺交易自动化系统主入口
+
+架构说明：
+    - 操作队列：后台线程串行执行所有业务操作（支持优先级）
+    - 自动化器：基于 pywinauto UIA backend 的 GUI 自动化
+    - 对外接口：异步高并发 API
+
+Author: noimank
+Email: noimank@163.com
 """
 
-import asyncio
 import sys
 import platform
 from pathlib import Path
+
+import psutil
 import structlog
 from dotenv import load_dotenv
-import psutil
+
 load_dotenv()
+
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 from easyths.utils.logger import setup_logging
 setup_logging()
-from easyths.core import OperationManager
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.core.operation_queue import OperationQueue
 from easyths.api.app import TradingAPIApp
@@ -81,33 +89,27 @@ def check_running_env():
     return True
 
 
-
-async def initialize_components():
-    """初始化组件
+def initialize_components():
+    """初始化组件 - 同步初始化
 
     Returns:
-        tuple: (automator, operation_queue, operation_manager)
+        tuple: (automator, operation_queue)
     """
     # 创建自动化器
     automator = TonghuashunAutomator()
 
     # 连接到同花顺
-    await automator.connect()
+    automator.connect()
 
     # 创建操作队列
-    operation_queue = OperationQueue(
-        automator
-    )
+    operation_queue = OperationQueue(automator)
+    operation_queue.start()
 
-    # 创建操作管理器
-    operation_manager = OperationManager()
-
-    return automator, operation_queue, operation_manager
+    return automator, operation_queue
 
 
 def main():
     """主函数"""
-
     # 初始化日志
     logger = structlog.get_logger(__name__)
     logger.info("系统启动", version="1.0.0")
@@ -118,12 +120,10 @@ def main():
         sys.exit(1)
 
     # 初始化组件
-    automator, operation_queue, operation_manager = asyncio.run(
-        initialize_components()
-    )
+    automator, operation_queue = initialize_components()
 
     # 创建并运行API服务
-    api_app = TradingAPIApp(automator, operation_queue, operation_manager)
+    api_app = TradingAPIApp(operation_queue)
     app = api_app.create_app()
 
     try:
@@ -132,7 +132,12 @@ def main():
         print("\n正在关闭系统...")
     except Exception as e:
         logger.exception("系统运行异常", error=str(e))
-        sys.exit(1)
+    finally:
+        # 清理资源
+        logger.info("正在清理资源...")
+        operation_queue.stop()
+        automator.disconnect()
+        logger.info("系统已关闭")
 
 
 if __name__ == "__main__":

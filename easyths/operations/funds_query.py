@@ -26,12 +26,12 @@ class FundsQueryOperation(BaseOperation):
             }
         )
 
-    async def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: Dict[str, Any]) -> bool:
         """验证查询参数"""
         return True
 
 
-    async def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: Dict[str, Any]) -> OperationResult:
         """执行资金查询操作"""
         # query_type = params.get("query_type", "all")
         start_time = time.time()

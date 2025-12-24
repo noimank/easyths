@@ -42,7 +42,7 @@ class HistoricalCommissionQueryOperation(BaseOperation):
             }
         )
 
-    async def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: Dict[str, Any]) -> bool:
         """验证查询参数"""
         try:
             stock_code = params.get("stock_code")
@@ -71,7 +71,7 @@ class HistoricalCommissionQueryOperation(BaseOperation):
             self.logger.exception("参数验证异常", error=str(e))
             return False
 
-    async def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: Dict[str, Any]) -> OperationResult:
         """执行历史委托查询操作"""
         start_time = time.time()
         stock_code = params.get("stock_code")

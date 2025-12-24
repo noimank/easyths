@@ -41,7 +41,7 @@ class SellOperation(BaseOperation):
             }
         )
 
-    async def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: Dict[str, Any]) -> bool:
         """验证卖出参数"""
         try:
             # 检查必需参数
@@ -92,7 +92,7 @@ class SellOperation(BaseOperation):
 
         return "解析弹窗内容失败，请检查"
 
-    async def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: Dict[str, Any]) -> OperationResult:
         """执行卖出操作"""
         stock_code = params["stock_code"]
         # 转为 2位小数的字符

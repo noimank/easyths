@@ -27,7 +27,7 @@ class HoldingQueryOperation(BaseOperation):
             }
         )
 
-    async def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: Dict[str, Any]) -> bool:
         """验证查询参数"""
         try:
             return_type = params.get("return_type")
@@ -40,7 +40,7 @@ class HoldingQueryOperation(BaseOperation):
             self.logger.exception("参数验证异常", error=str(e))
             return False
 
-    async def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: Dict[str, Any]) -> OperationResult:
         """执行持仓查询操作"""
         start_time = time.time()
         return_type = params.get("return_type")

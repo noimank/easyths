@@ -1,3 +1,4 @@
+
 import time
 from typing import Dict, Any
 
@@ -6,7 +7,7 @@ from easyths.models.operations import PluginMetadata, OperationResult
 
 
 class BuyOperation(BaseOperation):
-    """买入股票操作"""
+    """买入股票操作 - 同步执行模式"""
 
     def _get_metadata(self) -> PluginMetadata:
         return PluginMetadata(
@@ -41,7 +42,7 @@ class BuyOperation(BaseOperation):
             }
         )
 
-    async def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: Dict[str, Any]) -> bool:
         """验证买入参数"""
         try:
             # 检查必需参数
@@ -82,9 +83,8 @@ class BuyOperation(BaseOperation):
             self.logger.exception("参数验证异常", error=str(e))
             return False
 
-
-
-    def _extract_pop_dialog_content(self,pop_dialog_title):
+    def _extract_pop_dialog_content(self, pop_dialog_title):
+        """提取弹窗内容"""
         top_window = self.get_top_window()
         if pop_dialog_title.strip() in ["委托确认", "提示信息"]:
             return top_window.child_window(control_id=0x410).window_text()
@@ -93,14 +93,15 @@ class BuyOperation(BaseOperation):
 
         return "解析弹窗内容失败，请检查"
 
-    async def execute(self, params: Dict[str, Any]) -> OperationResult:
-        """执行买入操作"""
+    def execute(self, params: Dict[str, Any]) -> OperationResult:
+        """执行买入操作 - 同步方法"""
         stock_code = params["stock_code"]
         # 转为 2位小数的字符
-        price =  "{:.2f}".format(float(params["price"]))
+        price = "{:.2f}".format(float(params["price"]))
         print("price=", price)
         quantity = params["quantity"]
         start_time = time.time()
+
         try:
             self.logger.info(
                 f"执行买入操作",
@@ -110,62 +111,16 @@ class BuyOperation(BaseOperation):
             )
 
             # 按下 F1键
-            main_window =  self.automator.get_main_window()
-            # self.set_main_window_focus()
+            main_window = self.get_main_window()
+            top_window = self.get_top_window()
+
             main_window.type_keys("{F1}")
             # 防抖
             time.sleep(0.1)
 
             # 1. 输入股票代码
-            # 设置股票代码
-            edit_ts_code = self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x408)
-            # edit_ts_code.set_edit_text('')
-            # time.sleep(0.1)
-
-            edit_ts_code.type_keys(stock_code)
-            # 防抖，因为输入代码后软件会自动获取相关信息，这一步需要时间
-            # time.sleep(1.2)
-
-            # 输入价格,不能直接设置，只能模拟输入
-            price_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x409)
-            # price_edit.set_edit_text('')
-            # time.sleep(0.1)
-            price_edit.type_keys(str(price))
-            #  输入数量
-            quantity_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x40A)
-            # quantity_edit.set_edit_text('')
-            quantity_edit.type_keys(str(quantity))
-
-            #点击买入按钮
-            buy_button =  self.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EE)
-            buy_button.click()
-            # 等待弹窗出现
-            time.sleep(0.2)
-
-            is_buy_success = False
-            buy_message = ""
-            # 开始处理各种弹窗
-            count = 0  #防止死循环
-            while self.is_exist_pop_dialog() and count < 4:
-                time.sleep(0.1)
-                pop_dialog_title = self.get_pop_dialog_title()
-                top_window = self.get_top_window()
-                pop_dialog_content = self._extract_pop_dialog_content(pop_dialog_title)
-
-                # 提示窗口只有确认按钮，不具备下一步的操作直接esc退出
-                if "提示" == pop_dialog_title.strip():
-                    top_window.type_keys("{ESC}", set_foreground=False)
-                # 处理ST类型的股票的购买
-                elif "提示信息" == pop_dialog_title.strip() and "该证券为风险警示股票" in pop_dialog_content:
-                    top_window.type_keys("{ENTER}", set_foreground=False)
-                else:
-                    top_window.type_keys("%Y", set_foreground=False)
-                #等待窗口关闭
-                time.sleep(0.25)
-                buy_message = pop_dialog_content
-                if "成功" in pop_dialog_content:
-                    is_buy_success = True
-                count +=1
+            self.get_control(parent=main_window, control_type="Edit", auto_id="1032").type_keys(stock_code)
+            time.sleep(0.6)
 
             # 返回买入结果
             result_data = {
@@ -173,8 +128,6 @@ class BuyOperation(BaseOperation):
                 "price": price,
                 "quantity": quantity,
                 "operation": "buy",
-                "success": is_buy_success,
-                "message": buy_message
             }
 
             self.logger.info(f"买入操作完成，耗时{time.time() - start_time}, 操作结果：", **result_data)

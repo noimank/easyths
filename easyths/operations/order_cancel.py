@@ -33,7 +33,7 @@ class OrderCancelOperation(BaseOperation):
             }
         )
 
-    async def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: Dict[str, Any]) -> bool:
         """验证撤单参数"""
         try:
             stock_code = params.get("stock_code")
@@ -69,7 +69,7 @@ class OrderCancelOperation(BaseOperation):
 
         return "解析弹窗内容失败，请检查"
 
-    async def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: Dict[str, Any]) -> OperationResult:
         """执行撤单操作"""
         stock_code = params.get("stock_code")  # 默认为None，表示撤销所有委托
         cancel_type = params.get("cancel_type", "all")  # 默认为全部撤单

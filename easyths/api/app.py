@@ -1,5 +1,7 @@
-"""
-FastAPI应用主文件
+"""FastAPI应用主文件 - 同步架构适配
+
+Author: noimank
+Email: noimank@163.com
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -8,22 +10,22 @@ import structlog
 
 from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware
 from easyths.api.routes import system_router, operations_router, queue_router
-from easyths.api.dependencies.common import set_global_instances
+from easyths.api.dependencies.common import set_global_instance
 from easyths.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
-from easyths.utils.screen_capture import mss_screen_capture_instance
 
 
 class TradingAPIApp:
     """交易API应用类"""
 
-    def __init__(self, automator, operation_queue, operation_manager):
-        # self.config = config
-        # self.api_config = project_config_instance.get_api_config()
-        self.automator = automator
+    def __init__(self, operation_queue):
+        """初始化API应用
+
+        Args:
+            operation_queue: 操作队列实例
+        """
         self.operation_queue = operation_queue
-        self.operation_manager = operation_manager
         self.app = None
 
     def create_app(self) -> FastAPI:
@@ -37,11 +39,7 @@ class TradingAPIApp:
         )
 
         # 设置全局实例
-        set_global_instances(
-            self.automator,
-            self.operation_queue,
-            self.operation_manager
-        )
+        set_global_instance(self.operation_queue)
 
         # 添加中间件
         self._add_middleware()
@@ -95,24 +93,17 @@ class TradingAPIApp:
         # 启动时执行
         logger.info("正在启动交易API服务...")
 
-
-
         # 加载插件
-        self.operation_manager.load_plugins()
+        from easyths.core.base_operation import operation_registry
+        operation_registry.load_plugins()
 
-        # 启动队列处理
-        import asyncio
-        asyncio.create_task(self.operation_queue.process_queue())
-
+        # 队列已经在main.py中启动，这里不需要再次启动
         logger.info("交易API服务启动完成")
         yield
 
         # 关闭时执行
         logger.info("正在关闭交易API服务...")
-        await self.operation_queue.stop()
-        await self.automator.disconnect()
-        mss_screen_capture_instance.close()
-        logger.info("mss屏幕截图单例已关闭")
+        # 队列停止在main.py中处理
         logger.info("交易API服务已关闭")
 
     def run(self):
