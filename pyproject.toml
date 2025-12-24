@@ -4,6 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["easyths"]
+
+[tool.setuptools.package-data]
+easyths = ["assets/*"]
+
+[project.scripts]
+easyths = "easyths.main:main"
+
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
@@ -16,10 +23,10 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: Microsoft :: Windows",
 ]
 keywords = ["trading", "automation", "tonghuashun", "quantitative"]

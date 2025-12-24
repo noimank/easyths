@@ -30,10 +30,68 @@ class ProjectConfig:
     def __init__(self):
         pass
 
-    def update_form_toml_file(self, toml_file_path):
+    def update_from_toml_file(self, toml_file_path: str, exe_path: str | None = None) -> None:
+        """从 TOML 配置文件更新配置
+
+        Args:
+            toml_file_path: TOML 配置文件路径
+            exe_path: 可选的交易程序路径，优先级高于配置文件中的设置
+        """
         config = toml.load(toml_file_path)
-        for key, value in config.items():
-            setattr(self, key, value)
+
+        # 处理 [app] 部分
+        if "app" in config:
+            app_config = config["app"]
+            if "name" in app_config:
+                self.app_name = app_config["name"]
+            if "version" in app_config:
+                self.app_version = app_config["version"]
+
+        # 处理 [trading] 部分
+        if "trading" in config:
+            trading_config = config["trading"]
+            if "app_path" in trading_config:
+                self.trading_app_path = trading_config["app_path"]
+
+        # 处理 [queue] 部分
+        if "queue" in config:
+            queue_config = config["queue"]
+            if "max_size" in queue_config:
+                self.queue_max_size = queue_config["max_size"]
+            if "priority_levels" in queue_config:
+                self.queue_priority_levels = queue_config["priority_levels"]
+            if "batch_size" in queue_config:
+                self.queue_batch_size = queue_config["batch_size"]
+
+        # 处理 [api] 部分
+        if "api" in config:
+            api_config = config["api"]
+            if "host" in api_config:
+                self.api_host = api_config["host"]
+            if "port" in api_config:
+                self.api_port = api_config["port"]
+            if "rate_limit" in api_config:
+                self.api_rate_limit = api_config["rate_limit"]
+            if "cors_origins" in api_config:
+                self.api_cors_origins = api_config["cors_origins"]
+            if "key" in api_config:
+                # 空字符串转换为 None
+                self.api_key = api_config["key"] or None
+            if "ip_whitelist" in api_config:
+                # 空字符串转换为 None
+                self.api_ip_whitelist = api_config["ip_whitelist"] or None
+
+        # 处理 [logging] 部分
+        if "logging" in config:
+            logging_config = config["logging"]
+            if "level" in logging_config:
+                self.logging_level = logging_config["level"]
+            if "file" in logging_config:
+                self.logging_file = logging_config["file"]
+
+        # exe_path 参数优先级最高
+        if exe_path:
+            self.trading_app_path = exe_path
 
     @property
     def api_ip_whitelist_list(self) -> list[str] | None:
