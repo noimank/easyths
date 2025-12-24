@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 import pyperclip
+import pywinauto
 import structlog
 
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
@@ -238,12 +239,12 @@ class BaseOperation(ABC):
 
         try:
             if wrapper_obj:
-                return self.automator.wrapper_object()
+                return self.automator.main_window_wrapper_object
             return self.automator.main_window
-        except:
-            pass
+        except Exception as ex:
+            logger.error("获取同花顺主窗口失败: ", ex)
+            return None
 
-        return None
 
     def sleep(self, seconds: float = 0.1):
         """睡眠指定秒数"""
@@ -272,14 +273,13 @@ class BaseOperation(ABC):
 
     def set_main_window_focus(self):
         """设置主窗口焦点"""
-        main_window = self.automator.main_window
+        main_window = self.get_main_window(wrapper_obj=True)
         if not main_window.is_visible():
-            main_window.set_focus()
+            main_window.restore()
+        main_window.set_focus()
 
-    def get_top_window(self, wrapper_obj: bool = False):
+    def get_top_window(self)->"Optional[pywinauto.application.WindowSpecification]":
         """获取最顶层的窗口"""
-        if wrapper_obj:
-            return self.automator.app.top_window().wrapper_object()
         return self.automator.app.top_window()
 
     def close_pop_dialog(self):
@@ -324,14 +324,68 @@ class BaseOperation(ABC):
                 break
             retry_count -= 1
 
-    def get_control(self, parent: Any = None, class_name: str = None, title: str = None,
-                    title_re: str = None, control_type: str = None, auto_id: str = None,
-                    found_index: int = None):
-        """获取控件"""
-        return self.automator.get_control(
-            parent=parent, class_name=class_name, title=title, title_re=title_re,
-            control_type=control_type, auto_id=auto_id, found_index=found_index
-        )
+    def get_control(
+            self,
+            parent: pywinauto.application.WindowSpecification = None,
+            class_name: str = None,
+            title: str = None,
+            title_re: str = None,
+            control_type: str = None,
+            auto_id: str = None,
+            found_index: int = None,
+    ) -> "Optional[pywinauto.application.WindowSpecification]":
+        """获取控件 - 核心查找方法
+
+        Args:
+            parent: 父控件对象，None 表示从主窗口开始查找
+            class_name: 控件类名，如 "Edit"、"Button"、"ComboBox" 等
+            title: 控件名称/标题文本，精确匹配
+            title_re: 控件名称正则表达式，用于模糊匹配
+            control_type: UIA 控件类型，如 "Button"、"Edit"、"ComboBox" 等
+            auto_id: 控件的自动化 ID 属性
+            found_index: 如果有多个控件匹配条件，指定返回第几个控件，从0开始
+
+        Returns:
+            pywinauto.application.WindowSpecification: 返回控件
+        """
+        # 获取父控件
+        if parent is None:
+            parent = self.get_main_window()
+            if not parent:
+                return None
+
+        # 构建查找参数
+        kwargs = {}
+        if class_name:
+            kwargs['class_name'] = class_name
+        if title:
+            kwargs['title'] = title
+        if title_re:
+            kwargs['title_re'] = title_re
+        if control_type:
+            kwargs['control_type'] = control_type
+        if auto_id:
+            kwargs['auto_id'] = auto_id
+        if found_index:
+            kwargs['found_index'] = found_index
+
+        try:
+            control = parent.child_window(**kwargs)
+            return control
+        except Exception as e:
+            self.logger.error(
+                "控件查找失败",
+                parent=parent,
+                class_name=class_name,
+                title=title,
+                title_re=title_re,
+                control_type=control_type,
+                auto_id=auto_id,
+                found_index=found_index,
+                error=str(e)
+            )
+            return None
+
 
     def ocr_target_control_to_text(self, control, post_process_type=None):
         """根据控件获取OCR文本结果"""

@@ -22,12 +22,14 @@ class TonghuashunAutomator:
 
     所有方法都是同步的，由调用方决定执行方式（直接调用或通过COM执行器）
     """
+    APP_TITLE_NAME = "网上股票交易系统5.0"
 
     def __init__(self):
         """初始化自动化器"""
         self.app_path = project_config_instance.trading_app_path
         self.app: Optional[Application] = None
         self.main_window = None
+        self.main_window_wrapper_object = None
         self._connected = False
         self._logged_in = False
         self.logger = structlog.get_logger(__name__)
@@ -48,7 +50,8 @@ class TonghuashunAutomator:
 
             # 连接应用
             self.app = Application(backend="uia").connect(path=self.app_path, timeout=5)
-            self.main_window = self.app.window(title="网上股票交易系统5.0", control_type="Window", visible_only=False)
+            self.main_window = self.app.window(title=self.APP_TITLE_NAME, control_type="Window", visible_only=False, depth=1)
+            self.main_window_wrapper_object = self.main_window.wrapper_object()
             self.logger.info("连接到同花顺进程")
             self._connected = True
 
@@ -95,66 +98,4 @@ class TonghuashunAutomator:
             self.logger.error(f"点击菜单失败: {menu_path}", error=str(e))
             return False
 
-    def get_control(
-            self,
-            parent: Any = None,
-            class_name: str = None,
-            title: str = None,
-            title_re: str = None,
-            control_type: str = None,
-            auto_id: str = None,
-            found_index: int = None,
-    ) -> Optional[Any]:
-        """获取控件 - 核心查找方法
 
-        Args:
-            parent: 父控件对象，None 表示从主窗口开始查找
-            class_name: 控件类名，如 "Edit"、"Button"、"ComboBox" 等
-            title: 控件名称/标题文本，精确匹配
-            title_re: 控件名称正则表达式，用于模糊匹配
-            control_type: UIA 控件类型，如 "Button"、"Edit"、"ComboBox" 等
-            auto_id: 控件的自动化 ID 属性
-            found_index: 如果有多个控件匹配条件，指定返回第几个控件，从0开始
-
-        Returns:
-            Optional[Any]: 返回控件的 wrapper_object 或 None（如果查找失败）
-        """
-        # 获取父控件
-        if parent is None:
-            parent = self.main_window
-            if not parent:
-                return None
-
-        # 构建查找参数
-        kwargs = {}
-        if class_name:
-            kwargs['class_name'] = class_name
-        if title:
-            kwargs['title'] = title
-        if title_re:
-            kwargs['title_re'] = title_re
-        if control_type:
-            kwargs['control_type'] = control_type
-        if auto_id:
-            kwargs['auto_id'] = auto_id
-        if found_index:
-            kwargs['found_index'] = found_index
-
-        control = parent.child_window(**kwargs)
-
-        if control:
-            return control.wrapper_object()
-        return None
-
-    def get_top_window(self, wrapper_obj: bool = False) -> Optional[Any]:
-        """获取最顶层的窗口
-
-        Args:
-            wrapper_obj: 是否返回wrapper对象
-
-        Returns:
-            顶层窗口对象
-        """
-        if wrapper_obj:
-            return self.app.top_window().wrapper_object()
-        return self.app.top_window()
