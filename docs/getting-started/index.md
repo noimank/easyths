@@ -15,3 +15,4 @@
 - [Docker 部署](docker-deployment.md) - 使用 Docker 容器部署
 - [基础用法](basic-usage.md) - 学习如何使用 EasyTHS
 - [API 服务](api.md) - API 接口文档
+- [Client SDK](client-sdk.md) - Python 客户端 SDK 使用指南

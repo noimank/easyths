@@ -31,6 +31,7 @@
 - [安装指南](https://noimank.github.io/easyths/getting-started/installation/)
 - [基础用法](https://noimank.github.io/easyths/guide/basic-usage/)
 - [客户端设置](https://noimank.github.io/easyths/getting-started/ths-client/)
+- [Client SDK](https://noimank.github.io/easyths/getting-started/client-sdk/) - Python 客户端 SDK
 - [API 参考](https://noimank.github.io/easyths/api/)
 
 ## 快速开始
@@ -71,6 +72,33 @@ easyths
 详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/api/)。
 
 ## 快速示例
+
+### 使用 Python SDK（推荐）
+
+```bash
+# 仅安装客户端 SDK（轻量级）
+pip install "easyths[client]"
+```
+
+```python
+from easyths import TradeClient
+
+# 创建客户端
+with TradeClient(host="127.0.0.1", port=7648, api_key="your-api-key") as client:
+    # 买入股票
+    result = client.buy("000001", 10.50, 100)
+    if result["data"]["result"]["success"]:
+        print("买入成功")
+
+    # 查询持仓
+    result = client.query_holdings()
+    holdings = result["data"]["result"]["data"]["holdings"]
+    print(f"持仓数: {len(holdings)}")
+```
+
+更多 SDK 用法请参考 [Client SDK 文档](https://noimank.github.io/easyths/getting-started/client-sdk/)。
+
+### 使用 cURL API
 
 ```bash
 # 启动服务

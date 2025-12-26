@@ -90,6 +90,7 @@ nav:
       - Docker 部署: getting-started/docker-deployment.md
       - 基础用法: getting-started/basic-usage.md
       - API 服务: getting-started/api.md
+      - Client SDK: getting-started/client-sdk.md
       - 常见问题: getting-started/faq.md
   - 开发:
       - 开发指南: development/index.md
