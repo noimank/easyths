@@ -10,7 +10,7 @@ import structlog
 
 from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware, IPWhitelistMiddleware
 from easyths.api.routes import system_router, operations_router, queue_router
-from easyths.api.dependencies.common import set_global_instance
+from easyths.api.dependencies.common import set_global_instances
 from easyths.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
@@ -19,13 +19,15 @@ logger = structlog.get_logger(__name__)
 class TradingAPIApp:
     """交易API应用类"""
 
-    def __init__(self, operation_queue):
+    def __init__(self, operation_queue, automator=None):
         """初始化API应用
 
         Args:
             operation_queue: 操作队列实例
+            automator: 自动化器实例（可选）
         """
         self.operation_queue = operation_queue
+        self.automator = automator
         self.app = None
 
     def create_app(self) -> FastAPI:
@@ -39,7 +41,7 @@ class TradingAPIApp:
         )
 
         # 设置全局实例
-        set_global_instance(self.operation_queue)
+        set_global_instances(self.operation_queue, self.automator)
 
         # 添加中间件
         self._add_middleware()

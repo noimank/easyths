@@ -20,7 +20,7 @@ async def health_check(
 ) -> APIResponse:
     """健康检查"""
     # 检查各个组件状态
-    is_connected = await automator.is_connected()
+    is_connected = automator.is_connected()
 
     # 获取已加载的插件数量
     operations = operation_registry.list_operations()
@@ -48,7 +48,7 @@ async def get_system_status(
     automator = Depends(get_automator)
 ) -> APIResponse:
     """获取系统详细状态"""
-    is_connected = await automator.is_connected()
+    is_connected = automator.is_connected()
 
     # 获取插件信息
     operations = operation_registry.list_operations()

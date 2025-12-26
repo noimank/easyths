@@ -297,7 +297,7 @@ def main():
     automator, operation_queue = initialize_components()
 
     # 创建并运行API服务
-    api_app = TradingAPIApp(operation_queue)
+    api_app = TradingAPIApp(operation_queue, automator)
     app = api_app.create_app()
 
     try:

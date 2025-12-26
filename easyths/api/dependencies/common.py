@@ -12,9 +12,10 @@ _global_state = {
 }
 
 
-def set_global_instance(operation_queue: OperationQueue):
+def set_global_instances(operation_queue: OperationQueue, automator: TonghuashunAutomator):
     """设置全局实例"""
     _global_state["operation_queue"] = operation_queue
+    _global_state["automator"] = automator
 
 
 def get_automator() -> TonghuashunAutomator:
