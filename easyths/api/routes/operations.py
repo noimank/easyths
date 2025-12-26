@@ -7,7 +7,6 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
 from easyths.api.dependencies.common import get_operation_queue
-from easyths.api.dependencies.auth import verify_api_key
 from easyths.core import operation_registry
 from easyths.models.operations import Operation, APIResponse
 
@@ -26,7 +25,6 @@ async def execute_operation(
         operation_name: str,
         request: ExecuteOperationRequest,
         background_tasks: BackgroundTasks,
-        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """执行操作"""
@@ -68,7 +66,6 @@ async def execute_operation(
 @router.get("/{operation_id}/status")
 async def get_operation_status(
         operation_id: str,
-        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """获取操作状态"""
@@ -99,7 +96,6 @@ async def get_operation_status(
 async def get_operation_result(
         operation_id: str,
         timeout: float = None,
-        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """获取操作结果（阻塞等待）"""
@@ -124,7 +120,6 @@ async def get_operation_result(
 @router.delete("/{operation_id}")
 async def cancel_operation(
         operation_id: str,
-        api_valid: bool = Depends(verify_api_key),
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """取消操作"""
@@ -144,9 +139,7 @@ async def cancel_operation(
 
 
 @router.get("/")
-async def list_operations(
-        api_valid: bool = Depends(verify_api_key)
-) -> APIResponse:
+async def list_operations() -> APIResponse:
     """获取所有可用操作"""
     operations = operation_registry.list_operations()
 

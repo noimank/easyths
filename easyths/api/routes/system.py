@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
 from easyths.api.dependencies.common import get_automator
-from easyths.api.dependencies.auth import verify_api_key
 from easyths.models.operations import APIResponse
 from easyths.core import operation_registry
 
@@ -15,7 +14,6 @@ router = APIRouter(prefix="/api/v1/system", tags=["系统"])
 
 @router.get("/health")
 async def health_check(
-    api_valid: bool = Depends(verify_api_key),
     automator = Depends(get_automator)
 ) -> APIResponse:
     """健康检查"""
@@ -44,7 +42,6 @@ async def health_check(
 
 @router.get("/status")
 async def get_system_status(
-    api_valid: bool = Depends(verify_api_key),
     automator = Depends(get_automator)
 ) -> APIResponse:
     """获取系统详细状态"""
@@ -74,9 +71,7 @@ async def get_system_status(
 
 
 @router.get("/info")
-async def get_system_info(
-    api_valid: bool = Depends(verify_api_key)
-) -> APIResponse:
+async def get_system_info() -> APIResponse:
     """获取系统信息"""
     return APIResponse(
         success=True,

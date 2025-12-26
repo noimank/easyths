@@ -5,14 +5,12 @@ from fastapi import APIRouter, Depends
 
 from easyths.models.operations import APIResponse
 from easyths.api.dependencies.common import get_operation_queue
-from easyths.api.dependencies.auth import verify_api_key
 
 router = APIRouter(prefix="/api/v1/queue", tags=["队列"])
 
 
 @router.get("/stats")
 async def get_queue_stats(
-    api_valid: bool = Depends(verify_api_key),
     queue = Depends(get_operation_queue)
 ) -> APIResponse:
     """获取队列统计信息"""
