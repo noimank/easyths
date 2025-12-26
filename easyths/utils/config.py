@@ -1,5 +1,6 @@
 import toml
 import os
+from pathlib import Path
 
 class ProjectConfig:
 
@@ -24,7 +25,8 @@ class ProjectConfig:
 
     # Logging配置
     logging_level = os.getenv("LOGGING_LEVEL", "INFO")
-    logging_file = os.getenv("LOGGING_FILE", "logs/trading.log")
+    # 默认为用户主目录下
+    logging_file = str(Path("~/easyths/log.txt").expanduser()) if  os.getenv("LOGGING_FILE") == "" else  os.getenv("LOGGING_FILE")
 
 
     def __init__(self):

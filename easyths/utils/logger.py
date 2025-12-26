@@ -3,9 +3,6 @@ import logging
 import sys
 from pathlib import Path
 from .config import project_config_instance
-# 确保日志目录存在
-log_dir = Path("logs")
-log_dir.mkdir(exist_ok=True)
 
 def setup_logging():
     """设置日志系统
