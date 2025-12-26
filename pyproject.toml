@@ -16,7 +16,7 @@ easyths = "easyths.main:main"
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project]
-name = "EasyTHS"
+name = "easyths"
 version = "1.0.0"
 description = "同花顺交易自动化系统"
 authors = [
