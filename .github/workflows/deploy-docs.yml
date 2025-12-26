@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e ".[mkdocs]"
+          pip install "mkdocs-material>=9.7.1" "mkdocs-minify-plugin>=0.8.0"
 
       - name: Build docs
         run: |
