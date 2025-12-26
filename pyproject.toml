@@ -2,8 +2,9 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["easyths"]
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["test*"]
 
 [tool.setuptools.package-data]
 easyths = ["assets/*"]
@@ -16,14 +17,14 @@ index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project]
 name = "EasyTHS"
-version = "0.1.0"
+version = "0.1.2"
 description = "同花顺交易自动化系统"
 authors = [
     { name = "noimank", email = "noimank@163.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-license = { text = "MIT" }
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
