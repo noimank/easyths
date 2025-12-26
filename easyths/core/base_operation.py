@@ -623,18 +623,16 @@ class OperationRegistry:
         return result
 
     @staticmethod
-    def load_plugins(plugin_dir: str = "easyths/operations") -> int:
+    def load_plugins() -> int:
         """自动扫描并加载目录下的所有插件
-
-        Args:
-            plugin_dir: 插件目录路径
 
         Returns:
             int: 成功加载的插件数量
         """
-        plugin_path = Path(plugin_dir)
+        # 使用包内 operations 目录
+        plugin_path = Path(__file__).parent.parent / "operations"
         if not plugin_path.exists():
-            structlog.get_logger(__name__).warning("插件目录不存在", plugin_dir=plugin_dir)
+            structlog.get_logger(__name__).warning("插件目录不存在", plugin_dir=str(plugin_path))
             return 0
 
         loaded_count = 0
