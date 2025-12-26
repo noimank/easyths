@@ -16,7 +16,6 @@ import pywinauto
 import structlog
 
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
-from easyths.core.ocr_service import get_ocr_service
 from easyths.models.operations import OperationResult, PluginMetadata
 from easyths.utils import captcha_ocr_server
 import re
@@ -513,36 +512,6 @@ class BaseOperation(ABC):
             code = code[:4]
         return code
 
-    def ocr_target_control_to_text(self, control, post_process_type=None):
-        """根据控件获取OCR文本结果"""
-        try:
-            if control is None:
-                raise Exception("控件对象为空")
-
-            rect = control.element_info.rectangle
-            left = rect.left
-            top = rect.top
-            right = rect.right
-            bottom = rect.bottom
-            width = right - left
-            height = bottom - top
-
-            monitor = {"top": top, "left": left, "width": width, "height": height}
-
-            ocr_service = get_ocr_service()
-            recognized_text = ocr_service.recognize_text(
-                image_or_loc=monitor,
-                post_process_type=post_process_type
-            )
-            return recognized_text
-        except Exception as e:
-            self.logger.error(
-                "OCR识别失败",
-                control=control,
-                post_process_type=post_process_type,
-                error=str(e)
-            )
-            raise
 
     def get_clipboard_data(self):
         """获取剪贴板数据"""
