@@ -217,7 +217,7 @@ class OperationQueue:
         Returns:
             OperationResult: 操作结果，如果超时返回None
         """
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         while True:
             # 检查是否已完成
@@ -227,7 +227,7 @@ class OperationQueue:
 
             # 检查超时
             if timeout is not None:
-                elapsed = time.time() - start_time
+                elapsed = time.perf_counter() - start_time
                 if elapsed >= timeout:
                     return None
 
