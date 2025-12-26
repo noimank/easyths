@@ -1,0 +1,110 @@
+# Site configuration
+site_name: EasyTHS
+site_description: 同花顺交易自动化系统
+site_author: noimank
+site_url: https://noimank.github.io/easyths/
+repo_url: https://github.com/noimank/easyths
+repo_name: noimank/easyths
+
+# Copyright
+copyright: Copyright &copy; 2024 noimank
+
+# Theme configuration
+theme:
+  name: material
+  language: zh
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到暗色模式
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换到亮色模式
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+# Plugins
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+
+# Extensions
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - footnotes
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+# Navigation structure
+nav:
+  - 首页: index.md
+  - 快速开始:
+      - 快速开始: getting-started/index.md
+      - 安装: getting-started/installation.md
+      - 同花顺客户端配置: getting-started/ths-client.md
+      - 配置: getting-started/configuration.md
+  - 用户指南:
+      - 基础用法: guide/basic-usage.md
+      - API 服务: guide/api.md
+      - 常见问题: guide/faq.md
+  - 开发:
+      - 开发指南: development/index.md
+      - 贡献指南: development/contributing.md
+
+# Extra configuration
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/noimank/easyths
+      name: GitHub
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js

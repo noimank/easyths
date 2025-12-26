@@ -1,0 +1,11 @@
+/* Extra styles for EasyTHS documentation */
+
+:root {
+  --md-primary-fg-color: #4f46e5;
+  --md-primary-fg-color--dark: #4338ca;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #6366f1;
+  --md-primary-fg-color--dark: #4f46e5;
+}
