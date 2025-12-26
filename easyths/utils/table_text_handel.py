@@ -1,6 +1,7 @@
 import pandas as pd
 import io
-
+import structlog
+logger = structlog.get_logger(__name__)
 
 #预留的未来可能需要
 def pre_process_text(text, pre_process_type=None):
@@ -31,6 +32,7 @@ def text2df(text, pre_process_type=None, sep="\t"):
         )
         return df
     except Exception as e:
+        logger.error(f"转换文本数据为DataFrame失败: {e}, 输入数据: {text[:100]}")
         return pd.DataFrame()
 
 
