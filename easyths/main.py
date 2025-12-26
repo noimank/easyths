@@ -25,6 +25,15 @@ from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.core.operation_queue import OperationQueue
 from easyths.api.app import TradingAPIApp
 
+# 项目元信息
+PROJECT_NAME = "EasyTHS"
+PROJECT_AUTHOR = "noimank"
+PROJECT_EMAIL = "noimank@163.com"
+PROJECT_VERSION = "1.0.1"
+PROJECT_REPO = "https://github.com/noimank/easyths"
+PROJECT_DOCS = "https://noimank.github.io/easyths/"
+PROJECT_ISSUES = "https://github.com/noimank/easyths/issues"
+
 
 def get_asset_path() -> Path:
     """获取 assets 目录路径
@@ -39,6 +48,23 @@ def get_asset_path() -> Path:
     current_dir = Path(__file__).parent
     assets_path = current_dir / "assets"
     return assets_path
+
+
+def print_project_info():
+    """打印项目信息"""
+    info_text = f"""
+{'='*50}
+  {PROJECT_NAME}
+  同花顺交易自动化系统
+{'='*50}
+  版本:     {PROJECT_VERSION}
+  作者:     {PROJECT_AUTHOR} <{PROJECT_EMAIL}>
+  文档:     {PROJECT_DOCS}
+  仓库:     {PROJECT_REPO}
+  问题反馈: {PROJECT_ISSUES}
+{'='*50}
+"""
+    print(info_text)
 
 
 def print_help():
@@ -258,6 +284,9 @@ def main():
         logger.info("已加载配置文件", config_file=args.config)
 
     logger.info("系统启动", version=project_config_instance.app_version)
+
+    # 打印项目信息
+    print_project_info()
 
     # 检查运行环境
     if not check_running_env():
