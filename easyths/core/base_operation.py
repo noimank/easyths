@@ -9,11 +9,14 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
 
 import pyperclip
 import pywinauto
 import structlog
+
+if TYPE_CHECKING:
+    from pywinauto.base_wrapper import BaseWrapper
 
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.models.operations import OperationResult, PluginMetadata
@@ -185,7 +188,7 @@ class BaseOperation(ABC):
 
     # ============ 辅助方法 ============
 
-    def switch_left_menus(self, main_option: str, sub_option: str = None):
+    def switch_left_menus(self, main_option: str, sub_option: Optional[str] = None) -> None:
         """切换左侧菜单栏
 
         重写参考easytrader原有的垃圾实现，目前已经做到0.7s，原来需要2.2s
@@ -251,11 +254,11 @@ class BaseOperation(ABC):
             return None
 
 
-    def sleep(self, seconds: float = 0.1):
+    def sleep(self, seconds: float = 0.1) -> None:
         """睡眠指定秒数"""
         time.sleep(seconds)
 
-    def wait_for_pop_dialog(self, timeout=1.0):
+    def wait_for_pop_dialog(self, timeout: float = 1.0) -> bool:
         """等待弹窗出现"""
         start = time.perf_counter()
         while time.perf_counter() - start < timeout:
@@ -267,7 +270,7 @@ class BaseOperation(ABC):
         return False
 
 
-    def is_exist_pop_dialog(self):
+    def is_exist_pop_dialog(self) -> bool:
         """是否存在弹窗"""
         main_window = self.get_main_window(wrapper_obj=True)
         # 弹窗一般是这个Pane和#32770类型。如果后面有其他类型的弹窗再说，再修正
@@ -278,7 +281,7 @@ class BaseOperation(ABC):
             return True
         return len(childrens) != 0
 
-    def get_pop_dialog(self):
+    def get_pop_dialog(self) -> Tuple[Optional[str], Optional[Any]]:
         """
         获取弹窗标题和对应弹窗控件，搭配get_control_in_children实现更细化的使用
 
@@ -316,7 +319,7 @@ class BaseOperation(ABC):
 
         return "内嵌的浏览器窗口", None
 
-    def set_main_window_focus(self):
+    def set_main_window_focus(self) -> None:
         """设置主窗口焦点"""
         main_window = self.get_main_window(wrapper_obj=True)
         if not main_window.is_visible():
@@ -327,7 +330,7 @@ class BaseOperation(ABC):
         """获取最顶层的窗口"""
         return self.automator.app.top_window()
 
-    def close_pop_dialog(self):
+    def close_pop_dialog(self) -> None:
         """关闭弹窗
         该函数实现各种弹窗的关闭，实现多重弹窗窗口关闭，为每一个业务操作提供一个干净的待操作状态
         """
@@ -362,7 +365,7 @@ class BaseOperation(ABC):
 
         self.sleep(0.05)
 
-    def process_captcha_dialog(self):
+    def process_captcha_dialog(self) -> None:
         """
         处理验证码弹窗
         """
@@ -389,10 +392,12 @@ class BaseOperation(ABC):
                 self.sleep(0.2)
             count += 1
 
-    def get_control_with_children(self, parent_control, class_name=None,
-                                  title=None, title_re=None,
-                                  control_type=None, auto_id=None):
+    def get_control_with_children(self, parent_control: Any, class_name: Optional[str] = None,
+                                  title: Optional[str] = None, title_re: Optional[str] = None,
+                                  control_type: Optional[str] = None, auto_id: Optional[str] = None) -> Optional["BaseWrapper"]:
         """在子控件中查找控件,实现最快的控件查找方法, 比 使用child_window() 快很多倍，项目禁止使用child_window()方法来获取控件
+
+        这里的函数返回类型只是辅助编码提示，并不是实际的类型，有些方法没提示不代表不能用，比如click方法
 
         项目实际就是使用这个进行加速，比如买入操作10s暴降至3s内
         一般返回的控件有以下方法：
@@ -420,7 +425,7 @@ class BaseOperation(ABC):
         return None
 
 
-    def ocr_captcha(self, control):
+    def ocr_captcha(self, control: Any) -> str:
         """根据控件获取OCR验证码结果"""
         code = captcha_ocr_server.recognize(control)
         #同花顺验证码一般是4位，防止出现大于4位的code，这个概率几乎没有
@@ -429,12 +434,12 @@ class BaseOperation(ABC):
         return code
 
 
-    def get_clipboard_data(self):
+    def get_clipboard_data(self) -> str:
         """获取剪贴板数据"""
         return pyperclip.paste()
 
 
-    def clear_clipboard(self):
+    def clear_clipboard(self) -> None:
         """清空剪贴板"""
         pyperclip.copy("")
 
