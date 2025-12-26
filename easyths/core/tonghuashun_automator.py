@@ -22,7 +22,8 @@ class TonghuashunAutomator:
 
     所有方法都是同步的，由调用方决定执行方式（直接调用或通过COM执行器）
     """
-    APP_TITLE_NAME = "网上股票交易系统5.0"
+    # 修改为 正则匹配 网上股票交易系统.*  避免可能未来版本更新导致找不到窗口的问题
+    # APP_TITLE_NAME = "网上股票交易系统5.0"
 
     def __init__(self):
         """初始化自动化器"""
@@ -49,7 +50,7 @@ class TonghuashunAutomator:
 
             # 连接应用
             self.app = Application(backend="uia").connect(path=self.app_path, timeout=5)
-            self.main_window = self.app.window(title=self.APP_TITLE_NAME, control_type="Window", visible_only=False, depth=1)
+            self.main_window = self.app.window(title_re="网上股票交易系统.*", control_type="Window", visible_only=False, depth=1)
             self.main_window_wrapper_object = self.main_window.wrapper_object()
             self.logger.info("连接到同花顺进程")
             self._connected = True
