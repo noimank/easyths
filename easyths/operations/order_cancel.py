@@ -87,58 +87,42 @@ class OrderCancelOperation(BaseOperation):
             # 4. 处理各种确认弹窗
             # 5. 返回撤单结果
 
-            main_window = self.automator.get_main_window()
+            main_window = self.get_main_window(wrapper_obj=True)
             #
             # # 切换到撤单界面（假设使用某个快捷键或菜单）
             main_window.type_keys("{F3}")
             time.sleep(0.2)
+            main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
             #
             # # 如果指定了股票代码，定位到对应的委托，默认清空，点击查询代码按钮相当于刷新数据
-            edit_stock_code = self.get_control(parent=main_window, class_name="Edit", found_index=None,
-                                               control_id=0xD14)
             # 模拟清空
-            edit_stock_code.type_keys('{BACKSPACE} {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}  {BACKSPACE}')
+            edit_stock_code = self.get_control_with_children(main_panel, control_type="Edit",class_name="Edit", auto_id="3348")
+            edit_stock_code.type_keys('{BACKSPACE 6}')
             time.sleep(0.1)
             if stock_code:
                 # 查找并选择指定股票的委托
                 edit_stock_code.type_keys(str(stock_code))
             #
-            query_btn = self.get_control(parent=main_window, class_name="Button", found_index=None, control_id=0xD15)
+            query_btn = self.get_control_with_children(main_panel, control_type="Button",class_name="Button", auto_id="3349")
             query_btn.click()
             time.sleep(0.1)
 
+            cancel_btn = None
             if cancel_type == "all":
-                cancel_btn = self.get_control(parent=main_window, class_name="Button", found_index=None,
-                                              control_id=0x7531)
-                cancel_btn.click()
+                cancel_btn = self.get_control_with_children(main_panel, class_name="Button", control_type="Button", auto_id="30001")
             elif cancel_type == "buy":
-                cancel_btn = self.get_control(parent=main_window, class_name="Button", found_index=None,
-                                              control_id=0x7532)
-                cancel_btn.click()
+                cancel_btn = self.get_control_with_children(main_panel, class_name="Button", control_type="Button", auto_id="30002")
             elif cancel_type == "sell":
-                cancel_btn = self.get_control(parent=main_window, class_name="Button", found_index=None,
-                                              control_id=0x7533)
-                cancel_btn.click()
+                cancel_btn = self.get_control_with_children(main_panel, class_name="Button", control_type="Button", auto_id="30003")
             else:
                 self.logger.error(f"不支持的撤单类型: {cancel_type}")
                 return OperationResult(success=False, error=f"不支持的撤单类型: {cancel_type}")
 
-            # 等待弹窗出现
-            time.sleep(0.2)
-            # 简单处理一下可能出现的撤档确认弹窗
-            if self.is_exist_pop_dialog():
-                pop_dialog_title = self.get_pop_dialog_title()
-                pop_dialog_content = self._extract_pop_dialog_content(pop_dialog_title)
-                if "撤单确认" == pop_dialog_title.strip():
-                    top_window = self.get_top_window()
-                    top_window.type_keys("%Y", set_foreground=False)
-                # 细化判定
-                if "提示信息" == pop_dialog_title.strip() and "您确认要撤销" in pop_dialog_content:
-                    top_window = self.get_top_window()
-                    top_window.type_keys("%Y", set_foreground=False)
-
-            time.sleep(0.1)
-            is_op_success = self.is_exist_pop_dialog() is False  # 没有弹窗就是成功了
+            #必须有单才可以撤，没单的话，按钮是灰色的，click会报错
+            if cancel_btn.is_enabled():
+                cancel_btn.click()
+            # 等待弹窗出现， 软件必须确保已经勾选 撤单不需要确认
+            is_op_success = not self.wait_for_pop_dialog(0.4)  # 没有弹窗就是成功了，这里其实多余判断，但是无所谓，不耗什么时间
 
             result_data = {
                 "stock_code": stock_code,

@@ -97,7 +97,6 @@ class SellOperation(BaseOperation):
         stock_code = params["stock_code"]
         # 转为 2位小数的字符
         price =  "{:.2f}".format(float(params["price"]))
-        print("price=", price)
         quantity = params["quantity"]
         start_time = time.time()
         try:
@@ -109,73 +108,48 @@ class SellOperation(BaseOperation):
             )
 
             # 按下 F2键 （卖出快捷键）
-            main_window =  self.automator.get_main_window()
-            # self.set_main_window_focus()
+            main_window = self.get_main_window(wrapper_obj=True)
             main_window.type_keys("{F2}")
-            #防抖
-            time.sleep(0.1)
-
-            # 1. 输入股票代码
-            # 设置股票代码
-            edit_ts_code = self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x408)
-            # edit_ts_code.set_edit_text('')
-            # time.sleep(0.1)
-            edit_ts_code.type_keys(stock_code)
-            # 防抖，因为输入代码后软件会自动获取相关信息，这一步需要时间
-            # time.sleep(1.1)
-
-            # 输入价格,不能直接设置，只能模拟输入
-            price_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x409)
-            price_edit.set_edit_text('')
-            # time.sleep(0.1)
-            price_edit.type_keys(str(price))
-            #  输入数量
-            quantity_edit =  self.get_control(parent=main_window,class_name="Edit", found_index=None,control_id=0x40A)
-            quantity_edit.set_edit_text('')
-            # time.sleep(0.1)
-            quantity_edit.type_keys(str(quantity))
-
-            #点击卖出按钮
-            sell_button =  self.get_control(parent=main_window,class_name="Button", found_index=None,control_id=0x3EE)
-            sell_button.click()
-            # 等待弹窗出现
-            time.sleep(0.2)
-
-            is_sell_success = False
-            sell_message = ""
-            # 开始处理各种弹窗
-            count = 0  #防止死循环
-            while self.is_exist_pop_dialog() and count < 4:
-                time.sleep(0.1)
-                pop_dialog_title = self.get_pop_dialog_title()
-                top_window = self.get_top_window()
-                pop_dialog_content = self._extract_pop_dialog_content(pop_dialog_title)
-
-                # 提示窗口只有确认按钮，不具备下一步的操作直接esc退出
-                if "提示" == pop_dialog_title.strip():
-                    top_window.type_keys("{ESC}", set_foreground=False)
-                else:
-                    top_window.type_keys("%Y", set_foreground=False)
-                #等待窗口关闭
-                time.sleep(0.25)
-                sell_message = pop_dialog_content
-                if "成功" in pop_dialog_content:
-                    is_sell_success = True
-                count +=1
-
-            # 返回卖出结果
+            # 防抖
+            self.sleep(0.25)
+            # 拿到显示面板, 大约会有 34个children
+            main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            # # 1. 输入股票代码
+            self.get_control_with_children(main_panel, control_type="Edit", auto_id="1032").type_keys(stock_code)
+            # # 2.输入价格
+            self.get_control_with_children(main_panel, control_type="Edit", auto_id="1033").type_keys(price)
+            # # 3. 输入数量
+            self.get_control_with_children(main_panel, control_type="Edit", auto_id="1034").type_keys(str(quantity))
+            # # 等待输入数量后稳定在确认
+            self.sleep(0.3)
+            # 4. 点击买入按钮
+            main_window.type_keys("{ENTER}")
+            # self.sleep(0.25)
+            self.wait_for_pop_dialog(0.3)
+            # 没弹窗就是成功，这里已经假设用户已经按照项目设置好软件，为了加快操作速度，去掉了多余的弹窗处理（因为设置好软件后不会有弹窗）
+            is_op_success = not self.is_exist_pop_dialog()
+            message = f"成功提交{stock_code}的卖出委托"
+            if not is_op_success:
+                # 不成功就尝试获取弹窗内容
+                pop_dialog_title, pop_control = self.get_pop_dialog()
+                if pop_dialog_title == "失败提示":
+                    message = self.get_control_with_children(pop_control, control_type="Image", auto_id="1004",
+                                                             class_name="Static").window_text()
+                    self.get_control_with_children(pop_control, control_type="Button", auto_id="2",
+                                                   class_name="Button").type_keys("{ENTER}")
+            # 返回买入结果
             result_data = {
                 "stock_code": stock_code,
                 "price": price,
                 "quantity": quantity,
-                "operation": "sell",
-                "success": is_sell_success,
-                "message": sell_message
+                "operation": "buy",
+                "success": is_op_success,
+                "message": message
             }
 
-            self.logger.info(f"卖出操作完成，耗时{time.time() - start_time}, 操作结果：", **result_data)
+            self.logger.info(f"卖出操作{"成功" if is_op_success else "失败"}，耗时{time.time() - start_time}, 操作结果：", **result_data)
             return OperationResult(
-                success=True,
+                success=is_op_success,
                 data=result_data,
             )
 

@@ -76,58 +76,64 @@ class HistoricalCommissionQueryOperation(BaseOperation):
         start_time = time.time()
         stock_code = params.get("stock_code")
         return_type = params.get("return_type")
-        time_range = params.get("time_range")
+        time_range = params.get("time_range", "当日")
 
         try:
             self.logger.info(f"执行历史委托查询操作，股票代码: {stock_code or '全部'}")
-            self.switch_left_menus(["查询[F4]", "历史委托"])
+            self.switch_left_menus("查询[F4]", "历史委托")
+            # self.sleep(0.2)
 
             # 1. 打开历史委托查询界面（通常是F7或Ctrl+F7）
-            main_window = self.automator.get_main_window()
+            main_window = self.get_main_window(wrapper_obj=True)
             # 尝试使用Ctrl+F7打开历史委托，如果不行再尝试其他快捷键
+            main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
 
+            # auto_id
             control_map ={
-                "当日": 0x14C3,
-                "近一周": 0x14BC,
-                "近一月": 0x14BD,
-                "近三月": 0x14BE,
-                "近一年": 0x14BF
+                "当日": "5315",
+                "近一周": "5308",
+                "近一月": "5309",
+                "近三月": "5310",
+                "近一年": "5311"
             }
-
-            self.get_control(control_id=control_map[time_range]).click()
+            # 2. 选择时间范围
+            self.get_control_with_children(main_panel,auto_id=control_map[time_range], control_type="Button", class_name="Button").click()
 
             # 3. 如果指定了股票代码，输入股票代码进行查询
             if stock_code:
-                edit_stock_code = self.get_control(parent=main_window, class_name="Edit", found_index=None, control_id=0x3E9)
+                combox = self.get_control_with_children(main_panel, control_type="ComboBox", class_name="ComboBox", auto_id="1337")
+                edit_stock_code = self.get_control_with_children(combox,auto_id="1001", control_type="Edit", class_name="Edit")
                 # 清空并输入股票代码
                 edit_stock_code.type_keys('{BACKSPACE 7}')
                 time.sleep(0.05)
                 edit_stock_code.type_keys(str(stock_code))
                 time.sleep(0.1)
             else:
-                query_btn = self.get_control(parent=main_window, class_name="Button", found_index=None, control_id=0x991)
+                query_btn = self.get_control_with_children(main_panel, class_name="Button", auto_id="2449")
                 query_btn.click()
 
             # 4. 点击查询按钮
             #等待加载数据
             time.sleep(0.2)
-            # 获取表格控件（历史委托表格的控件ID可能与当前委托不同）
-            table_control = self.get_control(control_id=0x417, class_name="CVirtualGridCtrl")
+            # 获取表格控件
+            # table_control = self.get_control(control_id=0x417, class_name="CVirtualGridCtrl")
+            table_panel = main_panel.children(control_type="Pane", title='HexinScrollWnd')[0].children(control_type="Pane", title="HexinScrollWnd2")[0].children(class_name="CVirtualGridCtrl")[0]
+
             # 鼠标左键点击
-            table_control.click()
+            table_panel.click_input()
             time.sleep(0.01)
 
             # 按下 Ctrl+A Ctrl+C 触发复制
-            table_control.type_keys("^a")
+            table_panel.type_keys("^a")
             time.sleep(0.02)
-            table_control.type_keys("^c")
-            time.sleep(0.1)
+            table_panel.type_keys("^c")
+            time.sleep(0.15)
             # 处理触发复制的限制提示框
             self.process_captcha_dialog()
             # 获取剪贴板数据
             table_data = self.get_clipboard_data()
             table_data = text2df(table_data)
-            # 丢弃多余列（历史委托可能有不同的列结构）
+            # 丢弃多余列
             table_data = table_data.drop(columns=["Unnamed: 13"], errors="ignore")
 
             is_op_success = not self.is_exist_pop_dialog()  # 没有弹窗了，说明没有其他意外情况发生

@@ -6,6 +6,12 @@ Email: noimank@163.com
 
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.operations.buy import BuyOperation
+from easyths.operations.sell import SellOperation
+from easyths.operations.funds_query import FundsQueryOperation
+from easyths.operations.order_cancel import OrderCancelOperation
+from easyths.operations.holding_query import HoldingQueryOperation
+from easyths.operations.order_query import OrderQueryOperation
+from easyths.operations.historical_commission_query import HistoricalCommissionQueryOperation
 from dotenv import load_dotenv
 
 load_dotenv("../.env")
@@ -26,7 +32,7 @@ def test_buy_op():
         # 执行买入（同步）
         params = {
             "stock_code": "000001",
-            "price": 11.55,
+            "price": 110.55,
             "quantity": 100
         }
 
@@ -66,7 +72,159 @@ def test_automator_basic():
     finally:
         pass
 
+def test_sell_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = SellOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "stock_code": "000001",
+            "price": 11.55,
+            "quantity": 1000
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+def test_funds_query_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = FundsQueryOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+def test_order_cancel_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = OrderCancelOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "stock_code": "000001",
+            "cancel_type": "all"
+
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+def test_holding_query_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = HoldingQueryOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "return_type": "json",
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+
+def test_order_query_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = OrderQueryOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "return_type": "json",
+            "stock_code": "000001"
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+def test_historical_commission_query_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = HistoricalCommissionQueryOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "return_type": "json",
+            # "stock_code": "000001"
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+
 
 if __name__ == "__main__":
     # test_automator_basic()
-    test_buy_op()  # 取消注释以测试实际买入操作
+    test_buy_op()
+    # test_sell_op()
+    # test_funds_query_op()
+    # test_order_cancel_op()
+    # test_holding_query_op()
+    # test_order_query_op()
+    # test_historical_commission_query_op()

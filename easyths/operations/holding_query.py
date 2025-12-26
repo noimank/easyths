@@ -47,27 +47,34 @@ class HoldingQueryOperation(BaseOperation):
         try:
             self.logger.info(f"执行持仓查询操作。")
             # 切换到持仓菜单
-            self.switch_left_menus(["查询[F4]", "资金股票"])
+            self.switch_left_menus("查询[F4]", "资金股票")
+            # 刷新数据
+            self.get_main_window(wrapper_obj=True).type_keys("{F5}")
+            # 等待页面加载完成，这个页面还是需要实时的
+            self.clear_clipboard()
+            self.sleep(0.3)
+            main_window_wrapper = self.get_main_window(wrapper_obj=True)
+            main_panel = main_window_wrapper.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
 
             # 获取表格控件
-            table_control = self.get_control(control_id=0x417,class_name="CVirtualGridCtrl")
-
+            table_panel = main_panel.children(control_type="Pane", title='HexinScrollWnd')[0].children(control_type="Pane", title="HexinScrollWnd2")[0].children(class_name="CVirtualGridCtrl")[0]
             # 鼠标左键点击
-            table_control.click()
+            table_panel.click_input()
 
             # 按下 Ctrl+A Ctrl+ C  触发复制
-            table_control.type_keys("^a")
+            table_panel.type_keys("^a")
             time.sleep(0.05)
-            table_control.type_keys("^c")
-            time.sleep(0.1)
-
-            # 处理触发复制的限制提示框
+            table_panel.type_keys("^c")
+            time.sleep(0.2)
+            # 处理可能触发复制的限制提示框
             self.process_captcha_dialog()
+
             # 获取剪贴板数据
             table_data = self.get_clipboard_data()
             table_data = text2df(table_data)
-            # 丢弃多余列
-            table_data = table_data.drop(columns=["操作", "Unnamed: 19"], errors="ignore")
+            if not table_data.empty:
+                # 丢弃多余列
+                table_data = table_data.drop(columns=["操作", "Unnamed: 19"], errors="ignore")
 
             is_op_success = not self.is_exist_pop_dialog()  #没有弹窗了，说明没有其他意外情况发生
             if is_op_success:
@@ -78,7 +85,7 @@ class HoldingQueryOperation(BaseOperation):
             result_data = {
                 "holdings": table_data,
                 "timestamp": datetime.datetime.now().isoformat(),
-                "success": True
+                "success": is_op_success
             }
 
             self.logger.info(f"持仓查询完成，耗时{time.time() - start_time}秒",

@@ -19,9 +19,11 @@ from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.core.ocr_service import get_ocr_service
 from easyths.models.operations import OperationResult, PluginMetadata
 from easyths.utils import captcha_ocr_server
-
+import re
 logger = structlog.get_logger(__name__)
 
+#全局缓存
+CONTROL_WRAPPER_CACHE = {}
 
 class BaseOperation(ABC):
     """操作插件基类 - 同步执行模式
@@ -198,38 +200,56 @@ class BaseOperation(ABC):
 
     # ============ 辅助方法 ============
 
-    def _get_left_menus_handle(self):
-        """获取左侧菜单树句柄"""
-        count = 2
-        while True:
-            try:
-                handle = self.automator.main_window.child_window(
-                    control_id=129, class_name="SysTreeView32"
-                )
-                if count <= 0:
-                    return handle
-                handle.wait("ready", 2)
-                return handle
-            except Exception as ex:
-                logger.exception("获取左侧菜单失败")
-            count = count - 1
-
-    def switch_left_menus(self, path, sleep=0.2):
+    def switch_left_menus(self, main_option: str, sub_option: str = None):
         """切换左侧菜单栏
 
+        重写参考easytrader原有的垃圾实现，目前已经做到0.7s，原来需要2.2s
+
         Args:
-            path: 菜单路径
-            sleep: 等待秒数
+            main_option: 主选项，如 查询[F4]
+            sub_option: 资金股票
         """
-        self._get_left_menus_handle().get_item(path).select()
-        self.get_top_window().type_keys('{F5}')
-        time.sleep(sleep)
+        main_window = self.get_main_window(wrapper_obj=True)
+        # 获取左侧导航栏
+        main_panel = self.get_control_with_children(main_window, control_type="Pane", auto_id="59648")
+        left_menu_panel = self.get_control_with_children(main_panel,  class_name="AfxWnd140s")
+        # 只有一个元素
+        HexinScrollWnd = left_menu_panel.children(title="HexinScrollWnd")[0]
+        HexinScrollWnd2 = HexinScrollWnd.children(title="HexinScrollWnd2")[0]
+        tree_view = HexinScrollWnd2.children(control_type="Tree", class_name="SysTreeView32")[0]
+
+        # 处理主选择
+        main_option_control = self.get_control_with_children(tree_view, title=main_option)
+        if main_option_control is None:
+            logger.error(f"未找到主菜单{main_option}")
+            raise Exception(f"未找到主菜单{main_option}")
+        # 展开主菜单
+        main_option_control.expand()
+        # 确保可见,实际测试不需要
+        # self.sleep(0.05)
+        # main_option_control.ensure_visible()
+
+        # 等待子菜单渲染，内存变化，无需视图可见
+        self.sleep(0.15)
+        # 处理子选择
+        if sub_option is not None:
+            cc = self.get_control_with_children(main_option_control, title=sub_option)
+            if cc:
+                cc.select()
+            else:
+                logger.error(f"未找到子菜单{sub_option}")
+                raise Exception(f"未找到子菜单{sub_option}")
+        self.sleep(0.1)
+
 
     def get_main_window(self, wrapper_obj: bool = False) -> Optional[Any]:
         """获取同花顺主窗口控件
 
         Args:
             wrapper_obj: 是否返回wrapper对象
+
+        注意：
+            wrapper对象是没有child_window方法的，相对的wrapper对象减少了实例化时间，能加快0.3s左右
 
         Returns:
             主窗口对象
@@ -250,26 +270,66 @@ class BaseOperation(ABC):
         """睡眠指定秒数"""
         time.sleep(seconds)
 
+    def wait_for_pop_dialog(self, timeout=1.0):
+        """等待弹窗出现"""
+        start = time.perf_counter()
+        while time.perf_counter() - start < timeout:
+            # 这里的检查是“大头”，如果它很慢，sleep 甚至可以不要
+            if self.is_exist_pop_dialog():
+                return True
+            # 给 CPU 留一点点喘息机会即可
+            time.sleep(0.001)
+        return False
+
+
     def is_exist_pop_dialog(self):
         """是否存在弹窗"""
-        top_window = self.get_top_window()
-        childrens = top_window.children()
-        return len(childrens) != 3
+        main_window = self.get_main_window(wrapper_obj=True)
+        # 弹窗一般是这个Pane和#32770类型。如果后面有其他类型的弹窗再说，再修正
+        childrens = main_window.children(control_type="Pane", class_name="#32770")
+        # 另一种是独立的窗口
+        win = self.get_control_with_children(main_window, control_type="Window")
+        if win:
+            return True
+        return len(childrens) != 0
 
-    def get_pop_dialog_title(self):
-        """获取弹窗标题"""
-        standard_pop_dialog_cid = 1365
-        top_window = self.get_top_window()
-        childrens = top_window.children()
+    def get_pop_dialog(self):
+        """
+        获取弹窗标题和对应弹窗控件，搭配get_control_in_children实现更细化的使用
 
-        if len(childrens) == 0:
-            return None
+        注意在这里新加入了弹窗判断逻辑后，记得去close_pop_dialog函数中添加对应的窗口关闭逻辑
 
+        """
+        if not self.is_exist_pop_dialog():
+            return None, None
+
+        main_window = self.get_main_window(wrapper_obj=True)
+        childrens = main_window.children(control_type="Pane", class_name="#32770")
+        # 可能会出现多个（概率很小），但是不管，找到一个直接返回，由上层应用兜底和判断
         for children in childrens:
-            if children.control_id() == standard_pop_dialog_cid:
-                return children.window_text()
+            # 根据
+            sub_childrens = children.children(class_name="Static")
+            content = "".join([child.window_text() for child in sub_childrens])
+            if "您的风险承受能力等级即将过期" in content:
+                return "风险测评提示",children
+            elif "您输入的价格已超出涨跌停限制" in content:
+                return "提示信息", children
+            elif "先输入验证码" in content:
+                return "验证码提示框",children
+            # 买入、卖出时的弹窗
+            elif "提交失败" in content:
+                return "失败提示", children
+            elif "一键打新" in content:
+                return "一键打新提示框", children
+            else:
+                continue
 
-        return "内嵌的浏览器窗口"
+        # 处理可能出现的window类型的独立窗口,目前已知的有 条件单触发提醒、银证转账窗口
+        win = self.get_control_with_children(main_window, control_type="Window")
+        if win:
+            return win.class_name(), win
+
+        return "内嵌的浏览器窗口", None
 
     def set_main_window_focus(self):
         """设置主窗口焦点"""
@@ -283,46 +343,94 @@ class BaseOperation(ABC):
         return self.automator.app.top_window()
 
     def close_pop_dialog(self):
-        """关闭弹窗"""
+        """关闭弹窗
+        该函数实现各种弹窗的关闭，实现多重弹窗窗口关闭，为每一个业务操作提供一个干净的待操作状态
+        """
         flag = self.is_exist_pop_dialog()
         if not flag:
             return
-
         count = 0
-        main_window = self.get_main_window()
-        while count < 3 and self.is_exist_pop_dialog():
-            self.sleep(0.1)
-            childrens = main_window.children(control_type="Pane", class_name="#32770")
-            for children in childrens:
-                children.close()
-                self.sleep(0.1)
-            count += 1
-        self.sleep(0.1)
+        while count < 4 and self.is_exist_pop_dialog():
+            count+=1
+            self.sleep(0.15)
+            pop_dialog_title, pop_control = self.get_pop_dialog()
+            if pop_dialog_title == "风险测评提示":
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+            elif pop_dialog_title == "提示信息":
+                #点击否
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+
+            elif pop_dialog_title == "验证码提示框":
+                #点击取消
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="2").click()
+            elif pop_dialog_title == "失败提示":
+                #点击确定
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()
+            elif pop_dialog_title == "一键打新提示框":
+                # 点击窗口右上角的 X 触发关闭
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
+            #条件单触发提醒
+            elif pop_dialog_title == 'CDlgTriggeredConfitionTip':
+                pop_control.close()
+            elif pop_dialog_title == 'TranferAccount':
+                pop_control.close()
+
+        self.sleep(0.05)
 
     def process_captcha_dialog(self):
-        """处理验证码弹窗"""
-        retry_count = 3
-        time.sleep(0.05)
-        while self.is_exist_pop_dialog() and retry_count > 0:
-            pop_dialog_title = self.get_pop_dialog_title()
-            top_window = self.get_top_window()
-            if pop_dialog_title == "提示":
-                captcha_pic_control = self.get_control(parent=top_window, control_id=0x965, class_name="Static")
-                captcha_edit = self.get_control(parent=top_window, control_id=0x964, class_name="Edit")
-                old_captcha_value = captcha_edit.texts()[1]
+        """
+        处理验证码弹窗
+        """
+        count = 0
+        while self.is_exist_pop_dialog() and count < 3:
+            pop_dialog_title, pop_control = self.get_pop_dialog()
+            if pop_dialog_title == "验证码提示框":
+                code_edit = self.get_control_with_children(pop_control, control_type="Edit", auto_id="2404",
+                                                           class_name="Edit")
+                # 尝试删除可能存在的旧验证码
+                code_edit.type_keys('{BACKSPACE 4}')
+                code_image_control = self.get_control_with_children(pop_control, control_type="Image", auto_id="2405",
+                                                                    class_name="Static")
+                code_image_control.click_input()
+                # 等待刷新验证码
+                self.sleep(0.2)
+                captcha_code = self.ocr_captcha(code_image_control)
+                code_edit.type_keys(captcha_code)
+                self.sleep(0.1)
+                # 按确定键
+                # self.get_control_with_children(pop_control,control_type="Button", auto_id="1", class_name="Button").click_input()
+                # self.get_control_with_children(pop_control,control_type="Button", auto_id="1", class_name="Button").click_input()
+                pop_control.type_keys("{ENTER}")
+                self.sleep(0.2)
+            count += 1
 
-                if len(old_captcha_value) > 0:
-                    captcha_pic_control.click()
-                    time.sleep(0.05)
-                    captcha_edit.type_keys("{BACKSPACE 5}")
+    def get_control_with_children(self, parent_control, class_name=None,
+                                  title=None, title_re=None,
+                                  control_type=None, auto_id=None):
+        """在子控件中查找控件,实现最快的控件查找方法, 比 get_control() 快很多倍，项目实际就是使用这个进行加速，买入操作10s暴降至3s内
+        一般返回的控件有以下方法：
+        - click()   -> 必须是ButtonWrapper类型才可以调用
+        - click_input()  -> 模拟物理点击，会移动鼠标，uia控件都会有
+        - type_keys()
+        - texts()
+        - window_text()
+        - element_info
+        """
+        # 1. 先拿到所有亲儿子,先使用支持的筛选参数进行
+        all_children = parent_control.children(control_type=control_type, class_name=class_name,title=title)
 
-                captcha_code = self.ocr_target_control_to_text(captcha_pic_control, "验证码")
-                captcha_edit.type_keys(captcha_code)
-                self.get_control(parent=top_window, control_id=0x1, class_name="Button").click()
-                time.sleep(0.15)
-            else:
-                break
-            retry_count -= 1
+        # 2. 手动筛选，处理内置不支持的情况
+        for child in all_children:
+            info = child.element_info
+            # 逐项比对（如果参数不为 None 且不匹配，则跳过）
+            if auto_id and info.automation_id != auto_id:
+                continue
+            # title_re 需要用到 re.match
+            if title_re and not re.match(title_re, info.name):
+                continue
+            # 匹配成功，立刻返回第一个
+            return child
+        return None
 
     def get_control(
             self,
@@ -333,6 +441,8 @@ class BaseOperation(ABC):
             control_type: str = None,
             auto_id: str = None,
             found_index: int = None,
+            depth:int = None,
+            cache_key: str | None= None,
     ) -> "Optional[pywinauto.application.WindowSpecification]":
         """获取控件 - 核心查找方法
 
@@ -344,6 +454,8 @@ class BaseOperation(ABC):
             control_type: UIA 控件类型，如 "Button"、"Edit"、"ComboBox" 等
             auto_id: 控件的自动化 ID 属性
             found_index: 如果有多个控件匹配条件，指定返回第几个控件，从0开始
+            depth: 查找深度，默认为1，表示只查找第一层子控件，如果为2，表示查找第二层子控件，以此类推
+            cache_key: 缓存键，用于缓存控件对象，避免重复查找，缓存非常有效，比如买入操作，第一次要8s，但之后只要4s，能否启用缓存必须看控件在整个软件启动期间是否可以一直存活，不要缓存什么弹窗之类！！！
 
         Returns:
             pywinauto.application.WindowSpecification: 返回控件
@@ -368,9 +480,16 @@ class BaseOperation(ABC):
             kwargs['auto_id'] = auto_id
         if found_index:
             kwargs['found_index'] = found_index
+        if depth:
+            kwargs['depth'] = depth
+
+        if CONTROL_WRAPPER_CACHE.get(cache_key):
+            return CONTROL_WRAPPER_CACHE.get(cache_key)
 
         try:
             control = parent.child_window(**kwargs)
+            if cache_key:
+                CONTROL_WRAPPER_CACHE[cache_key] = control.wrapper_object()
             return control
         except Exception as e:
             self.logger.error(
@@ -386,6 +505,13 @@ class BaseOperation(ABC):
             )
             return None
 
+    def ocr_captcha(self, control):
+        """根据控件获取OCR验证码结果"""
+        code = captcha_ocr_server.recognize(control)
+        #同花顺验证码一般是4位，防止出现大于4位的code，这个概率几乎没有
+        if len(code) > 4:
+            code = code[:4]
+        return code
 
     def ocr_target_control_to_text(self, control, post_process_type=None):
         """根据控件获取OCR文本结果"""
@@ -422,6 +548,10 @@ class BaseOperation(ABC):
         """获取剪贴板数据"""
         return pyperclip.paste()
 
+
+    def clear_clipboard(self):
+        """清空剪贴板"""
+        pyperclip.copy("")
 
 # ============ 操作注册表 ============
 

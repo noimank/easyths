@@ -98,7 +98,6 @@ class BuyOperation(BaseOperation):
         stock_code = params["stock_code"]
         # 转为 2位小数的字符
         price = "{:.2f}".format(float(params["price"]))
-        print("price=", price)
         quantity = params["quantity"]
         start_time = time.time()
 
@@ -109,18 +108,34 @@ class BuyOperation(BaseOperation):
                 price=price,
                 quantity=quantity
             )
-
             # 按下 F1键
-            main_window = self.get_main_window()
-            top_window = self.get_top_window()
-
+            main_window = self.get_main_window(wrapper_obj=True)
             main_window.type_keys("{F1}")
             # 防抖
-            time.sleep(0.1)
-
-            # 1. 输入股票代码
-            self.get_control(parent=main_window, control_type="Edit", auto_id="1032").type_keys(stock_code)
-            time.sleep(0.6)
+            self.sleep(0.25)
+            # 拿到显示面板, 大约会有 34个children
+            main_panel = main_window.children(control_type="Pane")[0].children(control_type="Pane",class_name='AfxMDIFrame140s')[0]
+            # # 1. 输入股票代码
+            self.get_control_with_children(main_panel, control_type="Edit", auto_id="1032").type_keys(stock_code)
+            # # 2.输入价格
+            self.get_control_with_children(main_panel, control_type="Edit", auto_id="1033").type_keys(price)
+            # # 3. 输入数量
+            self.get_control_with_children(main_panel, control_type="Edit", auto_id="1034").type_keys(str(quantity))
+            # # 等待输入数量后稳定在确认
+            self.sleep(0.3)
+            # # 4. 点击买入按钮
+            main_window.type_keys("{ENTER}")
+            # # 等待弹窗出现
+            self.wait_for_pop_dialog(0.25)
+            # # 没弹窗就是成功，这里已经假设用户已经按照项目设置好软件，为了加快操作速度，去掉了多余的弹窗处理（因为设置好软件后不会有弹窗）
+            is_op_success = not self.is_exist_pop_dialog()
+            message = f"成功提交{stock_code}的买入委托"
+            if not is_op_success:
+                # 不成功就尝试获取弹窗内容
+                pop_dialog_title, pop_control = self.get_pop_dialog()
+                if pop_dialog_title == "失败提示":
+                    message = self.get_control_with_children(pop_control, control_type="Image", auto_id="1004", class_name="Static").window_text()
+                    self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").type_keys("{ENTER}")
 
             # 返回买入结果
             result_data = {
@@ -128,11 +143,13 @@ class BuyOperation(BaseOperation):
                 "price": price,
                 "quantity": quantity,
                 "operation": "buy",
+                "success": is_op_success,
+                "message": message
             }
 
-            self.logger.info(f"买入操作完成，耗时{time.time() - start_time}, 操作结果：", **result_data)
+            self.logger.info(f"买入操作{"成功" if is_op_success else "失败"}，耗时{time.time() - start_time}, 操作结果：", **result_data)
             return OperationResult(
-                success=True,
+                success=is_op_success,
                 data=result_data,
             )
 

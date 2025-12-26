@@ -16,13 +16,6 @@ class FundsQueryOperation(BaseOperation):
             author="noimank",
             operation_name="funds_query",
             parameters={
-                "query_type": {
-                    "type": "string",
-                    "required": False,
-                    "description": "查询类型：total（总资金）、available（可用资金）、frozen（冻结资金）、stock_value（股票市值）",
-                    "enum": ["total", "available", "frozen", "stock_value", "all"],
-                    "default": "all"
-                }
             }
         )
 
@@ -33,36 +26,49 @@ class FundsQueryOperation(BaseOperation):
 
     def execute(self, params: Dict[str, Any]) -> OperationResult:
         """执行资金查询操作"""
-        # query_type = params.get("query_type", "all")
         start_time = time.time()
 
         try:
             self.logger.info(f"执行资金查询操作。")
-
             # 切换到资金股票菜单
-            self.switch_left_menus(["查询[F4]", "资金股票"])
-
-            fund_balance = self.get_control(control_id=0x3F4).window_text()
-            frozen_amount = self.get_control(control_id=0x3F5).window_text()
-            available_amount = self.get_control(control_id=0x3F8).window_text()
-            #可取金额
-            amount_available = self.get_control(control_id=0x3F9).window_text()
-            stock_market_capitalization = self.get_control(control_id=0x3F6).window_text()
-            total_assets = self.get_control(control_id=0x3F7).window_text()
-            profit_and_loss_on_holdings = self.get_control(control_id=0x403).window_text()
+            self.switch_left_menus("查询[F4]", "资金股票")
+            # 刷新数据
+            self.get_main_window(wrapper_obj=True).type_keys("{F5}")
+            # 防抖
+            self.sleep(0.3)
+            # print(f"切换页面耗时：{time.time() - tt}")
+            # 拿到显示面板, 大约会有 34个children
+            # main_window = self.get_main_window()
+            # main_panel = main_window.child_window(auto_id="59649", control_type="Pane", depth=2).wrapper_object()
+                 # 改进版：不使用child_window从 1.5s降低到1s
+            main_window_wrapper = self.get_main_window(wrapper_obj=True)
+            main_panel = main_window_wrapper.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            # 再进一步筛选
+            text_controls = main_panel.children(control_type="Text",class_name="Static")
 
             # 准备返回数据
             result_data = {
-                "资金余额": fund_balance,
-                "冻结金额": frozen_amount,
-                "可用金额": available_amount,
-                "可取金额": amount_available,
-                "股票市值": stock_market_capitalization,
-                "总资产": total_assets,
-                "持仓盈亏": profit_and_loss_on_holdings,
                 "timestamp": time.time(),
                 "success": True
             }
+
+            # 一次遍历完成信息提取
+            for control in text_controls:
+                auto_id = control.element_info.automation_id
+                if auto_id == "1012":
+                    result_data["资金余额"] = control.window_text()
+                elif auto_id == "1013":
+                    result_data["冻结金额"] = control.window_text()
+                elif auto_id == "1016":
+                    result_data["可用金额"] = control.window_text()
+                elif auto_id == "1017":
+                    result_data["可取金额"] = control.window_text()
+                elif auto_id == "1014":
+                    result_data["股票市值"] = control.window_text()
+                elif auto_id == "1015":
+                    result_data["总资产"] = control.window_text()
+                elif auto_id == "1027":
+                    result_data["持仓盈亏"] = control.window_text()
 
             self.logger.info(f"资金查询完成，耗时{time.time() - start_time}", **result_data)
 

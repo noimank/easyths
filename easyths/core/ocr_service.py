@@ -14,7 +14,7 @@ from PIL import Image
 import structlog
 logger = structlog.get_logger(__name__)
 
-from easyths.utils.screen_capture import mss_screen_capture_instance
+from easyths.utils.screen_capture import get_mss_instance
 
 
 class OCRService:
@@ -59,7 +59,7 @@ class OCRService:
                 image = Image.open(image_path)
             if isinstance(image_or_loc, dict):
                 # 截取屏幕区域
-                sct_img = mss_screen_capture_instance.grab(image_or_loc)
+                sct_img = get_mss_instance().grab(image_or_loc)
                 # 转换为PIL Image
                 image = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
 
