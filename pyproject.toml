@@ -34,6 +34,7 @@ classifiers = [
 keywords = ["trading", "automation", "tonghuashun", "quantitative"]
 
 dependencies = [
+    # 完整功能依赖（默认安装所有）
     # 核心依赖
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -67,13 +68,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "black>=24.10.0",
-    "ruff>=0.8.0",
-    "mypy>=1.13.0",
-    "pre-commit>=4.0.1",
-    "mkdocs-material>=9.7.1",
-    "mkdocs-minify-plugin>=0.8.0",
+# 仅客户端依赖
+client = [
+    "httpx>=0.28.0",
+    "pydantic>=2.10.0",
 ]
 
 [dependency-groups]
