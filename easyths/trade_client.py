@@ -38,14 +38,14 @@ class TradeClient:
 
     Args:
         host: 服务端主机地址，默认为 "127.0.0.1"
-        port: 服务端端口，默认为 8000
+        port: 服务端端口，默认为 7648
         api_key: API 密钥，用于身份验证
         timeout: 请求超时时间（秒），默认为 30
         scheme: 协议方案，http 或 https，默认为 http
 
     Examples:
         >>> # 基本使用
-        >>> client = TradeClient(host="127.0.0.1", port=8000, api_key="your-api-key")
+        >>> client = TradeClient(host="127.0.0.1", port=7648, api_key="your-api-key")
         >>> client.health_check()
         >>>
         >>> # 买入股票
@@ -64,7 +64,7 @@ class TradeClient:
     def __init__(
         self,
         host: str = "127.0.0.1",
-        port: int = 8000,
+        port: int = 7648,
         api_key: str = "",
         timeout: float = 30.0,
         scheme: str = "http"

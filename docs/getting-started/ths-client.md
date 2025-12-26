@@ -97,7 +97,7 @@ set TRADING_APP_PATH=D:/同花顺远航版/transaction/xiadan.exe
 easyths
 
 # 发送测试请求
-curl http://localhost:8000/api/v1/system/status
+curl http://localhost:7648/api/v1/system/status
 ```
 
 成功连接后会返回：

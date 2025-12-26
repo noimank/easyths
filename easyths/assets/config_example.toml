@@ -18,7 +18,7 @@ batch_size = 10
 
 [api]
 host = "0.0.0.0"
-port = 8000
+port = 7648
 rate_limit = 10
 # CORS允许的源 - *表示允许所有，逗号分隔多个源
 cors_origins = "*"

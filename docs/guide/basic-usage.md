@@ -6,14 +6,14 @@
 easyths
 ```
 
-服务默认运行在 `http://127.0.0.1:8000`
+服务默认运行在 `http://127.0.0.1:7648`
 
 ## API 文档
 
 启动服务后，访问以下地址查看 API 文档：
 
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
+- Swagger UI: `http://127.0.0.1:7648/docs`
+- ReDoc: `http://127.0.0.1:7648/redoc`
 
 ## 命令行选项
 

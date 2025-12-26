@@ -57,8 +57,8 @@ uv run python src/main.py
 ```
 
 服务启动后，访问：
-- API文档：http://localhost:8000/docs
-- 健康检查：http://localhost:8000/api/v1/system/health
+- API文档：http://localhost:7648/docs
+- 健康检查：http://localhost:7648/api/v1/system/health
 
 ## 💻 主要功能
 
@@ -89,13 +89,13 @@ uv run python src/main.py
 
 ```bash
 # 1. 买入股票（需要认证）
-curl -X POST http://localhost:8000/api/v1/operations/buy \
+curl -X POST http://localhost:7648/api/v1/operations/buy \
   -H "Authorization: Bearer your_api_key" \
   -H "Content-Type: application/json" \
   -d '{"params": {"stock_code": "000001", "price": 10.50, "quantity": 100}}'
 
 # 2. 查询资金
-curl -X POST http://localhost:8000/api/v1/operations/funds_query \
+curl -X POST http://localhost:7648/api/v1/operations/funds_query \
   -H "Authorization: Bearer your_api_key" \
   -H "Content-Type: application/json" \
   -d '{"params": {"query_type": "all"}}'

@@ -12,7 +12,7 @@ EasyTHS 通过 YAML 配置文件管理系统参数。
 # 服务器配置
 server:
   host: "127.0.0.1"
-  port: 8000
+  port: 7648
 
 # Redis 配置
 redis:

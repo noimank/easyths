@@ -16,7 +16,7 @@ class ProjectConfig:
 
     # API配置
     api_host = os.getenv("API_HOST", "0.0.0.0")
-    api_port = int(os.getenv("API_PORT", 8000))
+    api_port = int(os.getenv("API_PORT", 7648))
     api_rate_limit = int(os.getenv("API_RATE_LIMIT", 10))
     api_cors_origins = os.getenv("API_CORS_ORIGINS", "*")
     api_key = os.getenv("API_KEY", None)

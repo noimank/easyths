@@ -4,7 +4,7 @@ EasyTHS 提供基于 FastAPI 的 RESTful API 接口，支持自动化交易操�
 
 ## 基础信息
 
-- **Base URL**: `http://127.0.0.1:8000`
+- **Base URL**: `http://127.0.0.1:7648`
 - **Content-Type**: `application/json`
 - **API 版本**: v1
 
@@ -460,7 +460,7 @@ POST /api/v1/operations/historical_commission_query
 ```python
 import requests
 
-base_url = "http://127.0.0.1:8000"
+base_url = "http://127.0.0.1:7648"
 
 # 买入股票
 response = requests.post(
@@ -492,10 +492,10 @@ print(response.json())
 
 ```bash
 # 健康检查
-curl http://127.0.0.1:8000/api/v1/system/health
+curl http://127.0.0.1:7648/api/v1/system/health
 
 # 买入股票
-curl -X POST http://127.0.0.1:8000/api/v1/operations/buy \
+curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \
   -H "Content-Type: application/json" \
   -d '{
     "params": {
@@ -506,7 +506,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/operations/buy \
   }'
 
 # 查询持仓
-curl -X POST http://127.0.0.1:8000/api/v1/operations/holding_query \
+curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
   -H "Content-Type: application/json" \
   -d '{"params": {"return_type": "json"}}'
 ```
@@ -517,5 +517,5 @@ curl -X POST http://127.0.0.1:8000/api/v1/operations/holding_query \
 
 启动服务后，访问以下地址查看完整的交互式 API 文档：
 
-- **Swagger UI**: `http://127.0.0.1:8000/docs`
-- **ReDoc**: `http://127.0.0.1:8000/redoc`
+- **Swagger UI**: `http://127.0.0.1:7648/docs`
+- **ReDoc**: `http://127.0.0.1:7648/redoc`
