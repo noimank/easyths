@@ -3,7 +3,7 @@
 """
 from typing import Dict, Any
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from easyths.api.dependencies.common import get_operation_queue
@@ -24,7 +24,6 @@ class ExecuteOperationRequest(BaseModel):
 async def execute_operation(
         operation_name: str,
         request: ExecuteOperationRequest,
-        background_tasks: BackgroundTasks,
         queue=Depends(get_operation_queue)
 ) -> APIResponse:
     """执行操作"""
