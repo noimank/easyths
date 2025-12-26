@@ -21,8 +21,6 @@ from easyths.utils import captcha_ocr_server
 import re
 logger = structlog.get_logger(__name__)
 
-#全局缓存
-CONTROL_WRAPPER_CACHE = {}
 
 class BaseOperation(ABC):
     """操作插件基类 - 同步执行模式
@@ -406,7 +404,9 @@ class BaseOperation(ABC):
     def get_control_with_children(self, parent_control, class_name=None,
                                   title=None, title_re=None,
                                   control_type=None, auto_id=None):
-        """在子控件中查找控件,实现最快的控件查找方法, 比 get_control() 快很多倍，项目实际就是使用这个进行加速，买入操作10s暴降至3s内
+        """在子控件中查找控件,实现最快的控件查找方法, 比 使用child_window() 快很多倍，项目禁止使用child_window()方法来获取控件
+
+        项目实际就是使用这个进行加速，比如买入操作10s暴降至3s内
         一般返回的控件有以下方法：
         - click()   -> 必须是ButtonWrapper类型才可以调用
         - click_input()  -> 模拟物理点击，会移动鼠标，uia控件都会有
@@ -431,78 +431,6 @@ class BaseOperation(ABC):
             return child
         return None
 
-    def get_control(
-            self,
-            parent: pywinauto.application.WindowSpecification = None,
-            class_name: str = None,
-            title: str = None,
-            title_re: str = None,
-            control_type: str = None,
-            auto_id: str = None,
-            found_index: int = None,
-            depth:int = None,
-            cache_key: str | None= None,
-    ) -> "Optional[pywinauto.application.WindowSpecification]":
-        """获取控件 - 核心查找方法
-
-        Args:
-            parent: 父控件对象，None 表示从主窗口开始查找
-            class_name: 控件类名，如 "Edit"、"Button"、"ComboBox" 等
-            title: 控件名称/标题文本，精确匹配
-            title_re: 控件名称正则表达式，用于模糊匹配
-            control_type: UIA 控件类型，如 "Button"、"Edit"、"ComboBox" 等
-            auto_id: 控件的自动化 ID 属性
-            found_index: 如果有多个控件匹配条件，指定返回第几个控件，从0开始
-            depth: 查找深度，默认为1，表示只查找第一层子控件，如果为2，表示查找第二层子控件，以此类推
-            cache_key: 缓存键，用于缓存控件对象，避免重复查找，缓存非常有效，比如买入操作，第一次要8s，但之后只要4s，能否启用缓存必须看控件在整个软件启动期间是否可以一直存活，不要缓存什么弹窗之类！！！
-
-        Returns:
-            pywinauto.application.WindowSpecification: 返回控件
-        """
-        # 获取父控件
-        if parent is None:
-            parent = self.get_main_window()
-            if not parent:
-                return None
-
-        # 构建查找参数
-        kwargs = {}
-        if class_name:
-            kwargs['class_name'] = class_name
-        if title:
-            kwargs['title'] = title
-        if title_re:
-            kwargs['title_re'] = title_re
-        if control_type:
-            kwargs['control_type'] = control_type
-        if auto_id:
-            kwargs['auto_id'] = auto_id
-        if found_index:
-            kwargs['found_index'] = found_index
-        if depth:
-            kwargs['depth'] = depth
-
-        if CONTROL_WRAPPER_CACHE.get(cache_key):
-            return CONTROL_WRAPPER_CACHE.get(cache_key)
-
-        try:
-            control = parent.child_window(**kwargs)
-            if cache_key:
-                CONTROL_WRAPPER_CACHE[cache_key] = control.wrapper_object()
-            return control
-        except Exception as e:
-            self.logger.error(
-                "控件查找失败",
-                parent=parent,
-                class_name=class_name,
-                title=title,
-                title_re=title_re,
-                control_type=control_type,
-                auto_id=auto_id,
-                found_index=found_index,
-                error=str(e)
-            )
-            return None
 
     def ocr_captcha(self, control):
         """根据控件获取OCR验证码结果"""
