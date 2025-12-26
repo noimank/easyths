@@ -31,7 +31,6 @@ class TonghuashunAutomator:
         self.main_window = None
         self.main_window_wrapper_object = None
         self._connected = False
-        self._logged_in = False
         self.logger = structlog.get_logger(__name__)
 
     def connect(self) -> bool:
@@ -64,7 +63,6 @@ class TonghuashunAutomator:
     def disconnect(self) -> None:
         """断开连接"""
         self._connected = False
-        self._logged_in = False
         self.main_window = None
         self.app = None
         self.logger.info("已断开同花顺连接")
@@ -73,29 +71,5 @@ class TonghuashunAutomator:
         """检查是否已连接"""
         return self._connected and self.app is not None
 
-    def click_menu(self, menu_path: str) -> bool:
-        """点击菜单项
-
-        Args:
-            menu_path: 菜单路径，例如 "查询->持仓" 或 "File->Open"
-
-        Returns:
-            bool: 是否成功点击
-        """
-        main_window = self.main_window
-        if not main_window:
-            return False
-
-        try:
-            # 分割菜单路径
-            menu_items = [item.strip() for item in menu_path.split("->")]
-            # 构建pywinauto的菜单路径格式
-            menu_string = "->".join(menu_items)
-            # 执行菜单选择
-            main_window.menu_select(menu_string)
-            return True
-        except Exception as e:
-            self.logger.error(f"点击菜单失败: {menu_path}", error=str(e))
-            return False
 
 

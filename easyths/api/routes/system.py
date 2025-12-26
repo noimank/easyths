@@ -31,7 +31,6 @@ async def health_check(
             "timestamp": datetime.now().isoformat(),
             "components": {
                 "automator": "connected" if is_connected else "disconnected",
-                "logged_in": automator._logged_in if is_connected else False,
                 "plugins": {
                     "loaded": len(operations)
                 }
@@ -57,7 +56,6 @@ async def get_system_status(
             "timestamp": datetime.now().isoformat(),
             "automator": {
                 "connected": is_connected,
-                "logged_in": automator._logged_in if is_connected else False,
                 "app_path": automator.app_path,
                 "backend": "win32"
             },
