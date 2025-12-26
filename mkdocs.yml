@@ -7,7 +7,7 @@ repo_url: https://github.com/noimank/easyths
 repo_name: noimank/easyths
 
 # Copyright
-copyright: Copyright &copy; 2024 noimank
+copyright: Copyright &copy; 2025 noimank
 
 # Theme configuration
 theme:
@@ -87,11 +87,10 @@ nav:
       - 快速开始: getting-started/index.md
       - 安装: getting-started/installation.md
       - 同花顺客户端配置: getting-started/ths-client.md
-      - 配置: getting-started/configuration.md
-  - 用户指南:
-      - 基础用法: guide/basic-usage.md
-      - API 服务: guide/api.md
-      - 常见问题: guide/faq.md
+      - Docker 部署: getting-started/docker-deployment.md
+      - 基础用法: getting-started/basic-usage.md
+      - API 服务: getting-started/api.md
+      - 常见问题: getting-started/faq.md
   - 开发:
       - 开发指南: development/index.md
       - 贡献指南: development/contributing.md
@@ -108,3 +107,7 @@ extra_css:
 
 extra_javascript:
   - javascripts/extra.js
+
+watch:
+    - mkdocs.yml
+    - docs/

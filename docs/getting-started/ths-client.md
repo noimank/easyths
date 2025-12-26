@@ -4,9 +4,14 @@
 
 ## 下载同花顺客户端
 
-1. 访问 [同花顺官网](https://www.10jqka.com.cn/)
+> **下载地址**
+>
+> - [同花顺官网 - 同花顺远航版下载](https://download.10jqka.com.cn/)
+> - [同花顺官网 - 同花顺标准版下载](https://download.10jqka.com.cn/)
+
+1. 访问上述下载地址
 2. 下载并安装**同花顺远航版**或**同花顺标准版**
-3. 建议版本：10.4 或更高版本
+3. 建议版本：11.4 或更高版本
 
 ## 启动交易客户端
 
@@ -21,6 +26,20 @@ EasyTHS 需要同花顺交易客户端保持运行状态。
 2. **方式二：通过开始菜单**
    - 点击 `开始` -> `同花顺` -> `网上股票交易系统`
 
+## 交易客户端主界面
+
+同花顺交易客户端的主界面如下所示：
+
+![同花顺交易客户端主界面](../images/同花顺交易客户端主界面.png)
+
+> **重要提示**
+>
+> 使用 EasyTHS 前，请务必为交易客户端**开启新版页面**：
+>
+> - 在交易窗口中，点击工具栏上的"新版"按钮或设置选项
+> - 确保界面显示为新版交易界面（通常具有更现代的 UI 风格）
+> - 新版页面兼容性更好，能够确保 EasyTHS 正常工作
+
 ## 打开交易窗口
 
 登录同花顺后，需要打开交易窗口（自动委托程序）。
@@ -28,9 +47,9 @@ EasyTHS 需要同花顺交易客户端保持运行状态。
 1. 在同花顺主界面顶部菜单栏，点击 `工具` -> `自动委托程序`
 2. 或使用快捷键 `F12`
 
-## 交易窗口配置
+## 同花顺下单软件配置
 
-打开交易窗口后，需要进行一些基础配置以确保 EasyTHS 能够正常工作。
+打开同花顺下单软件窗口后，需要进行一些基础配置以确保 EasyTHS 能够正常工作。
 
 ### 界面设置
 
@@ -61,53 +80,7 @@ EasyTHS 需要同花顺交易客户端保持运行状态。
 
 ![系统设置](../images/系统设置.png)
 
-系统级配置建议：
-- 开启自动重连功能
-- 配置超时时间
-- 启用交易确认提示
 
-## 配置交易程序路径
-
-### 自定义路径配置
-
-创建配置文件 `config/config.toml`：
-
-```toml
-[trading]
-# 根据实际安装路径修改
-app_path = "D:/同花顺远航版/transaction/xiadan.exe"
-```
-
-或通过环境变量配置：
-
-```bash
-# Windows PowerShell
-$env:TRADING_APP_PATH = "D:/同花顺远航版/transaction/xiadan.exe"
-
-# Windows CMD
-set TRADING_APP_PATH=D:/同花顺远航版/transaction/xiadan.exe
-```
-
-## 验证配置
-
-运行以下命令验证配置是否正确：
-
-```bash
-# 启动 EasyTHS
-easyths
-
-# 发送测试请求
-curl http://localhost:7648/api/v1/system/status
-```
-
-成功连接后会返回：
-
-```json
-{
-  "status": "ok",
-  "connected": true
-}
-```
 
 ## 常见问题
 
@@ -125,4 +98,4 @@ curl http://localhost:7648/api/v1/system/status
 
 ## 下一步
 
-[系统配置](configuration.md)
+[Docker 部署](docker-deployment.md) | [基础用法](basic-usage.md)

@@ -1,136 +1,105 @@
-# QuantTrader - 同花顺交易自动化系统
+<p align="center">
+  <a href="https://pypi.org/project/easyths/"><img src="https://img.shields.io/pypi/v/easyths?logo=pypi&logoColor=white&label=PyPI&color=blue" alt="PyPI Version"></a>
+  <a href="https://github.com/noimank/easyths"><img src="https://img.shields.io/badge/python-3.12+-blue.svg?logo=python&logoColor=white" alt="Python Version"></a>
+  <a href="https://github.com/noimank/easyths/blob/main/LICENSE"><img src="https://img.shields.io/github/license/noimank/easyths?color=green" alt="License"></a>
+  <a href="https://github.com/noimank/easyths/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/noimank/easyths/ci.yml?branch=main&label=CI" alt="CI"></a>
+</p>
 
-基于pywinauto的同花顺交易软件自动化项目，提供RESTful API接口，确保操作顺序和避免高并发下的操作序列错误。
+<p align="center">
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115+-green?logo=fastapi" alt="FastAPI"></a>
+  <a href="https://pywinauto.readthedocs.io/"><img src="https://img.shields.io/badge/pywinauto-0.6.8+-orange?logoColor=white" alt="pywinauto"></a>
+  <a href="https://pydantic.dev/"><img src="https://img.shields.io/badge/Pydantic-2.10+-red?logo=pydantic" alt="Pydantic"></a>
+  <a href="https://www.uvicorn.org/"><img src="https://img.shields.io/badge/Uvicorn-0.32+-teal?logo=uvicorn&logoColor=white" alt="Uvicorn"></a>
+</p>
 
-## 🚀 项目特点
+# EasyTHS - 同花顺交易自动化系统
 
-- **操作串行化**：所有GUI操作串行执行，避免并发冲突
-- **事务一致性**：确保操作的原子性和一致性
-- **插件化架构**：高度可扩展，便于添加新的自动化操作
+基于 pywinauto 的同花顺交易软件自动化项目，提供 RESTful API 接口，通过操作队列确保高并发下的操作顺序和一致性。
+
+## 项目特点
+
+- **操作串行化**：所有 GUI 操作串行执行，避免并发冲突
+- **队列管理**：支持优先级的任务队列，确保操作顺序
 - **错误恢复**：完整的错误处理和恢复机制
 - **实时监控**：详细的日志记录和状态监控
-- **RESTful API**：完整的HTTP接口，支持各种语言集成
+- **RESTful API**：完整的 HTTP 接口，支持各种语言集成
 
-## 📚 文档
+## 文档
 
-- [📖 快速入门](docs/快速入门.md) - 快速搭建和使用指南
-- [🔌 API接口文档](docs/API接口文档.md) - 完整的REST API接口说明
-- [🛠️ 开发指南](docs/开发指南.md) - 系统架构和扩展开发方法
-- [⚙️ 同花顺客户端设置](docs/同花顺客户端设置.md) - 必要的客户端配置说明
+详细文档请访问：[https://noimank.github.io/easyths/](https://noimank.github.io/easyths/)
 
-## ⚡ 快速开始
+- [安装指南](https://noimank.github.io/easyths/getting-started/installation/)
+- [基础用法](https://noimank.github.io/easyths/guide/basic-usage/)
+- [客户端设置](https://noimank.github.io/easyths/getting-started/ths-client/)
+- [API 参考](https://noimank.github.io/easyths/api/)
 
-> 详细安装和配置步骤请查看 [快速入门指南](docs/快速入门.md)
+## 快速开始
 
-### 1. 环境准备
+### 环境要求
+
 - Windows 10/11
-- Python 3.8+
+- Python 3.12+
 - 同花顺交易客户端
 
-### 2. 安装依赖
+### 安装
 
 ```bash
-# 克隆项目
-git clone https://github.com/your-repo/QuantTrader.git
-cd QuantTrader
+# 使用 uvx 一键运行（推荐）
+uvx easyths
 
-# 安装依赖
-uv sync
+# 或使用 pip 安装
+pip install easyths
+easyths
 ```
 
-### 3. 配置系统
+服务默认运行在 `http://127.0.0.1:7648`
 
-复制并编辑配置文件：
-```bash
-cp .env.example .env
-# 编辑 .env 文件，配置同花顺路径和API密钥
-```
+更多安装方式请参考 [安装指南](https://noimank.github.io/easyths/getting-started/installation/)。
 
-### 4. 启动服务
+## 支持的操作
+
+| 操作 | 说明 |
+|------|------|
+| **买入 (buy)** | 股票买入委托 |
+| **卖出 (sell)** | 股票卖出委托 |
+| **持仓查询 (holding_query)** | 查询当前持仓 |
+| **资金查询 (funds_query)** | 查询账户资金 |
+| **委托查询 (order_query)** | 查询委托记录 |
+| **撤单 (order_cancel)** | 撤销委托 |
+| **历史成交查询 (historical_commission_query)** | 查询历史成交 |
+
+详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/api/)。
+
+## 快速示例
 
 ```bash
 # 启动服务
-uv run python -m uvicorn src.main:app --reload
+uvx easyths
 
-# 或直接运行
-uv run python src/main.py
-```
-
-服务启动后，访问：
-- API文档：http://localhost:7648/docs
-- 健康检查：http://localhost:7648/api/v1/system/health
-
-## 💻 主要功能
-
-### 交易操作
-- **买入/卖出股票** - 自动执行买卖委托
-- **资金查询** - 查询账户资金信息
-- **持仓查询** - 获取当前股票持仓
-- **批量操作** - 支持顺序或并行执行多个交易
-
-### API 接口
-> 完整的API接口文档请参考 [API接口文档](docs/API接口文档.md)
-
-**系统接口**
-- `GET /api/v1/system/health` - 系统健康检查
-- `GET /api/v1/system/status` - 获取系统状态
-
-**交易接口**
-- `POST /api/v1/operations/buy` - 买入股票
-- `POST /api/v1/operations/sell` - 卖出股票
-- `POST /api/v1/operations/funds_query` - 查询资金
-- `POST /api/v1/operations/holding_query` - 查询持仓
-
-**操作管理**
-- `GET /api/v1/operations/{id}/status` - 查询操作状态
-- `POST /api/v1/operations/batch` - 批量执行操作
-
-### 快速示例
-
-```bash
-# 1. 买入股票（需要认证）
-curl -X POST http://localhost:7648/api/v1/operations/buy \
-  -H "Authorization: Bearer your_api_key" \
+# 买入股票
+curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \
   -H "Content-Type: application/json" \
   -d '{"params": {"stock_code": "000001", "price": 10.50, "quantity": 100}}'
 
-# 2. 查询资金
-curl -X POST http://localhost:7648/api/v1/operations/funds_query \
-  -H "Authorization: Bearer your_api_key" \
+# 查询持仓
+curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
   -H "Content-Type: application/json" \
-  -d '{"params": {"query_type": "all"}}'
+  -d '{}'
 ```
 
-## ⚙️ 系统要求
+更多使用示例请参考 [基础用法](https://noimank.github.io/easyths/guide/basic-usage/)。
 
-- **操作系统**: Windows 10/11（必须，pywinauto要求）
-- **Python**: 3.8+
+## 系统要求
+
+- **操作系统**: Windows 10/11（必须，pywinauto 要求）
+- **Python**: 3.12+
 - **交易软件**: 同花顺交易客户端
 
-## 🏗️ 项目结构
+## 同花顺客户端设置
 
-```
-QuantTrader/
-├── src/
-│   ├── api/                    # REST API层
-│   ├── automation/             # 自动化层
-│   │   └── operations/         # 交易操作插件
-│   ├── core/                   # 核心组件（队列、OCR等）
-│   ├── models/                 # 数据模型
-│   └── utils/                  # 工具函数
-├── docs/                       # 文档
-├── logs/                       # 日志目录
-├── .env.example               # 配置模板
-├── pyproject.toml              # 项目配置
-└── src/main.py                # 程序入口
-```
+> 详细的配置步骤请查看 [客户端设置指南](https://noimank.github.io/easyths/getting-started/ths-client/)
 
-## ⚠️ 重要提示
-
-### 同花顺客户端设置
-> 详细的配置步骤请查看 [同花顺客户端设置指南](docs/同花顺客户端设置.md)
-
-**必须完成的设置**：
+必须完成的设置：
 1. 关闭悬浮工具栏
 2. 关闭所有交易确认对话框
 3. 开启"切换页面清空代码"
@@ -138,24 +107,22 @@ QuantTrader/
 
 这些设置对于自动化交易系统的正常运行至关重要，请务必按照文档完成配置。
 
-### 安全须知
+## 安全须知
+
 - 本系统仅供学习和研究使用
 - 自动化交易存在风险，请谨慎使用
 - 建议先在模拟环境测试
-- 请保护好API密钥安全
+- 请保护好 API 密钥安全
 
-## 🤝 贡献
+## 许可证
 
-欢迎提交Issue和Pull Request！详见[开发指南](docs/开发指南.md)。
+MIT License
 
-## 📄 许可证
-
-本项目仅供学习和研究使用，请勿用于实际交易。
-
-## 📞 联系方式
+## 联系方式
 
 - **作者**: noimank（康康）
 - **邮箱**: noimank@163.com
+- **仓库**: [https://github.com/noimank/easyths](https://github.com/noimank/easyths)
 
 ---
 

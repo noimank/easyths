@@ -12,4 +12,6 @@
 
 - [安装指南](installation.md) - 如何安装 EasyTHS
 - [同花顺客户端配置](ths-client.md) - 配置同花顺交易客户端
-- [系统配置](configuration.md) - 配置系统参数
+- [Docker 部署](docker-deployment.md) - 使用 Docker 容器部署
+- [基础用法](basic-usage.md) - 学习如何使用 EasyTHS
+- [API 服务](api.md) - API 接口文档

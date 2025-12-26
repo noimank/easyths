@@ -9,3 +9,28 @@
   --md-primary-fg-color: #6366f1;
   --md-primary-fg-color--dark: #4f46e5;
 }
+
+/* 右侧目录层级编号 */
+.md-nav--secondary {
+  counter-reset: toc-h2;
+}
+
+.md-nav--secondary > .md-nav__list > .md-nav__item {
+  counter-increment: toc-h2;
+}
+
+.md-nav--secondary > .md-nav__list > .md-nav__item > .md-nav__link::before {
+  content: counter(toc-h2) ". ";
+}
+
+.md-nav--secondary .md-nav__item--nested .md-nav__list {
+  counter-reset: toc-h3;
+}
+
+.md-nav--secondary .md-nav__item--nested .md-nav__list > .md-nav__item {
+  counter-increment: toc-h3;
+}
+
+.md-nav--secondary .md-nav__item--nested .md-nav__list > .md-nav__item > .md-nav__link::before {
+  content: counter(toc-h2) "." counter(toc-h3) " ";
+}

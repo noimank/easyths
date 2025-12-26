@@ -10,20 +10,36 @@ EasyTHS 提供基于 FastAPI 的 RESTful API 接口，支持自动化交易操�
 
 ## 认证
 
-API 支持 API Key 认证。在请求头中添加：
+API 支持 Bearer Token 认证。在请求头中添加：
 
 ```http
-X-API-Key: your-api-key
+Authorization: Bearer your-api-key
 ```
 
-或在配置文件 `config/config.toml` 中设置：
+### 配置 API Key
+
+可以通过以下两种方式配置 API Key：
+
+**方式一：环境变量**
+
+```bash
+# Windows
+set API_KEY=your-secret-key
+
+# Linux/macOS
+export API_KEY=your-secret-key
+```
+
+**方式二：配置文件**
+
+在 `config/config.toml` 中设置：
 
 ```toml
 [api]
 key = "your-secret-key"
 ```
 
-如果未配置 API Key，则无需认证。
+> **注意**：如果未配置 API Key，则无需认证即可访问所有接口。出于安全考虑，建议在生产环境中务必配置 API Key。
 
 ---
 
@@ -461,10 +477,16 @@ POST /api/v1/operations/historical_commission_query
 import requests
 
 base_url = "http://127.0.0.1:7648"
+api_key = "your-api-key"  # 如果配置了 API Key
+
+headers = {
+    "Authorization": f"Bearer {api_key}"  # 如果配置了 API Key
+}
 
 # 买入股票
 response = requests.post(
     f"{base_url}/api/v1/operations/buy",
+    headers=headers,  # 如果配置了 API Key
     json={
         "params": {
             "stock_code": "600000",
@@ -477,12 +499,16 @@ response = requests.post(
 operation_id = response.json()["data"]["operation_id"]
 
 # 查询操作状态
-status = requests.get(f"{base_url}/api/v1/operations/{operation_id}/status")
+status = requests.get(
+    f"{base_url}/api/v1/operations/{operation_id}/status",
+    headers=headers  # 如果配置了 API Key
+)
 print(status.json())
 
 # 查询持仓
 response = requests.post(
     f"{base_url}/api/v1/operations/holding_query",
+    headers=headers,  # 如果配置了 API Key
     json={"params": {"return_type": "json"}}
 )
 print(response.json())
@@ -494,8 +520,9 @@ print(response.json())
 # 健康检查
 curl http://127.0.0.1:7648/api/v1/system/health
 
-# 买入股票
+# 买入股票（带认证）
 curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \
+  -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "params": {
@@ -505,8 +532,9 @@ curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \
     }
   }'
 
-# 查询持仓
+# 查询持仓（带认证）
 curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
+  -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"params": {"return_type": "json"}}'
 ```
