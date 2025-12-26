@@ -43,9 +43,6 @@ dependencies = [
     # Windows GUI自动化
     "pywinauto>=0.6.8",
     "pywin32>=308",
-    # 异步任务队列
-    "redis>=5.2.0",
-    "aioredis>=2.0.1",
     # 日志和监控
     "structlog>=24.4.0",
     "colorama>=0.4.6",
