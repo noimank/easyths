@@ -32,7 +32,9 @@ export API_KEY=your-secret-key
 
 **方式二：配置文件**
 
-在 `config/config.toml` 中设置：
+在 `config.toml` 中设置：
+
+详细的配置文件参考：[基础用法](basic-usage.md) 
 
 ```toml
 [api]
@@ -142,6 +144,7 @@ POST /api/v1/operations/{operation_name}
 ```
 
 **路径参数**:
+
 - `operation_name`: 操作名称，见下文[可用操作](#available-operations)
 
 **请求体**:
@@ -155,7 +158,9 @@ POST /api/v1/operations/{operation_name}
 ```
 
 **参数说明**:
+
 - `params`: 操作参数对象，具体参数见[可用操作](#available-operations)
+
 - `priority`: 优先级 (0-10)，数值越大优先级越高，默认 0
 
 **响应示例**:
@@ -205,9 +210,13 @@ GET /api/v1/operations/{operation_id}/status
 ```
 
 **状态值**:
+
 - `queued`: 排队中
+
 - `running`: 执行中
+
 - `success`: 成功
+
 - `failed`: 失败
 
 ### 获取操作结果
