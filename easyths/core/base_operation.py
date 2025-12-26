@@ -104,18 +104,6 @@ class BaseOperation(ABC):
         """
         return result
 
-    def rollback(self, params: Dict[str, Any]) -> bool:
-        """回滚操作（可选实现）
-
-        Args:
-            params: 操作参数
-
-        Returns:
-            bool: 回滚是否成功
-        """
-        self.logger.info(f"操作 {self.metadata.operation_name} 不支持回滚")
-        return False
-
     def run(self, params: Dict[str, Any]) -> OperationResult:
         """运行操作的完整流程 - 同步方法
 
