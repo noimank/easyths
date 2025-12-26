@@ -148,7 +148,7 @@ MIT License
 
 ## 联系方式
 
-- **作者**: noimank（康康）
+- **作者**: noimank
 - **邮箱**: noimank@163.com
 - **仓库**: [https://github.com/noimank/easyths](https://github.com/noimank/easyths)
 
