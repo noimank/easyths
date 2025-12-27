@@ -71,7 +71,7 @@ easyths
 | **国债逆回购购买 (reverse_repo_buy)** | 购买国债逆回购 | 1.8~2.2 |
 | **国债逆回购年化利率查询 (reverse_repo_query)** | 查询国债逆回购年化利率 | 0.9~1.3 |
 
-详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/api/)。
+详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/getting-started/api/)。
 
 ## 快速示例
 
