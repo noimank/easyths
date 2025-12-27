@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.models.operations import OperationResult, PluginMetadata
 from easyths.utils import captcha_ocr_server
-import re
 logger = structlog.get_logger(__name__)
 
 
@@ -212,6 +211,10 @@ class BaseOperation(ABC):
             logger.error(f"未找到主菜单{main_option}")
             raise Exception(f"未找到主菜单{main_option}")
         # 展开主菜单
+        if main_option in ["国债逆回购","双向委托"]:
+            main_option_control.select()
+            # 没有下级子菜单，也用不了expand()方法
+            return
         main_option_control.expand()
         # 确保可见,实际测试不需要
         # self.sleep(0.05)
@@ -309,6 +312,8 @@ class BaseOperation(ABC):
                 return "失败提示", children
             elif "一键打新" in content:
                 return "一键打新提示框", children
+            elif "国债逆回购" in content:
+                return "国债逆回购窗口", children
             else:
                 continue
 
@@ -357,6 +362,9 @@ class BaseOperation(ABC):
             elif pop_dialog_title == "一键打新提示框":
                 # 点击窗口右上角的 X 触发关闭
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
+            elif pop_dialog_title == "国债逆回购窗口":
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
+
             #条件单触发提醒
             elif pop_dialog_title == 'CDlgTriggeredConfitionTip':
                 pop_control.close()
@@ -417,8 +425,8 @@ class BaseOperation(ABC):
             # 逐项比对（如果参数不为 None 且不匹配，则跳过）
             if auto_id and info.automation_id != auto_id:
                 continue
-            # title_re 需要用到 re.match
-            if title_re and not re.match(title_re, info.name):
+            # title_re 需要用到 re.match， 包含就是匹配
+            if title_re and not (title_re in info.name):
                 continue
             # 匹配成功，立刻返回第一个
             return child
