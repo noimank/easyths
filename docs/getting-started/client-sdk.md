@@ -8,45 +8,41 @@ Client SDK 包含在 `easyths` 包中。根据您的使用场景，可以选择�
 
 ### 仅安装客户端 SDK（推荐用于远程调用）
 
-如果您只需要使用 `TradeClient` 连接到已运行的服务端，可以仅安装客户端依赖，这样可以大幅减少依赖包的数量：
+如果您只需要使用 `TradeClient` 连接到已运行的服务端，可以仅安装基础包：
 
 ```bash
-# 使用 uv 安装（推荐）
-uv add "easyths[client]"
+# 使用 pip 安装（推荐）
+pip install easyths
 
-# 或使用 pip
-pip install "easyths[client]"
+# 或使用 uv
+uv add easyths
 ```
 
 **客户端模式仅依赖**：
 
 - `httpx` - HTTP 客户端
-
 - `pydantic` - 数据验证
 
-### 安装完整包（包含服务端）
+### 安装完整服务端（包含客户端）
 
-如果您需要在本地运行完整的服务端（包括自动化交易功能），需要安装完整包：
+如果您需要在本地运行完整的服务端（包括自动化交易功能），需要安装服务端版本：
 
 ```bash
-# 使用 uv 安装（推荐）
-uv add easyths
+# 使用 pip 安装（推荐）
+pip install easyths[server]
 
-# 或使用 pip
-pip install easyths
+# 或使用 uv
+uv add easyths[server]
 ```
 
-**完整包包含**：
+**完整服务端包含**：
 
 - 所有客户端依赖
-
 - FastAPI 服务端
-
 - pywinauto（Windows GUI 自动化）
-
 - 其他服务端依赖（OCR、图像处理等）
 
-> **注意**：完整包仅支持 Windows 系统。客户端 SDK 可以在任何系统上运行。
+> **注意**：完整服务端仅支持 Windows 系统。客户端 SDK 可以在任何系统上运行。
 
 ## 快速开始
 

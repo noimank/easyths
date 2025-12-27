@@ -17,7 +17,7 @@ index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project]
 name = "easyths"
-version = "1.2.1"
+version = "1.3.0"
 description = "同花顺交易自动化系统"
 authors = [
     { name = "noimank", email = "noimank@163.com" }
@@ -34,11 +34,16 @@ classifiers = [
 keywords = ["trading", "automation", "tonghuashun", "quantitative"]
 
 dependencies = [
-    # 完整功能依赖（默认安装所有）
-    # 核心依赖
+    # 客户端最小依赖（跨平台）
+    "pydantic>=2.10.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+# 服务端 - Windows 完整功能
+server = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
-    "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
     # Windows GUI自动化
     "pywinauto>=0.6.8",
@@ -51,7 +56,6 @@ dependencies = [
     "python-dotenv>=1.0.1",
     # 工具库
     "python-multipart>=0.0.12",
-    "httpx>=0.28.0",
     "aiofiles>=24.1.0",
     "pillow>=12.0.0",
     "pandas>=2.3.3",
@@ -64,15 +68,9 @@ dependencies = [
     "psutil>=7.1.3",
 ]
 
-[project.optional-dependencies]
-# 仅客户端依赖
-client = [
-    "httpx>=0.28.0",
-    "pydantic>=2.10.0",
-]
-
-[dependency-groups]
+# 开发依赖
 dev = [
+    "easyths[server]",
     "black>=24.10.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",

@@ -5,7 +5,7 @@
 ### 方式一：使用 uvx 一键运行（推荐）
 
 ```bash
-uvx easyths
+uvx easyths[server]
 ```
 
 > **提示**：`uvx` 是 uv 工具提供的命令，可以自动下载并运行 Python 包，无需手动安装。
@@ -13,8 +13,8 @@ uvx easyths
 ### 方式二：安装后运行
 
 ```bash
-# 先安装
-pip install easyths
+# 先安装服务端
+pip install easyths[server]
 
 # 运行
 easyths
@@ -44,6 +44,14 @@ python -m easyths.main
 easyths --help
 ```
 
+### 查看版本
+
+```bash
+easyths --version
+# 或
+easyths -v
+```
+
 ### 完整选项列表
 
 | 选项 | 说明 |
@@ -51,25 +59,29 @@ easyths --help
 | `--exe_path <path>` | 指定同花顺交易程序路径（优先级高于配置文件） |
 | `--config <file>` | 指定 TOML 配置文件路径 |
 | `--get_config` | 将示例配置文件复制到当前目录 |
+| `--version, -v` | 显示版本信息 |
 | `--help` | 显示帮助信息 |
 
 ### 使用示例
 
 ```bash
 # 使用默认配置启动
-uvx easyths
+uvx easyths[server]
 
 # 使用自定义配置文件启动
-uvx easyths --config my_config.toml
+uvx easyths[server] --config my_config.toml
 
 # 指定交易程序路径启动（优先级最高）
-uvx easyths --exe_path "C:/同花顺/xiadan.exe"
+uvx easyths[server] --exe_path "C:/同花顺/xiadan.exe"
+
+# 查看版本
+uvx easyths[server] --version
 
 # 生成示例配置文件
-uvx easyths --get_config
+uvx easyths[server] --get_config
 
 # 组合使用
-uvx easyths --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
+uvx easyths[server] --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
 ```
 
 ## 配置文件
@@ -175,7 +187,7 @@ file = "logs/trading.log"  # 日志文件路径
 使用以下命令生成示例配置文件到当前目录：
 
 ```bash
-uvx easyths --get_config
+uvx easyths[server] --get_config
 ```
 
 ## 更多内容

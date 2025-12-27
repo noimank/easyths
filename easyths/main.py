@@ -29,7 +29,7 @@ from easyths.api.app import TradingAPIApp
 PROJECT_NAME = "EasyTHS"
 PROJECT_AUTHOR = "noimank"
 PROJECT_EMAIL = "noimank@163.com"
-PROJECT_VERSION = "1.2.1"
+PROJECT_VERSION = "1.3.0"
 PROJECT_REPO = "https://github.com/noimank/easyths"
 PROJECT_DOCS = "https://noimank.github.io/easyths/"
 PROJECT_ISSUES = "https://github.com/noimank/easyths/issues"
@@ -73,30 +73,34 @@ def print_help():
 同花顺交易自动化系统 (EasyTHS)
 
 用法:
-    uvx easyths [选项]
+    uvx easyths[server] [选项]
     python main.py [选项]
 
 选项:
     --exe_path <path>      指定同花顺交易程序路径（优先级高于配置文件）
     --config <file>        指定 TOML 配置文件路径
     --get_config           将示例配置文件复制到当前目录
+    --version, -v          显示版本信息
     --help                 显示此帮助信息
 
 示例:
     # 使用默认配置启动
-    uvx easyths
+    uvx easyths[server]
 
     # 使用自定义配置文件启动
-    uvx easyths --config my_config.toml
+    uvx easyths[server] --config my_config.toml
 
     # 指定交易程序路径启动（优先级最高）
-    uvx easyths --exe_path "C:/同花顺/xiadan.exe"
+    uvx easyths[server] --exe_path "C:/同花顺/xiadan.exe"
+
+    # 查看版本
+    uvx easyths[server] --version
 
     # 生成示例配置文件
-    uvx easyths --get_config
+    uvx easyths[server] --get_config
 
     # 组合使用
-    uvx easyths --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
+    uvx easyths[server] --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
 
 配置文件:
     配置文件采用 TOML 格式，包含以下部分：
@@ -162,6 +166,12 @@ def parse_args():
         "--help",
         action="store_true",
         help="显示帮助信息"
+    )
+    parser.add_argument(
+        "--version",
+        "-v",
+        action="store_true",
+        help="显示版本信息"
     )
 
     return parser.parse_args()
@@ -253,6 +263,11 @@ def main():
     # 处理 --help 参数
     if args.help:
         print_help()
+        return
+
+    # 处理 --version 参数
+    if args.version:
+        print(f"{PROJECT_NAME} v{PROJECT_VERSION}")
         return
 
     # 处理 --get_config 参数

@@ -251,8 +251,8 @@ easyths/
 > 否则 EasyTHS 将无法正常工作。
 
 ```bash
-# 安装
-pip install easyths
+# 安装服务端
+pip install easyths[server]
 
 # 启动服务
 easyths
@@ -267,6 +267,7 @@ EasyTHS 支持以下命令行参数：
 | `--exe_path <path>` | 指定同花顺交易程序路径（优先级高于配置文件） |
 | `--config <file>` | 指定 TOML 配置文件路径 |
 | `--get_config` | 将示例配置文件复制到当前目录 |
+| `--version, -v` | 显示版本信息 |
 | `--help` | 显示帮助信息 |
 
 ### 使用示例

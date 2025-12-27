@@ -45,11 +45,11 @@
 ### 安装
 
 ```bash
-# 使用 uvx 一键运行（推荐）
-uvx easyths
+# 使用 uvx 一键运行服务端（推荐）
+uvx easyths[server]
 
-# 或使用 pip 安装
-pip install easyths
+# 或使用 pip 安装服务端
+pip install easyths[server]
 easyths
 ```
 
@@ -82,8 +82,8 @@ easyths
 ### 使用 Python SDK（推荐）
 
 ```bash
-# 仅安装客户端 SDK（轻量级）
-pip install "easyths[client]"
+# 仅安装客户端 SDK（轻量级，跨平台）
+pip install easyths
 ```
 
 ```python
@@ -108,7 +108,7 @@ with TradeClient(host="127.0.0.1", port=7648, api_key="your-api-key") as client:
 
 ```bash
 # 启动服务
-uvx easyths
+uvx easyths[server]
 
 # 买入股票
 curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \

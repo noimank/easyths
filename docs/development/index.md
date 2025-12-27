@@ -7,8 +7,8 @@
 git clone https://github.com/noimank/easyths.git
 cd easyths
 
-# 安装开发依赖
-uv sync --group dev
+# 安装开发依赖（包含服务端依赖和开发工具）
+uv sync --all-extras
 
 # 运行测试
 pytest

@@ -151,8 +151,8 @@ Set-WinUserLanguageList $List -Force
 打开 PowerShell 或命令提示符：
 
 ```powershell
-# 使用 pip 安装
-pip install easyths
+# 使用 pip 安装服务端
+pip install easyths[server]
 
 # 验证安装
 easyths --version
