@@ -160,15 +160,18 @@ class StopLossProfitOperation(BaseOperation):
                 document_panel.children(control_type="Edit")[0].set_text(stock_code[:5])
                 self.sleep(0.3)
                 has_order = False
-                # 获取筛选出来的股票持仓
-                stock_list_controls = document_panel.children(control_type="List")[0].children()
-                for stock_cc in stock_list_controls:
-                    iitem = stock_cc.children(control_type="Text")[0]
-                    item_text = iitem.window_text()
-                    if stock_code in item_text:
-                        iitem.click_input()
-                        has_order = True
-                        break
+                try:
+                    # 获取筛选出来的股票持仓
+                    stock_list_controls = document_panel.children(control_type="List")[0].children()
+                    for stock_cc in stock_list_controls:
+                        iitem = stock_cc.children(control_type="Text")[0]
+                        item_text = iitem.window_text()
+                        if stock_code in item_text:
+                            iitem.click_input()
+                            has_order = True
+                            break
+                except IndexError as e:
+                    self.logger.warn("没有相应的股票持仓记录，无法设置止盈止损", error=str(e))
 
                 # 处理没有对应持仓股票的情况，因为没有就对应持仓就不能设置止盈止损
                 if not has_order:
@@ -228,7 +231,7 @@ class StopLossProfitOperation(BaseOperation):
                     expire_list_control.type_keys("{ENTER}")
                     self.sleep(0.2)
                     # 提交确认
-                    # self.get_control_with_children(document_panel, control_type="Button", title="提交确认").click()
+                    self.get_control_with_children(document_panel, control_type="Button", title="提交确认").click()
                     # 关闭可能出现的成功提示弹窗
                     # self.sleep(0.2)
                     # self.get_pop_dialog()[1].type_keys("{ESC}", pause=0.15)
