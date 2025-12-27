@@ -137,12 +137,17 @@ control = self.get_control_with_children(
 ### 支持的筛选字段
 
 UIA 后端支持的筛选字段：
+
 - `control_type` - 控件类型（Window, Button, Edit, Text, Pane 等）
+
 - `class_name` - 控件类名
+
 - `title` - 控件标题
 
 **手动筛选的字段**：
+
 - `auto_id` - 自动化 ID（UIA 不直接支持，通过手动筛选实现）
+
 - `title_re` - 标题正则表达式（手动筛选）
 
 > **注意**：`control_id` 字段在 UIA 后端中**不支持**，请使用 `auto_id`。
