@@ -378,6 +378,107 @@ class TradeClient:
         operation_id = self.execute_operation("order_cancel", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
+    def condition_buy(
+        self,
+        stock_code: str,
+        target_price: float,
+        quantity: int,
+        expire_days: int = 30,
+        timeout: float = 60.0
+    ) -> APIResponse:
+        """
+        条件买入股票
+
+        设置条件买入单，当股价达到目标价格时自动触发买入。
+
+        Args:
+            stock_code: 股票代码（6位数字）
+            target_price: 目标价格（触发价格）
+            quantity: 买入数量（必须是100的倍数）
+            expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
+            timeout: 操作超时时间（秒）
+
+        Returns:
+            操作结果，格式为：
+            {
+                "success": True,
+                "message": "查询成功",
+                "data": {
+                    "operation_id": "...",
+                    "result": {
+                        "success": bool,
+                        "data": {...},  # 业务数据
+                        "error": None,
+                        "timestamp": str
+                    }
+                },
+                "error": None,
+                "timestamp": str
+            }
+
+        Raises:
+            TradeClientError: 连接失败、API 错误或操作超时
+
+        Examples:
+            >>> client = TradeClient(...)
+            >>> result = client.condition_buy("600000", 10.50, 100, expire_days=30)
+            >>> if result["data"]["result"]["success"]:
+            ...     print(result["data"]["result"]["data"]["message"])
+        """
+        params = {
+            "stock_code": stock_code,
+            "target_price": target_price,
+            "quantity": quantity,
+            "expire_days": expire_days
+        }
+        operation_id = self.execute_operation("condition_buy", params)
+        return self.get_operation_result(operation_id, timeout=timeout)
+
+    def stop_loss_profit(
+        self,
+        stock_code: str,
+        stop_loss_percent: float,
+        stop_profit_percent: float,
+        quantity: Optional[int] = None,
+        expire_days: int = 30,
+        timeout: float = 60.0
+    ) -> APIResponse:
+        """
+        设置止盈止损
+
+        为持仓股票设置止盈止损策略，当价格达到止盈或止损条件时自动触发卖出。
+
+        Args:
+            stock_code: 股票代码（6位数字）
+            stop_loss_percent: 止损百分比（如3表示3%）
+            stop_profit_percent: 止盈百分比（如5表示5%）
+            quantity: 卖出数量（必须是100的倍数），可选，不指定则使用全部可用持仓
+            expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
+            timeout: 操作超时时间（秒）
+
+        Returns:
+            操作结果，格式与 condition_buy() 相同
+
+        Raises:
+            TradeClientError: 连接失败、API 错误或操作超时
+
+        Examples:
+            >>> # 设置止盈止损
+            >>> result = client.stop_loss_profit("600000", 3.0, 5.0, quantity=100)
+            >>> print(result["data"]["result"]["data"]["message"])
+        """
+        params = {
+            "stock_code": stock_code,
+            "stop_loss_percent": stop_loss_percent,
+            "stop_profit_percent": stop_profit_percent,
+            "expire_days": expire_days
+        }
+        if quantity is not None:
+            params["quantity"] = quantity
+
+        operation_id = self.execute_operation("stop_loss_profit", params)
+        return self.get_operation_result(operation_id, timeout=timeout)
+
     # ==================== 查询操作便捷方法 ====================
 
     def query_holdings(
