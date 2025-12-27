@@ -459,6 +459,84 @@ class TradeClient:
         operation_id = self.execute_operation("order_query", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
+    def query_historical_commission(
+        self,
+        return_type: Literal["str", "json", "dict", "df", "markdown"] = "json",
+        timeout: float = 30.0
+    ) -> APIResponse:
+        """
+        查询历史成交
+
+        Args:
+            return_type: 结果返回类型
+            timeout: 操作超时时间（秒）
+
+        Returns:
+            操作结果，历史成交数据在 result["data"]["result"]["data"]
+
+        Examples:
+            >>> result = client.query_historical_commission()
+        """
+        params = {"return_type": return_type}
+        operation_id = self.execute_operation("historical_commission_query", params)
+        return self.get_operation_result(operation_id, timeout=timeout)
+
+    def reverse_repo_buy(
+        self,
+        market: Literal["上海", "深圳"],
+        time_range: Literal["1天期", "2天期", "3天期", "4天期", "7天期"],
+        amount: int,
+        timeout: float = 60.0
+    ) -> APIResponse:
+        """
+        购买国债逆回购
+
+        Args:
+            market: 交易市场，"上海" 或 "深圳"
+            time_range: 回购期限，"1天期"/"2天期"/"3天期"/"4天期"/"7天期"
+            amount: 出借金额（必须是1000的倍数）
+            timeout: 操作超时时间（秒）
+
+        Returns:
+            操作结果
+
+        Examples:
+            >>> # 购买上海市场1天期国债逆回购，出借10000元
+            >>> result = client.reverse_repo_buy("上海", "1天期", 10000)
+            >>> if result["data"]["result"]["success"]:
+            ...     print(result["data"]["result"]["data"]["message"])
+        """
+        params = {
+            "market": market,
+            "time_range": time_range,
+            "amount": amount
+        }
+        operation_id = self.execute_operation("reverse_repo_buy", params)
+        return self.get_operation_result(operation_id, timeout=timeout)
+
+    def query_reverse_repo(
+        self,
+        timeout: float = 30.0
+    ) -> APIResponse:
+        """
+        查询国债逆回购年化利率
+
+        Args:
+            timeout: 操作超时时间（秒）
+
+        Returns:
+            操作结果，年化利率数据在 result["data"]["result"]["data"]["reverse_repo_interest"]
+
+        Examples:
+            >>> result = client.query_reverse_repo()
+            >>> if result["data"]["result"]["success"]:
+            ...     rates = result["data"]["result"]["data"]["reverse_repo_interest"]
+            ...     for item in rates:
+            ...         print(f"{item['市场类型']} - {item['时间类型']}: {item['年化利率']}")
+        """
+        operation_id = self.execute_operation("reverse_repo_query", {})
+        return self.get_operation_result(operation_id, timeout=timeout)
+
     # ==================== 连接管理 ====================
 
     def close(self):
