@@ -231,6 +231,51 @@ else:
 
 > **注意**：止盈百分比必须大于止损百分比。quantity 参数建议指定，因为受 T+1 限制，当天买入的股票如果不指定数量无法设置止盈止损。
 
+
+### 购买国债逆回购
+
+```python
+result = client.reverse_repo_buy(
+    market="上海",        # 交易市场：上海/深圳
+    time_range="1天期",   # 回购期限：1天期/2天期/3天期/4天期/7天期
+    amount=10000,         # 出借金额（1000的倍数）
+    timeout=60.0
+)
+
+if result["data"]["result"]["success"]:
+    message = result["data"]["result"]["data"]["message"]
+    print(f"购买成功: {message}")
+else:
+    error = result["data"]["result"]["error"]
+    print(f"购买失败: {error}")
+```
+
+
+### 删除条件单
+
+删除指定的条件单。
+
+```python
+# 删除所有条件单
+result = client.cancel_condition_orders()
+
+# 删除指定股票的条件单
+result = client.cancel_condition_orders(stock_code="600000")
+
+# 只删除买入条件单
+result = client.cancel_condition_orders(order_type="买入")
+
+# 删除指定股票的买入条件单
+result = client.cancel_condition_orders(
+    stock_code="600000",
+    order_type="买入"
+)
+
+if result["data"]["result"]["success"]:
+    message = result["data"]["result"]["data"]["message"]
+    print(f"删除成功: {message}")
+```
+
 ---
 
 ## 查询操作
@@ -288,23 +333,7 @@ if result["data"]["result"]["success"]:
     print(commissions)
 ```
 
-### 购买国债逆回购
 
-```python
-result = client.reverse_repo_buy(
-    market="上海",        # 交易市场：上海/深圳
-    time_range="1天期",   # 回购期限：1天期/2天期/3天期/4天期/7天期
-    amount=10000,         # 出借金额（1000的倍数）
-    timeout=60.0
-)
-
-if result["data"]["result"]["success"]:
-    message = result["data"]["result"]["data"]["message"]
-    print(f"购买成功: {message}")
-else:
-    error = result["data"]["result"]["error"]
-    print(f"购买失败: {error}")
-```
 
 ### 查询国债逆回购年化利率
 
@@ -316,6 +345,22 @@ if result["data"]["result"]["success"]:
     for item in rates:
         print(f"{item['市场类型']} - {item['时间类型']}: {item['年化利率']}")
 ```
+
+### 查询条件单
+
+查询未触发的条件单信息。
+
+```python
+result = client.query_condition_orders(
+    return_type="json",  # str/json/dict/df/markdown
+    timeout=30.0
+)
+
+if result["data"]["result"]["success"]:
+    orders = result["data"]["result"]["data"]["condition_orders"]
+    print(orders)
+```
+
 
 ---
 
@@ -508,6 +553,8 @@ class TradeClient:
     def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = 60.0) -> APIResponse: ...
     def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = 60.0) -> APIResponse: ...
     def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = 60.0) -> APIResponse: ...
+    def query_condition_orders(self, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
+    def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = 60.0) -> APIResponse: ...
     def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = 60.0) -> APIResponse: ...
 
     # 查询操作

@@ -672,6 +672,96 @@ POST /api/v1/operations/stop_loss_profit
 }
 ```
 
+### condition_order_query - 条件单查询
+
+查询未触发的条件单信息。
+
+```http
+POST /api/v1/operations/condition_order_query
+```
+
+**请求参数**:
+```json
+{
+  "params": {
+    "return_type": "json"
+  }
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| return_type | string | 否 | 返回类型：str/json/dict/df/markdown，默认 json |
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {
+    "operation_id": "...",
+    "result": {
+      "success": true,
+      "data": {
+        "condition_orders": [...],
+        "message": "条件单查询成功，共获取到2条数据",
+        "timestamp": "2025-12-27T10:30:00",
+        "success": true
+      }
+    }
+  }
+}
+```
+
+### condition_order_cancel - 条件单删除
+
+删除指定的条件单。
+
+```http
+POST /api/v1/operations/condition_order_cancel
+```
+
+**请求参数**:
+```json
+{
+  "params": {
+    "stock_code": "600000",
+    "order_type": "买入"
+  }
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 否 | 股票代码（6位数字），不指定则删除所有条件单 |
+| order_type | string | 否 | 订单类型：买入/卖出 |
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {
+    "operation_id": "...",
+    "result": {
+      "success": true,
+      "data": {
+        "stock_code": "600000",
+        "order_type": "买入",
+        "deleted_count": 1,
+        "message": "条件单删除成功",
+        "timestamp": "2025-12-27T10:30:00",
+        "success": true
+      }
+    }
+  }
+}
+```
+
 ---
 
 ## 使用示例

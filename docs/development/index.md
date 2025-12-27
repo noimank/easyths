@@ -300,6 +300,8 @@ easyths/
 │   │   ├── buy.py                   # 买入股票
 │   │   ├── sell.py                  # 卖出股票
 │   │   ├── condition_buy.py         # 条件买入
+│   │   ├── condition_order_query.py # 条件单查询
+│   │   ├── condition_order_cancel.py # 条件单删除
 │   │   ├── funds_query.py           # 资金查询
 │   │   ├── holding_query.py         # 持仓查询
 │   │   ├── order_query.py           # 委托查询

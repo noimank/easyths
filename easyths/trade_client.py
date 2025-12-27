@@ -479,6 +479,94 @@ class TradeClient:
         operation_id = self.execute_operation("stop_loss_profit", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
+    def query_condition_orders(
+        self,
+        return_type: Literal["str", "json", "dict", "df", "markdown"] = "json",
+        timeout: float = 30.0
+    ) -> APIResponse:
+        """
+        查询条件单
+
+        Args:
+            return_type: 结果返回类型
+                - "str": 字符串格式
+                - "json": JSON 格式（默认）
+                - "dict": 字典格式
+                - "df": pandas DataFrame
+                - "markdown": Markdown 表格
+            timeout: 操作超时时间（秒）
+
+        Returns:
+            操作结果，格式为：
+            {
+                "success": True,
+                "message": "查询成功",
+                "data": {
+                    "operation_id": "...",
+                    "result": {
+                        "success": bool,
+                        "data": {...},  # 业务数据
+                        "error": None,
+                        "timestamp": str
+                    }
+                },
+                "error": None,
+                "timestamp": str
+            }
+
+        Raises:
+            TradeClientError: 连接失败、API 错误或操作超时
+
+        Examples:
+            >>> client = TradeClient(...)
+            >>> result = client.query_condition_orders()
+            >>> if result["data"]["result"]["success"]:
+            ...     orders = result["data"]["result"]["data"]["condition_orders"]
+            ...     print(orders)
+        """
+        params = {"return_type": return_type}
+        operation_id = self.execute_operation("condition_order_query", params)
+        return self.get_operation_result(operation_id, timeout=timeout)
+
+    def cancel_condition_orders(
+        self,
+        stock_code: Optional[str] = None,
+        order_type: Optional[Literal["买入", "卖出"]] = None,
+        timeout: float = 60.0
+    ) -> APIResponse:
+        """
+        删除条件单
+
+        Args:
+            stock_code: 股票代码（6位数字），不指定则删除所有条件单
+            order_type: 订单类型，"买入" 或 "卖出"
+            timeout: 操作超时时间（秒）
+
+        Returns:
+            操作结果，格式与 query_condition_orders() 相同
+
+        Raises:
+            TradeClientError: 连接失败、API 错误或操作超时
+
+        Examples:
+            >>> # 删除所有条件单
+            >>> result = client.cancel_condition_orders()
+            >>>
+            >>> # 删除指定股票的条件单
+            >>> result = client.cancel_condition_orders(stock_code="600000")
+            >>>
+            >>> # 只删除买入条件单
+            >>> result = client.cancel_condition_orders(order_type="买入")
+        """
+        params: Dict[str, Any] = {}
+        if stock_code is not None:
+            params["stock_code"] = stock_code
+        if order_type is not None:
+            params["order_type"] = order_type
+
+        operation_id = self.execute_operation("condition_order_cancel", params)
+        return self.get_operation_result(operation_id, timeout=timeout)
+
     # ==================== 查询操作便捷方法 ====================
 
     def query_holdings(

@@ -16,6 +16,8 @@ from easyths.operations.reverse_repo_buy import ReverseRepoBuyOperation
 from easyths.operations.reverse_repo_query import ReverseRepoQueryOperation
 from easyths.operations.condition_buy import ConditionBuyOperation
 from easyths.operations.stop_loss_profit import StopLossProfitOperation
+from easyths.operations.condition_order_query import ConditionOrderQueryOperation
+from easyths.operations.condition_order_cancel import ConditionOrderCancelOperation
 from dotenv import load_dotenv
 
 load_dotenv("../.env")
@@ -332,6 +334,55 @@ def test_stop_loss_profit_op():
         automator.disconnect()
 
 
+def test_condition_order_query_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = ConditionOrderQueryOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "return_type": "json"
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+
+def test_condition_order_cancel_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = ConditionOrderCancelOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            # "stock_code": "000001",
+            # "order_type": "买入"
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+
 
 if __name__ == "__main__":
     # test_automator_basic()
@@ -345,4 +396,6 @@ if __name__ == "__main__":
     # test_reverse_repo_buy_op()
     # test_reverse_repo_query_op()
     # test_condition_buy_op()
-    test_stop_loss_profit_op()
+    # test_stop_loss_profit_op()
+    # test_condition_order_query_op()
+    test_condition_order_cancel_op()

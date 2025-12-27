@@ -117,6 +117,14 @@ def test_stop_loss_profit():
     interest_res = client.stop_loss_profit("000001", 3.1, 2.5)
     print(f"止盈止损: {interest_res}")
 
+def test_condition_order_query():
+    interest_res = client.query_condition_orders("markdown",)
+    print(f"条件单查询: {interest_res}")
+
+def test_condition_order_canel():
+    interest_res = client.cancel_condition_orders()
+    print(f"删除条件单: {interest_res}")
+
 
 
 def test_context_manager():
@@ -140,8 +148,10 @@ if __name__ == '__main__':
     # test_buy()
     # test_sell()
     # test_reverse_repo()
-    test_condition_bug()
-    test_stop_loss_profit()
+    # test_condition_bug()
+    # test_stop_loss_profit()
+    test_condition_order_query()
+    # test_condition_order_canel()
 
     # 撤单操作测试
     print("\n=== 撤单操作测试 ===")

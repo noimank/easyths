@@ -72,6 +72,8 @@ easyths
 | **国债逆回购年化利率查询 (reverse_repo_query)** | 查询国债逆回购年化利率 | 0.9~1.3 |
 | **条件买入 (condition_buy)** | 设置条件买入策略 | 2.4~3.1 |
 | **止盈止损 (stop_loss_profit)** | 设置止盈止损策略 | 2.6~3.2 |
+| **条件单查询 (condition_order_query)** | 查询现有的条件单 | 1.7~2.1 |
+| **条件单删除 (condition_order_cancel)** | 删除指定条件单 | 2.0~2.5 |
 
 详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/getting-started/api/)。
 
