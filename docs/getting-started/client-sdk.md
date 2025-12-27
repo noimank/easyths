@@ -233,6 +233,45 @@ if result["data"]["result"]["success"]:
         print(f"{order['股票代码']}: {order['委托数量']}股 @ {order['委托价格']}")
 ```
 
+### 查询历史成交
+
+```python
+result = client.query_historical_commission(return_type="json")
+
+if result["data"]["result"]["success"]:
+    commissions = result["data"]["result"]["data"]
+    print(commissions)
+```
+
+### 购买国债逆回购
+
+```python
+result = client.reverse_repo_buy(
+    market="上海",        # 交易市场：上海/深圳
+    time_range="1天期",   # 回购期限：1天期/2天期/3天期/4天期/7天期
+    amount=10000,         # 出借金额（1000的倍数）
+    timeout=60.0
+)
+
+if result["data"]["result"]["success"]:
+    message = result["data"]["result"]["data"]["message"]
+    print(f"购买成功: {message}")
+else:
+    error = result["data"]["result"]["error"]
+    print(f"购买失败: {error}")
+```
+
+### 查询国债逆回购年化利率
+
+```python
+result = client.query_reverse_repo(timeout=30.0)
+
+if result["data"]["result"]["success"]:
+    rates = result["data"]["result"]["data"]["reverse_repo_interest"]
+    for item in rates:
+        print(f"{item['市场类型']} - {item['时间类型']}: {item['年化利率']}")
+```
+
 ---
 
 ## 通用操作方法
@@ -422,11 +461,14 @@ class TradeClient:
     def buy(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> APIResponse: ...
     def sell(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> APIResponse: ...
     def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = 60.0) -> APIResponse: ...
+    def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = 60.0) -> APIResponse: ...
 
     # 查询操作
     def query_holdings(self, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
     def query_funds(self, timeout: float = 30.0) -> APIResponse: ...
     def query_orders(self, stock_code: str = None, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
+    def query_historical_commission(self, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
+    def query_reverse_repo(self, timeout: float = 30.0) -> APIResponse: ...
 
     # 连接管理
     def close(self): ...

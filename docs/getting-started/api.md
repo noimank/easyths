@@ -476,6 +476,96 @@ POST /api/v1/operations/historical_commission_query
 }
 ```
 
+### reverse_repo_buy - 国债逆回购购买
+
+```http
+POST /api/v1/operations/reverse_repo_buy
+```
+
+**请求参数**:
+```json
+{
+  "params": {
+    "market": "上海",
+    "time_range": "1天期",
+    "amount": 10000
+  }
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| market | string | 是 | 交易市场：上海/深圳 |
+| time_range | string | 是 | 回购期限：1天期/2天期/3天期/4天期/7天期 |
+| amount | integer | 是 | 出借金额（必须是1000的倍数） |
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {
+    "operation_id": "...",
+    "result": {
+      "success": true,
+      "data": {
+        "market": "上海",
+        "time_range": "1天期",
+        "amount": 10000,
+        "success": true,
+        "message": "国债逆回购操作成功， 成功出借:10000 元， 年化利率为：2.50%"
+      }
+    }
+  }
+}
+```
+
+### reverse_repo_query - 国债逆回购查询
+
+```http
+POST /api/v1/operations/reverse_repo_query
+```
+
+**请求参数**:
+```json
+{
+  "params": {}
+}
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "查询成功",
+  "data": {
+    "operation_id": "...",
+    "result": {
+      "success": true,
+      "data": {
+        "reverse_repo_interest": [
+          {
+            "市场类型": "上海市场",
+            "时间类型": "1天期",
+            "年化利率": "2.50%"
+          },
+          {
+            "市场类型": "深圳市场",
+            "时间类型": "1天期",
+            "年化利率": "2.45%"
+          }
+        ],
+        "timestamp": "2025-12-27T10:30:00",
+        "success": true,
+        "message": "查询国债逆回购年化利率成功"
+      }
+    }
+  }
+}
+```
+
 ---
 
 ## 使用示例

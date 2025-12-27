@@ -68,6 +68,8 @@ easyths
 | **委托查询 (order_query)** | 查询委托记录 |
 | **撤单 (order_cancel)** | 撤销委托 |
 | **历史成交查询 (historical_commission_query)** | 查询历史成交 |
+| **国债逆回购购买 (reverse_repo_buy)** | 购买国债逆回购 |
+| **国债逆回购查询 (reverse_repo_query)** | 查询国债逆回购年化利率 |
 
 详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/api/)。
 
