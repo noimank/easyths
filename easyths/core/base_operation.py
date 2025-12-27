@@ -300,6 +300,8 @@ class BaseOperation(ABC):
         for children in childrens:
             # 根据
             sub_childrens = children.children(class_name="Static")
+            # 有些内嵌的浏览器窗口（也是弹窗）
+            pane_childrens = children.children(control_type="Pane")
             content = "".join([child.window_text() for child in sub_childrens])
             if "您的风险承受能力等级即将过期" in content:
                 return "风险测评提示",children
@@ -314,8 +316,14 @@ class BaseOperation(ABC):
                 return "一键打新提示框", children
             elif "国债逆回购" in content:
                 return "国债逆回购窗口", children
+            elif "退出确认" in content:
+                return "程序退出确认窗口", children
             else:
-                continue
+                pass
+
+            # 特殊处理浏览器嵌入型弹窗,这里可能是 条件单的弹窗，class_name=ConditionToolBar
+            if pane_childrens:
+                return pane_childrens[0].class_name(), pane_childrens[0]
 
         # 处理可能出现的window类型的独立窗口,目前已知的有 条件单触发提醒、银证转账窗口
         win = self.get_control_with_children(main_window, control_type="Window")
@@ -370,6 +378,13 @@ class BaseOperation(ABC):
                 pop_control.close()
             elif pop_dialog_title == 'TranferAccount':
                 pop_control.close()
+            # 条件单窗口
+            elif pop_dialog_title == "ConditionToolBar":
+                pop_control.type_keys("{ESC}")
+            elif pop_dialog_title == "程序退出确认窗口":
+                # 点击否关闭窗口
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+
 
         self.sleep(0.05)
 
