@@ -5,7 +5,7 @@ Email: noimank@163.com
 """
 from easyths import TradeClient
 
-client = TradeClient(host='localhost', port=8888, api_key="mysuperKey87kiE@iijiu+ojiyu")
+client = TradeClient(host='localhost', port=7648, api_key="mysuperKey87kiE@iijiu+ojiyu")
 
 
 def test_health_check():
@@ -103,6 +103,11 @@ def test_query_orders_stock():
     res = client.query_orders(stock_code="000001")
     print(f"指定股票委托查询: {res}")
 
+def test_reverse_repo():
+    interest_res = client.query_reverse_repo(20)
+    print(f"逆回购查询: {interest_res}")
+    interest_res = client.reverse_repo_buy("深圳", "7天期", 1000)
+    print(f"逆回购买入: {interest_res}")
 
 def test_context_manager():
     """测试上下文管理器"""
@@ -124,6 +129,7 @@ if __name__ == '__main__':
     print("\n=== 交易操作测试 ===")
     # test_buy()
     # test_sell()
+    test_reverse_repo()
 
     # 撤单操作测试
     print("\n=== 撤单操作测试 ===")
@@ -141,5 +147,5 @@ if __name__ == '__main__':
     # test_query_orders_stock()
     #
     # # 上下文管理器测试
-    print("\n=== 上下文管理器测试 ===")
-    test_context_manager()
+    # print("\n=== 上下文管理器测试 ===")
+    # test_context_manager()

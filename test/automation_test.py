@@ -12,6 +12,8 @@ from easyths.operations.order_cancel import OrderCancelOperation
 from easyths.operations.holding_query import HoldingQueryOperation
 from easyths.operations.order_query import OrderQueryOperation
 from easyths.operations.historical_commission_query import HistoricalCommissionQueryOperation
+from easyths.operations.reverse_repo_buy import ReverseRepoBuyOperation
+from easyths.operations.reverse_repo_query import ReverseRepoQueryOperation
 from dotenv import load_dotenv
 
 load_dotenv("../.env")
@@ -217,14 +219,71 @@ def test_historical_commission_query_op():
         # 断开连接
         automator.disconnect()
 
+def test_reverse_repo_buy_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = ReverseRepoBuyOperation(automator)
+
+
+        # 执行操作（同步）
+        params = {
+            # 交易市场   ["上海", "深圳"],
+            "market": "上海",
+            # 回购期限   ["1天期", "2天期", "3天期", "4天期", "7天期"]
+            "time_range": "1天期",
+            "amount": 100000
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+def test_reverse_repo_query_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = ReverseRepoQueryOperation(automator)
+
+
+        # 执行操作（同步）
+        params = {
+            # 交易市场   ["上海", "深圳"],
+            "market": "上海",
+            # 回购期限   ["1天期", "2天期", "3天期", "4天期", "7天期"]
+            "time_range": "1天期",
+            "amount": 100000
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
 
 
 if __name__ == "__main__":
     # test_automator_basic()
-    test_buy_op()
+    # test_buy_op()
     # test_sell_op()
     # test_funds_query_op()
     # test_order_cancel_op()
     # test_holding_query_op()
     # test_order_query_op()
     # test_historical_commission_query_op()
+    # test_reverse_repo_buy_op()
+    test_reverse_repo_query_op()
