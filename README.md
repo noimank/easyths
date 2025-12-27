@@ -70,6 +70,8 @@ easyths
 | **历史委托查询 (historical_commission_query)** 模拟账号不支持 | 查询历史成交 | 2.8~3.3 |
 | **国债逆回购购买 (reverse_repo_buy)** | 购买国债逆回购 | 1.8~2.2 |
 | **国债逆回购年化利率查询 (reverse_repo_query)** | 查询国债逆回购年化利率 | 0.9~1.3 |
+| **条件买入 (condition_buy)** | 设置条件买入策略 | 2.4~3.1 |
+| **止盈止损 (stop_loss_profit)** | 设置止盈止损策略 | 2.6~3.2 |
 
 详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/getting-started/api/)。
 

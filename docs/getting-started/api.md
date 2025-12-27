@@ -566,6 +566,112 @@ POST /api/v1/operations/reverse_repo_query
 }
 ```
 
+### condition_buy - 条件买入
+
+设置条件买入单，当股价达到目标价格时自动触发买入。
+
+```http
+POST /api/v1/operations/condition_buy
+```
+
+**请求参数**:
+```json
+{
+  "params": {
+    "stock_code": "600000",
+    "target_price": 10.50,
+    "quantity": 100,
+    "expire_days": 30
+  }
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 是 | 股票代码（6位数字） |
+| target_price | number | 是 | 目标价格（触发价格） |
+| quantity | integer | 是 | 买入数量（必须是100的倍数） |
+| expire_days | integer | 否 | 有效期（自然日），可选1/3/5/10/20/30，默认30 |
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {
+    "operation_id": "...",
+    "result": {
+      "success": true,
+      "data": {
+        "stock_code": "600000",
+        "target_price": 10.50,
+        "quantity": 100,
+        "operation": "condition_buy",
+        "success": true,
+        "message": "执行600000的条件单成功"
+      }
+    }
+  }
+}
+```
+
+### stop_loss_profit - 止盈止损
+
+为持仓股票设置止盈止损策略，当价格达到止盈或止损条件时自动触发卖出。
+
+```http
+POST /api/v1/operations/stop_loss_profit
+```
+
+**请求参数**:
+```json
+{
+  "params": {
+    "stock_code": "600000",
+    "stop_loss_percent": 3.0,
+    "stop_profit_percent": 5.0,
+    "quantity": 100,
+    "expire_days": 30
+  }
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 是 | 股票代码（6位数字） |
+| stop_loss_percent | number | 是 | 止损百分比（如3表示3%） |
+| stop_profit_percent | number | 是 | 止盈百分比（如5表示5%） |
+| quantity | integer | 否 | 卖出数量（必须是100的倍数），可选，不指定则使用全部可用持仓 |
+| expire_days | integer | 否 | 有效期（自然日），可选1/3/5/10/20/30，默认30 |
+
+> **注意**：止盈百分比必须大于止损百分比。quantity 参数建议指定，因为受 T+1 限制，当天买入的股票如果不指定数量无法设置止盈止损。
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {
+    "operation_id": "...",
+    "result": {
+      "success": true,
+      "data": {
+        "stock_code": "600000",
+        "stop_loss_percent": 3.0,
+        "stop_profit_percent": 5.0,
+        "operation": "stop_loss_profit",
+        "success": true,
+        "message": "执行600000的止盈止损单成功"
+      }
+    }
+  }
+}
+```
+
 ---
 
 ## 使用示例

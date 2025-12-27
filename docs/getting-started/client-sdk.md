@@ -186,6 +186,51 @@ result = client.cancel_order(cancel_type="buy")
 result = client.cancel_order(cancel_type="sell")
 ```
 
+### 条件买入
+
+设置条件买入单，当股价达到目标价格时自动触发买入。
+
+```python
+result = client.condition_buy(
+    stock_code="600000",      # 股票代码
+    target_price=10.50,       # 目标触发价格
+    quantity=100,             # 买入数量（100的倍数）
+    expire_days=30,           # 有效期（可选1/3/5/10/20/30，默认30）
+    timeout=60.0              # 超时时间（可选，默认60秒）
+)
+
+if result["data"]["result"]["success"]:
+    data = result["data"]["result"]["data"]
+    print(f"条件买入设置成功: {data['message']}")
+else:
+    error = result["data"]["result"]["error"]
+    print(f"条件买入设置失败: {error}")
+```
+
+### 止盈止损
+
+为持仓股票设置止盈止损策略，当价格达到止盈或止损条件时自动触发卖出。
+
+```python
+result = client.stop_loss_profit(
+    stock_code="600000",         # 股票代码
+    stop_loss_percent=3.0,       # 止损百分比（如3表示3%）
+    stop_profit_percent=5.0,     # 止盈百分比（如5表示5%）
+    quantity=100,                # 卖出数量（可选，不指定则使用全部可用持仓）
+    expire_days=30,              # 有效期（可选1/3/5/10/20/30，默认30）
+    timeout=60.0                 # 超时时间（可选，默认60秒）
+)
+
+if result["data"]["result"]["success"]:
+    data = result["data"]["result"]["data"]
+    print(f"止盈止损设置成功: {data['message']}")
+else:
+    error = result["data"]["result"]["error"]
+    print(f"止盈止损设置失败: {error}")
+```
+
+> **注意**：止盈百分比必须大于止损百分比。quantity 参数建议指定，因为受 T+1 限制，当天买入的股票如果不指定数量无法设置止盈止损。
+
 ---
 
 ## 查询操作
@@ -461,6 +506,8 @@ class TradeClient:
     def buy(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> APIResponse: ...
     def sell(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> APIResponse: ...
     def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = 60.0) -> APIResponse: ...
+    def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = 60.0) -> APIResponse: ...
+    def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = 60.0) -> APIResponse: ...
     def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = 60.0) -> APIResponse: ...
 
     # 查询操作
