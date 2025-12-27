@@ -109,6 +109,16 @@ def test_reverse_repo():
     interest_res = client.reverse_repo_buy("深圳", "7天期", 1000)
     print(f"逆回购买入: {interest_res}")
 
+def test_condition_bug():
+    interest_res = client.condition_buy("000001", 12, 1000)
+    print(f"条件买入: {interest_res}")
+
+def test_stop_loss_profit():
+    interest_res = client.stop_loss_profit("000001", 3.1, 2.5)
+    print(f"止盈止损: {interest_res}")
+
+
+
 def test_context_manager():
     """测试上下文管理器"""
     with TradeClient(host='localhost', port=8888, api_key="mysuperKey87kiE@iijiu+ojiyu") as c:
@@ -129,7 +139,9 @@ if __name__ == '__main__':
     print("\n=== 交易操作测试 ===")
     # test_buy()
     # test_sell()
-    test_reverse_repo()
+    # test_reverse_repo()
+    test_condition_bug()
+    test_stop_loss_profit()
 
     # 撤单操作测试
     print("\n=== 撤单操作测试 ===")

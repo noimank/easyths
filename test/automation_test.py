@@ -14,6 +14,8 @@ from easyths.operations.order_query import OrderQueryOperation
 from easyths.operations.historical_commission_query import HistoricalCommissionQueryOperation
 from easyths.operations.reverse_repo_buy import ReverseRepoBuyOperation
 from easyths.operations.reverse_repo_query import ReverseRepoQueryOperation
+from easyths.operations.condition_buy import ConditionBuyOperation
+from easyths.operations.stop_loss_profit import StopLossProfitOperation
 from dotenv import load_dotenv
 
 load_dotenv("../.env")
@@ -274,6 +276,61 @@ def test_reverse_repo_query_op():
         # 断开连接
         automator.disconnect()
 
+def test_condition_buy_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = ConditionBuyOperation(automator)
+
+
+        # 执行操作（同步）
+        params = {
+            "stock_code": "000001",
+            "target_price": 12.1,
+            "quantity": 100
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+
+def test_stop_loss_profit_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = StopLossProfitOperation(automator)
+
+
+        # 执行操作（同步）
+        params = {
+            "stock_code": "000001",
+            "stop_loss_percent": 3.1,
+            "stop_profit_percent": 5.6,
+            "quantity": 100,
+            "expire_days": 1
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
 
 
 if __name__ == "__main__":
@@ -286,4 +343,6 @@ if __name__ == "__main__":
     # test_order_query_op()
     # test_historical_commission_query_op()
     # test_reverse_repo_buy_op()
-    test_reverse_repo_query_op()
+    # test_reverse_repo_query_op()
+    # test_condition_buy_op()
+    test_stop_loss_profit_op()
