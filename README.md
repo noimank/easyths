@@ -29,7 +29,7 @@
 详细文档请访问：[https://noimank.github.io/easyths/](https://noimank.github.io/easyths/)
 
 - [安装指南](https://noimank.github.io/easyths/getting-started/installation/)
-- [基础用法](https://noimank.github.io/easyths/guide/basic-usage/)
+- [基础用法](https://noimank.github.io/easyths/getting-started/basic-usage/)
 - [客户端设置](https://noimank.github.io/easyths/getting-started/ths-client/)
 - [Client SDK](https://noimank.github.io/easyths/getting-started/client-sdk/) - Python 客户端 SDK
 - [API 参考](https://noimank.github.io/easyths/api/)
@@ -117,7 +117,7 @@ curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
   -d '{}'
 ```
 
-更多使用示例请参考 [基础用法](https://noimank.github.io/easyths/guide/basic-usage/)。
+更多使用示例请参考 [基础用法](https://noimank.github.io/easyths/getting-started/basic-usage/)。
 
 ## 系统要求
 
