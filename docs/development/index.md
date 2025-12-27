@@ -268,14 +268,69 @@ class SimpleQueryOperation(BaseOperation):
 ```
 easyths/
 ├── easyths/
-│   ├── operations/          # 操作插件目录（新增插件放这里）
-│   ├── core/
-│   │   └── base_operation.py  # BaseOperation 基类
-│   └── models/
-│       └── operations.py      # 数据模型
-├── docs/                     # 文档
-└── pyproject.toml
+│   ├── __init__.py
+│   ├── main.py                      # 主入口（FastAPI 服务端）
+│   ├── trade_client.py              # Python Client SDK
+│   ├── api/                         # FastAPI 路由和中间件
+│   │   ├── app.py                   # FastAPI 应用配置
+│   │   ├── dependencies/            # API 依赖项
+│   │   │   ├── common.py            # 通用依赖
+│   │   │   └── __init__.py
+│   │   ├── middleware/              # 中间件
+│   │   │   ├── api_key_auth.py      # API Key 认证
+│   │   │   ├── ip_whitelist.py      # IP 白名单
+│   │   │   ├── logging.py           # 请求日志
+│   │   │   ├── rate_limit.py        # 速率限制
+│   │   │   └── __init__.py
+│   │   └── routes/                  # API 路由
+│   │       ├── operations.py        # 交易操作接口
+│   │       ├── queue.py             # 队列管理接口
+│   │       ├── system.py            # 系统状态接口
+│   │       └── __init__.py
+│   ├── assets/                      # 资源文件
+│   ├── core/                        # 核心组件
+│   │   ├── __init__.py
+│   │   ├── base_operation.py        # BaseOperation 基类
+│   │   ├── operation_queue.py       # 操作队列（后台线程）
+│   │   └── tonghuashun_automator.py # UI 自动化（pywinauto）
+│   ├── models/                      # Pydantic 数据模型
+│   │   ├── __init__.py
+│   │   └── operations.py            # 操作相关模型
+│   ├── operations/                  # 交易操作插件（自动发现）
+│   │   ├── buy.py                   # 买入股票
+│   │   ├── sell.py                  # 卖出股票
+│   │   ├── condition_buy.py         # 条件买入
+│   │   ├── funds_query.py           # 资金查询
+│   │   ├── holding_query.py         # 持仓查询
+│   │   ├── order_query.py           # 委托查询
+│   │   ├── order_cancel.py          # 撤单
+│   │   ├── historical_commission_query.py  # 历史成交查询
+│   │   ├── reverse_repo_buy.py      # 国债逆回购购买
+│   │   ├── reverse_repo_query.py    # 国债逆回购查询
+│   │   └── stop_loss_profit.py      # 止盈止损
+│   └── utils/                       # 工具函数
+│       ├── __init__.py
+│       ├── captcha_ocr.py           # 验证码 OCR
+│       ├── config.py                # 配置加载
+│       ├── logger.py                # 日志工具
+│       ├── screen_capture.py        # 屏幕截图
+│       └── table_text_handel.py     # 表格文本处理
+├── docs/                            # 项目文档
+├── test/                            # 测试文件
+└── pyproject.toml                   # 项目配置
 ```
+
+### 目录说明
+
+| 目录 | 说明 |
+|------|------|
+| `easyths/api/` | FastAPI 服务端，包含路由、中间件和依赖项 |
+| `easyths/core/` | 核心组件，操作队列和 UI 自动化 |
+| `easyths/models/` | Pydantic 数据模型定义 |
+| `easyths/operations/` | 交易操作插件，自动发现并注册 |
+| `easyths/utils/` | 工具函数和辅助模块 |
+| `easyths/trade_client.py` | Python Client SDK，用于远程调用 API |
+| `easyths/main.py` | 服务端主入口 |
 
 ## 下一步
 

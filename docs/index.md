@@ -182,41 +182,47 @@ control = self.get_control_with_children(
 
 ```
 easyths/
-├── api/
-│   ├── app.py                    # FastAPI 应用入口
-│   ├── routes/                   # API 路由
-│   │   ├── system.py            # 系统管理接口
-│   │   ├── operations.py        # 操作执行接口
-│   │   └── queue.py             # 队列管理接口
-│   ├── middleware/               # 中间件
-│   │   ├── api_key_auth.py      # API Key 认证
-│   │   ├── ip_whitelist.py      # IP 白名单
-│   │   ├── rate_limit.py        # 速率限制
-│   │   └── logging.py           # 请求日志
-│   └── dependencies/             # 依赖注入
+├── __init__.py
+├── main.py                      # 服务启动入口
+├── trade_client.py              # 远程调用客户端 (TradeClient SDK)
+├── api/                         # FastAPI 服务端
+│   ├── app.py                   # FastAPI 应用配置
+│   ├── routes/                  # API 路由
+│   │   ├── system.py           # 系统管理接口
+│   │   ├── operations.py       # 操作执行接口
+│   │   └── queue.py            # 队列管理接口
+│   ├── middleware/              # 中间件
+│   │   ├── api_key_auth.py     # API Key 认证
+│   │   ├── ip_whitelist.py     # IP 白名单
+│   │   ├── rate_limit.py       # 速率限制
+│   │   └── logging.py          # 请求日志
+│   └── dependencies/            # 依赖注入
 │       └── common.py
-├── core/
-│   ├── tonghuashun_automator.py # 同花顺自动化器
+├── core/                        # 核心组件
+│   ├── tonghuashun_automator.py # 同花顺自动化器 (pywinauto)
 │   ├── base_operation.py        # 操作基类与注册表
 │   └── operation_queue.py       # 优先级操作队列
-├── operations/                   # 操作插件
-│   ├── buy.py                   # 买入
-│   ├── sell.py                  # 卖出
+├── operations/                  # 操作插件 (自动发现)
+│   ├── buy.py                   # 买入股票
+│   ├── sell.py                  # 卖出股票
+│   ├── condition_buy.py         # 条件买入
+│   ├── stop_loss_profit.py      # 止盈止损
 │   ├── order_cancel.py          # 撤单
 │   ├── order_query.py           # 查委托
 │   ├── holding_query.py         # 查持仓
 │   ├── funds_query.py           # 查资金
-│   └── historical_commission_query.py  # 查历史成交
-├── models/
-│   └── operations.py            # 操作数据模型
-├── utils/
+│   ├── historical_commission_query.py  # 查历史成交
+│   ├── reverse_repo_buy.py      # 国债逆回购购买
+│   └── reverse_repo_query.py    # 国债逆回购查询
+├── models/                      # 数据模型
+│   └── operations.py            # 操作数据模型 (Pydantic)
+├── utils/                       # 工具模块
 │   ├── config.py                # 配置管理
 │   ├── captcha_ocr.py           # 验证码 OCR
 │   ├── screen_capture.py        # 屏幕截图
 │   ├── table_text_handel.py     # 表格文本处理
 │   └── logger.py                # 日志配置
-├── trade_client.py              # 远程调用客户端
-└── main.py                      # 服务启动入口
+└── assets/                      # 资源文件
 ```
 
 ### 技术栈
