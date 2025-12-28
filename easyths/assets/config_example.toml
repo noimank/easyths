@@ -25,7 +25,7 @@ cors_origins = "*"
 # API密钥 - 可以不设置，设置之后所有API请求都需要在Header中提供: Authorization: Bearer <api_key>
 key = ""
 # IP白名单 - 留空表示允许所有IP，逗号分隔多个IP，支持通配符*,如: 127.0.0.1,192.168.1.*
-ip_whitelist = "127.0.0.1"
+ip_whitelist = ""
 
 [logging]
 level = "INFO"
