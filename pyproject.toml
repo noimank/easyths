@@ -17,7 +17,7 @@ index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project]
 name = "easyths"
-version = "1.3.2"
+version = "1.4.0"
 description = "同花顺交易自动化系统"
 authors = [
     { name = "noimank", email = "noimank@163.com" }
@@ -45,6 +45,7 @@ server = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "pydantic-settings>=2.6.0",
+    "wsproto>=1.2",
     # MCP 协议支持
     "fastmcp>=0.4.0",
     # Windows GUI自动化

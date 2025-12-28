@@ -138,5 +138,6 @@ class TradingAPIApp:
             self.app,
             host=project_config_instance.api_host,
             port=project_config_instance.api_port,
-            log_level="info"
+            log_level="info",
+            ws="wsproto"  # 使用 wsproto 替代 websockets，避免弃用警告
         )
