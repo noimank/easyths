@@ -43,6 +43,42 @@
 - 以管理员身份运行程序
 - 检查防火墙设置，确保端口未被阻止
 
+## onnxruntime DLL 加载失败
+
+**问题描述**: 启动时报错 `ImportError: DLL load failed while importing onnxruntime_pybind11_state: 找不到指定的模块。`
+
+**完整错误示例**:
+
+```
+File "...\onnxruntime\__init__.py", line 74, in <module>
+    raise import_capi_exception
+...
+ImportError: DLL load failed while importing onnxruntime_pybind11_state: 找不到指定的模块。
+```
+
+**原因分析**:
+
+onnxruntime 依赖 Microsoft Visual C++ 运行时库，新安装的 Windows 系统可能缺少此依赖。
+
+**解决方案**:
+
+1. **下载并安装 Microsoft Visual C++ Redistributable**（推荐）
+   - 访问微软官方下载页面：https://aka.ms/vs/17/release/vc_redist.x64.exe
+   - 安装 **Microsoft Visual C++ 2015-2022 Redistributable (x64)**
+   - 安装完成后重启系统或重新运行 EasyTHS
+
+2. **检查 CPU 兼容性**（如方案1无效）
+   - 默认的 onnxruntime 需要 AVX2 指令集支持
+   - 部分 CPU 不支持，可尝试降级版本：
+     ```bash
+     pip uninstall onnxruntime
+     pip install onnxruntime==1.16.0
+     ```
+
+3. **确认架构匹配**
+   - 确保 Python、onnxruntime 和 Windows 均为 **x64** 架构
+   - 检查命令：`python -c "import platform; print(platform.architecture())"`
+
 ---
 
 ## 未能解决问题？
