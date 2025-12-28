@@ -7,6 +7,7 @@ from typing import Optional
 
 from fastmcp import FastMCP
 from structlog import get_logger
+from easyths.models.operations import Operation
 
 from easyths.utils import project_config_instance
 
@@ -38,8 +39,6 @@ def _execute_operation(operation_name: str, params: dict) -> dict:
     Returns:
         执行结果字典
     """
-    from easyths.models.operations import Operation
-
     if _operation_queue is None:
         return {
             "success": False,
@@ -121,7 +120,7 @@ def holding_query(return_type: str = "json") -> dict:
     """查询股票持仓信息
 
     Args:
-        return_type: 结果返回类型，可选值: str, json, dict, df, markdown
+        return_type: 结果返回类型，可选值: str, json, dict, markdown
 
     Returns:
         持仓信息
@@ -142,11 +141,11 @@ def funds_query() -> dict:
 
 
 @mcp_server.tool
-def order_query(return_type: str, stock_code: Optional[str] = None) -> dict:
+def order_query(return_type: str = "json", stock_code: Optional[str] = None) -> dict:
     """查询股票委托订单信息
 
     Args:
-        return_type: 结果返回类型，可选值: str, json, dict, df, markdown
+        return_type: 结果返回类型，可选值: str, json, dict, markdown
         stock_code: 股票代码（6位数字），不指定则查询所有股票的委托
 
     Returns:
@@ -167,7 +166,7 @@ def historical_commission_query(
     """查询股票历史委托订单信息
 
     Args:
-        return_type: 结果返回类型，可选值: str, json, dict, df, markdown
+        return_type: 结果返回类型，可选值: str, json, dict, markdown
         stock_code: 股票代码（6位数字），不指定则查询所有股票的历史委托
         time_range: 查询时间范围，可选值: 当日, 近一周, 近一月, 近三月, 近一年
 
@@ -237,7 +236,7 @@ def condition_order_query(return_type: str = "json") -> dict:
     """查询条件单信息
 
     Args:
-        return_type: 结果返回类型，可选值: str, json, dict, df, markdown
+        return_type: 结果返回类型，可选值: str, json, dict, markdown
 
     Returns:
         条件单信息
