@@ -22,6 +22,7 @@ class ProjectConfig:
     api_cors_origins = os.getenv("API_CORS_ORIGINS", "*")
     api_key = os.getenv("API_KEY", None)
     api_ip_whitelist = os.getenv("API_IP_WHITELIST", None)  # None表示允许所有，逗号分隔如"127.0.0.1,192.168.1.*"
+    api_mcp_server_type = os.getenv("API_MCP_SERVER_TYPE", "streamable-http")  # MCP服务器传输类型: http, streamable-http, sse
 
     # Logging配置
     logging_level = os.getenv("LOGGING_LEVEL", "INFO")
@@ -82,6 +83,14 @@ class ProjectConfig:
             if "ip_whitelist" in api_config:
                 # 空字符串转换为 None
                 self.api_ip_whitelist = api_config["ip_whitelist"] or None
+            if "mcp_server_type" in api_config:
+                # 验证 MCP 服务器类型
+                valid_types = ["http", "streamable-http", "sse"]
+                mcp_type = api_config["mcp_server_type"]
+                if mcp_type in valid_types:
+                    self.api_mcp_server_type = mcp_type
+                else:
+                    raise ValueError(f"无效的 mcp_server_type: {mcp_type}，可选值: {valid_types}")
 
         # 处理 [logging] 部分
         if "logging" in config:

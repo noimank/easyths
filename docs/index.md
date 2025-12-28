@@ -7,6 +7,7 @@
 如果你需要：
 
 - 🔸 **股票交易 API** - 为量化策略提供标准化的交易接口
+- 🔸 **AI 助手集成** - 让 Claude Desktop 等 AI 助手直接执行交易操作
 - 🔸 **低成本方案** - 无需购买昂贵的 QT/miniQTD 等专业交易终端
 - 🔸 **本地化部署** - 数据完全可控，适合对隐私有要求的个人开发者
 - 🔸 **快速验证** - 快速搭建交易原型，验证策略想法
@@ -20,6 +21,7 @@ EasyTHS 是为你量身定制的轻量级解决方案。
 - 🚀 **极速交易** - 深度优化自动化流程，压榨性能极限，提供极速稳定的交易体验
 - 🖥️ **GUI 自动化** - 基于 pywinauto 的 Windows GUI 自动化
 - 🌐 **RESTful API** - FastAPI 提供的高性能 HTTP API 接口
+- 🤖 **MCP 支持** - 支持 Model Context Protocol，可被 AI 助手直接调用
 - 📊 **数据管理** - 支持交易数据的记录和查询
 
 ### 生产级安全
@@ -56,7 +58,8 @@ EasyTHS 采用分层架构设计，将系统职责清晰分离，确保代码的
 │  │  FastAPI 路由                                      │  │
 │  │  ├─ system.py     - 系统管理                        │  │
 │  │  ├─ operations.py - 操作执行                        │  │
-│  │  └─ queue.py      - 队列管理                        │  │
+│  │  ├─ queue.py      - 队列管理                        │  │
+│  │  └─ mcp_server.py - MCP 服务                        │  │
 │  └────────────────────────────────────────────────────────┘  │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │  中间件                                            │  │
@@ -190,7 +193,8 @@ easyths/
 │   ├── routes/                  # API 路由
 │   │   ├── system.py           # 系统管理接口
 │   │   ├── operations.py       # 操作执行接口
-│   │   └── queue.py            # 队列管理接口
+│   │   ├── queue.py            # 队列管理接口
+│   │   └── mcp_server.py       # MCP 服务接口 (Model Context Protocol)
 │   ├── middleware/              # 中间件
 │   │   ├── api_key_auth.py     # API Key 认证
 │   │   ├── ip_whitelist.py     # IP 白名单
@@ -293,6 +297,7 @@ easyths --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
 
 - [快速开始](getting-started/index.md)
 - [基础用法](getting-started/basic-usage.md)
+- [MCP 服务](getting-started/mcp-service.md) - AI 助手集成指南
 - [API 文档](getting-started/api.md)
 - [常见问题](getting-started/faq.md)
 

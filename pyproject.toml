@@ -45,6 +45,8 @@ server = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "pydantic-settings>=2.6.0",
+    # MCP 协议支持
+    "fastmcp>=0.4.0",
     # Windows GUI自动化
     "pywinauto>=0.6.8",
     "pywin32>=308",

@@ -286,6 +286,7 @@ easyths/
 │   │       ├── operations.py        # 交易操作接口
 │   │       ├── queue.py             # 队列管理接口
 │   │       ├── system.py            # 系统状态接口
+│   │       ├── mcp_server.py        # MCP 服务接口
 │   │       └── __init__.py
 │   ├── assets/                      # 资源文件
 │   ├── core/                        # 核心组件
@@ -327,12 +328,21 @@ easyths/
 | 目录 | 说明 |
 |------|------|
 | `easyths/api/` | FastAPI 服务端，包含路由、中间件和依赖项 |
+| `easyths/api/routes/mcp_server.py` | MCP (Model Context Protocol) 服务接口，支持 AI 助手集成 |
 | `easyths/core/` | 核心组件，操作队列和 UI 自动化 |
 | `easyths/models/` | Pydantic 数据模型定义 |
 | `easyths/operations/` | 交易操作插件，自动发现并注册 |
 | `easyths/utils/` | 工具函数和辅助模块 |
 | `easyths/trade_client.py` | Python Client SDK，用于远程调用 API |
 | `easyths/main.py` | 服务端主入口 |
+
+### MCP 服务
+
+项目支持 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) 协议，允许 AI 助手（如 Claude Desktop）直接调用同花顺交易功能。
+
+- **服务端点**: `/api/mcp-server/`
+- **协议类型**: 支持 `http`、`streamable-http`、`sse` 三种传输协议
+- **详细文档**: [MCP 服务文档](../getting-started/mcp-service.md)
 
 ## 下一步
 

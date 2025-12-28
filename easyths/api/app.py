@@ -12,6 +12,8 @@ from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware, IPWhi
 from easyths.api.routes import system_router, operations_router, queue_router
 from easyths.api.dependencies.common import set_global_instances
 from easyths.utils import project_config_instance
+from easyths.core.base_operation import operation_registry
+from easyths.api.routes.mcp_server import set_queue, mcp_asgi_app
 
 logger = structlog.get_logger(__name__)
 
@@ -98,23 +100,34 @@ class TradingAPIApp:
         self.app.include_router(operations_router)
         self.app.include_router(queue_router)
 
+        # MCP 服务器路由 (在插件加载后挂载)
+        # 注意：MCP 应用需要在插件加载完成后初始化，因此在 lifespan 中挂载
+        self._mcp_app = None
+
     @asynccontextmanager
     async def lifespan(self, app: FastAPI):
-        """应用生命周期管理"""
-        # 启动时执行
-        logger.info("正在启动交易API服务...")
+        """应用生命周期管理 - 整合 FastAPI 和 MCP 服务器的生命周期"""
 
+        # ========== 启动阶段 ==========
+        logger.info("正在启动交易API服务...")
         # 加载插件
-        from easyths.core.base_operation import operation_registry
         operation_registry.load_plugins()
 
-        # 队列已经在main.py中启动，这里不需要再次启动
-        logger.info("交易API服务启动完成")
-        yield
+        # 设置 MCP 服务器的队列引用并挂载
+        set_queue(self.operation_queue)
+        self.app.mount("/api", mcp_asgi_app)
+        logger.info(f"MCP 服务器已挂载到 /api/mcp-server (传输类型: {project_config_instance.api_mcp_server_type})")
 
-        # 关闭时执行
+        # 使用 FastMCP 的 lifespan 管理 session_manager (最佳实践)
+        # mcp_asgi_app.lifespan 会正确初始化和管理 MCP session manager
+        async with mcp_asgi_app.lifespan(app):
+            # 队列已经在main.py中启动，这里不需要再次启动
+            logger.info("交易API服务启动完成")
+            yield
+
+        # ========== 关闭阶段 ==========
+        # mcp_asgi_app.lifespan 的上下文退出时会自动清理 session_manager
         logger.info("正在关闭交易API服务...")
-        # 队列停止在main.py中处理
         logger.info("交易API服务已关闭")
 
     def run(self):

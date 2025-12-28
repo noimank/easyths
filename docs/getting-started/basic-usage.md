@@ -114,17 +114,22 @@ batch_size = 10          # 批量处理大小
 [api]
 host = "0.0.0.0"           # 服务器地址
 port = 7648                # 服务器端口
+mcp_server_type = "streamable-http"  # MCP 传输类型: http, streamable-http, sse
 rate_limit = 10            # 速率限制（请求/分钟）
 cors_origins = "*"         # CORS 允许的源
 key = ""                   # API 密钥（留空表示不启用）
 ip_whitelist = ""          # IP 白名单（留空表示允许所有）
 ```
 
+> **提示**：`mcp_server_type` 配置 MCP 服务的传输协议。详见 [MCP 服务](mcp-service.md)。
+
 ### [logging] 日志配置
 ```toml
 [logging]
 level = "INFO"             # 日志级别
-file = "logs/trading.log"  # 日志文件路径
+#日志文件默认在："C:/Users/你的用户名/easyths/log.txt"
+file = ""
+
 ```
 
 ## 完整配置参考
@@ -160,6 +165,7 @@ batch_size = 10          # 批量处理大小
 [api]
 host = "0.0.0.0"           # 服务器地址
 port = 7648                # 服务器端口
+mcp_server_type = "streamable-http"  # MCP 传输类型: http, streamable-http, sse
 rate_limit = 10            # 速率限制（请求/分钟）
 cors_origins = "*"         # CORS 允许的源
 key = ""                   # API 密钥（留空表示不启用）
@@ -170,7 +176,9 @@ ip_whitelist = ""          # IP 白名单（留空表示允许所有）
 # ============================================
 [logging]
 level = "INFO"             # 日志级别：DEBUG, INFO, WARNING, ERROR
-file = "logs/trading.log"  # 日志文件路径
+#日志文件默认在："C:/Users/你的用户名/easyths/log.txt"
+file = ""
+
 ```
 
 ### 配置优先级
@@ -193,4 +201,5 @@ uvx easyths[server] --get_config
 ## 更多内容
 
 - [API 服务](api.md)
+- [MCP 服务](mcp-service.md)
 - [常见问题](faq.md)

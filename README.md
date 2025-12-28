@@ -23,6 +23,7 @@
 - **错误恢复**：完整的错误处理和恢复机制
 - **实时监控**：详细的日志记录和状态监控
 - **RESTful API**：完整的 HTTP 接口，支持各种语言集成
+- **MCP 支持**：支持 Model Context Protocol，可被 AI 助手（如 Claude Desktop）直接调用
 
 ## 文档
 
@@ -32,6 +33,7 @@
 - [基础用法](https://noimank.github.io/easyths/getting-started/basic-usage/)
 - [客户端设置](https://noimank.github.io/easyths/getting-started/ths-client/)
 - [Client SDK](https://noimank.github.io/easyths/getting-started/client-sdk/) - Python 客户端 SDK
+- [MCP 服务](https://noimank.github.io/easyths/getting-started/mcp-service/) - AI 助手集成指南
 - [API 参考](https://noimank.github.io/easyths/api/)
 
 ## 快速开始
@@ -122,6 +124,32 @@ curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
 ```
 
 更多使用示例请参考 [基础用法](https://noimank.github.io/easyths/getting-started/basic-usage/)。
+
+### 使用 MCP（AI 助手集成）
+
+EasyTHS 支持 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/)，可以让 Claude Desktop 等 AI 助手直接调用交易功能。
+
+**Claude Desktop 配置示例**：
+
+```json
+{
+  "mcpServers": {
+    "easyths": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:7648/api/mcp-server/"
+      }
+    }
+  }
+}
+```
+
+配置后，你可以在 Claude Desktop 中直接对话：
+- "查询我的账户资金"
+- "买入 100 股平安银行，价格 10.5 元"
+- "当贵州茅台低于 1500 元时买入 100 股"
+
+详细的 MCP 配置和使用说明请参考 [MCP 服务文档](https://noimank.github.io/easyths/getting-started/mcp-service/)。
 
 ## 系统要求
 
