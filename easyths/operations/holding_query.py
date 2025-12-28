@@ -56,8 +56,12 @@ class HoldingQueryOperation(BaseOperation):
             main_window_wrapper = self.get_main_window(wrapper_obj=True)
             main_panel = main_window_wrapper.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
 
+            HexinScrollWnd = self.get_control_with_children(main_panel, title='HexinScrollWnd', auto_id="1047")
+
+            HexinScrollWnd2 = self.get_control_with_children(HexinScrollWnd, auto_id="200", class_name="AfxWnd140s")
+
             # 获取表格控件
-            table_panel = main_panel.children(control_type="Pane", title='HexinScrollWnd')[0].children(control_type="Pane", title="HexinScrollWnd2")[0].children(class_name="CVirtualGridCtrl")[0]
+            table_panel = self.get_control_with_children(HexinScrollWnd2, title="Custom1", class_name="CVirtualGridCtrl")
             # 鼠标左键点击
             table_panel.click_input()
 
