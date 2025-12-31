@@ -651,6 +651,8 @@ class TradeClient:
     def query_historical_commission(
         self,
         return_type: Literal["str", "json", "dict", "df", "markdown"] = "json",
+        stock_code: Optional[str] = None,
+        time_range: Literal["当日", "近一周", "近一月", "近三月", "近一年"] = "当日",
         timeout: float = 30.0
     ) -> APIResponse:
         """
@@ -658,15 +660,32 @@ class TradeClient:
 
         Args:
             return_type: 结果返回类型
+                - "str": 字符串格式
+                - "json": JSON 格式（默认）
+                - "dict": 字典格式
+                - "df": pandas DataFrame
+                - "markdown": Markdown 表格
+            stock_code: 股票代码（6位数字），不指定则查询所有股票的历史成交
+            time_range: 查询时间范围，可选"当日"/"近一周"/"近一月"/"近三月"/"近一年"，默认"当日"
             timeout: 操作超时时间（秒）
 
         Returns:
             操作结果，历史成交数据在 result["data"]["result"]["data"]
 
         Examples:
+            >>> # 查询当日所有历史成交
             >>> result = client.query_historical_commission()
+            >>>
+            >>> # 查询指定股票近一周的历史成交
+            >>> result = client.query_historical_commission(stock_code="600000", time_range="近一周")
         """
-        params = {"return_type": return_type}
+        params: Dict[str, Any] = {
+            "return_type": return_type,
+            "time_range": time_range
+        }
+        if stock_code is not None:
+            params["stock_code"] = stock_code
+
         operation_id = self.execute_operation("historical_commission_query", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 

@@ -471,10 +471,20 @@ POST /api/v1/operations/historical_commission_query
 ```json
 {
   "params": {
-    "return_type": "json"
+    "return_type": "json",
+    "stock_code": "600000",
+    "time_range": "当日"
   }
 }
 ```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| return_type | string | 否 | 返回类型：str/json/dict/df/markdown，默认 json |
+| stock_code | string | 否 | 股票代码（6位数字），不指定则查询所有股票 |
+| time_range | string | 否 | 时间范围：当日/近一周/近一月/近三月/近一年，默认当日 |
 
 ### reverse_repo_buy - 国债逆回购购买
 
