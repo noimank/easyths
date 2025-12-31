@@ -29,7 +29,7 @@ from easyths.api.app import TradingAPIApp
 PROJECT_NAME = "EasyTHS"
 PROJECT_AUTHOR = "noimank"
 PROJECT_EMAIL = "noimank@163.com"
-PROJECT_VERSION = "1.4.1"
+PROJECT_VERSION = "1.4.2"
 PROJECT_REPO = "https://github.com/noimank/easyths"
 PROJECT_DOCS = "https://noimank.github.io/easyths/"
 PROJECT_ISSUES = "https://github.com/noimank/easyths/issues"
