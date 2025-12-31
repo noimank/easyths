@@ -75,9 +75,11 @@ class ReverseRepoQueryOperation(BaseOperation):
             if is_pop_up:
                 pop_dialog_title, pop_control = self.get_pop_dialog()
                 if pop_dialog_title == "国债逆回购窗口":
-                    inner_panel = pop_control.children(control_type="Pane", class_name="AfxWnd140s")[0]
-                    inner_panel2 = inner_panel.children(control_type="Pane", class_name="CefBrowserWindow")[0].children(control_type="Pane", class_name="Chrome_WidgetWin_0")[0]
-                    document_panel =self.get_control_with_children(inner_panel2, control_type="Document", auto_id="174504928")
+                    AfxWnd140s_pane = self.get_control_with_children(pop_control, control_type="Pane", auto_id="3001", class_name="AfxWnd140s")
+                    CefBrowserWindow_pane = self.get_control_with_children(AfxWnd140s_pane, control_type="Pane", class_name="CefBrowserWindow")
+                    Chrome_WidgetWin_0_pane = self.get_control_with_children(CefBrowserWindow_pane, control_type="Pane", class_name="Chrome_WidgetWin_0")
+                    document_panel = self.get_control_with_children(Chrome_WidgetWin_0_pane, control_type="Document", class_name="Chrome_RenderWidgetHostHWND")
+
                     # 会有10个元素
                     table_panel = document_panel.children(control_type="Table")
                     #选择对应的选择
