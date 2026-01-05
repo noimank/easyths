@@ -368,7 +368,7 @@ wheels = [
 
 [[package]]
 name = "easyths"
-version = "1.4.3"
+version = "1.4.4"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
