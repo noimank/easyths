@@ -17,7 +17,7 @@ index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [project]
 name = "easyths"
-version = "1.4.4"
+version = "1.4.5"
 description = "同花顺交易自动化系统"
 authors = [
     { name = "noimank", email = "noimank@163.com" }
@@ -37,6 +37,7 @@ dependencies = [
     # 客户端最小依赖（跨平台）
     "pydantic>=2.10.0",
     "httpx>=0.28.0",
+    "numpy<2.4.0",
 ]
 
 [project.optional-dependencies]
