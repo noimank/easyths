@@ -110,6 +110,9 @@ class BuyOperation(BaseOperation):
             )
             # 按下 F1键
             main_window = self.get_main_window(wrapper_obj=True)
+            #切换到别的页面再切会买入页面会清空可能残留的操作信息，增强操作可用性
+            main_window.type_keys("{F3}")
+            self.sleep(0.2)
             main_window.type_keys("{F1}")
             # 防抖
             self.sleep(0.25)
@@ -129,6 +132,9 @@ class BuyOperation(BaseOperation):
             self.wait_for_pop_dialog(0.25)
             # # 没弹窗就是成功，这里已经假设用户已经按照项目设置好软件，为了加快操作速度，去掉了多余的弹窗处理（因为设置好软件后不会有弹窗）
             is_op_success = not self.is_exist_pop_dialog()
+            # 证券名称，如果购买成功，stock_name会清空
+            stock_name = self.get_control_with_children(main_panel, control_type="Text", auto_id="1036").window_text()
+
             message = f"成功提交{stock_code}的买入委托"
             if not is_op_success:
                 # 不成功就尝试获取弹窗内容
@@ -136,6 +142,10 @@ class BuyOperation(BaseOperation):
                 if pop_dialog_title == "失败提示":
                     message = self.get_control_with_children(pop_control, control_type="Image", auto_id="1004", class_name="Static").window_text()
                     self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").type_keys("{ENTER}")
+            # 二次确认
+            elif len(stock_name) > 0:
+                message = f"买入操作未能成功，请检查软件设置是否有项目要求不符的地方"
+                is_op_success = False
 
             # 返回买入结果
             result_data = {
