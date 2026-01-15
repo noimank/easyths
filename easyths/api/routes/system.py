@@ -3,7 +3,6 @@
 """
 from datetime import datetime
 from fastapi import APIRouter, Depends
-from typing import Dict, Any
 
 from easyths.api.dependencies.common import get_automator
 from easyths.models.operations import APIResponse

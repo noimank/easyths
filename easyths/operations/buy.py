@@ -120,8 +120,10 @@ class BuyOperation(BaseOperation):
             main_panel = main_window.children(control_type="Pane")[0].children(control_type="Pane",class_name='AfxMDIFrame140s')[0]
             # # 1. 输入股票代码
             self.get_control_with_children(main_panel, control_type="Edit", auto_id="1032").type_keys(stock_code)
+            self.sleep(0.08)
             # # 2.输入价格
             self.get_control_with_children(main_panel, control_type="Edit", auto_id="1033").type_keys(price)
+            self.sleep(0.08)
             # # 3. 输入数量
             self.get_control_with_children(main_panel, control_type="Edit", auto_id="1034").type_keys(str(quantity))
             # # 等待输入数量后稳定在确认
@@ -152,13 +154,11 @@ class BuyOperation(BaseOperation):
                 "stock_code": stock_code,
                 "price": price,
                 "quantity": quantity,
-                "operation": "buy",
-                "success": is_op_success,
-                "message": message
             }
 
             self.logger.info(f"买入操作{"成功" if is_op_success else "失败"}，耗时{time.time() - start_time}, 操作结果：", **result_data)
             return OperationResult(
+                message=message,
                 success=is_op_success,
                 data=result_data,
             )
@@ -166,4 +166,4 @@ class BuyOperation(BaseOperation):
         except Exception as e:
             error_msg = f"买入操作异常: {str(e)}"
             self.logger.exception(error_msg)
-            return OperationResult(success=False, error=error_msg)
+            return OperationResult(success=False, message=error_msg)

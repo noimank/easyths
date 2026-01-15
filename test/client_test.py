@@ -5,7 +5,7 @@ Email: noimank@163.com
 """
 from easyths import TradeClient
 
-client = TradeClient(host='localhost', port=7648, api_key="mysuperKey87kiE@iijiu+ojiyu")
+client = TradeClient(host='localhost', port=7648, api_key="")
 
 
 def test_health_check():
@@ -118,8 +118,8 @@ def test_stop_loss_profit():
     print(f"止盈止损: {interest_res}")
 
 def test_condition_order_query():
-    interest_res = client.query_condition_orders("markdown",)
-    print(f"条件单查询: {interest_res}")
+    interest_res = client.query_condition_orders("json")
+    print(f"条件单查询: {interest_res}, 数据：{interest_res['data']}")
 
 def test_condition_order_canel():
     interest_res = client.cancel_condition_orders()
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     # test_reverse_repo()
     # test_condition_bug()
     # test_stop_loss_profit()
-    test_condition_order_query()
+    # test_condition_order_query()
     # test_condition_order_canel()
 
     # 撤单操作测试
@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     # 查询操作测试
     # print("\n=== 查询操作测试 ===")
-    # test_query_holdings()
+    test_query_holdings()
     # test_query_holdings_markdown()
     # test_query_funds()
     # test_query_orders()

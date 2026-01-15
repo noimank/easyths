@@ -144,11 +144,11 @@ result = client.buy(
 )
 
 # 检查结果
-if result["data"]["result"]["success"]:
-    data = result["data"]["result"]["data"]
+if result["success"]:
+    data = result["data"]
     print(f"买入成功: {data['message']}")
 else:
-    error = result["data"]["result"]["error"]
+    error = result["message"]
     print(f"买入失败: {error}")
 ```
 
@@ -162,7 +162,7 @@ result = client.sell(
     timeout=60.0
 )
 
-if result["data"]["result"]["success"]:
+if result["success"]:
     print("卖出成功")
 ```
 
@@ -195,11 +195,11 @@ result = client.condition_buy(
     timeout=60.0              # 超时时间（可选，默认60秒）
 )
 
-if result["data"]["result"]["success"]:
-    data = result["data"]["result"]["data"]
+if result["success"]:
+    data = result["data"]
     print(f"条件买入设置成功: {data['message']}")
 else:
-    error = result["data"]["result"]["error"]
+    error = result["message"]
     print(f"条件买入设置失败: {error}")
 ```
 
@@ -217,11 +217,11 @@ result = client.stop_loss_profit(
     timeout=60.0                 # 超时时间（可选，默认60秒）
 )
 
-if result["data"]["result"]["success"]:
-    data = result["data"]["result"]["data"]
+if result["success"]:
+    data = result["data"]
     print(f"止盈止损设置成功: {data['message']}")
 else:
-    error = result["data"]["result"]["error"]
+    error = result["message"]
     print(f"止盈止损设置失败: {error}")
 ```
 
@@ -238,11 +238,11 @@ result = client.reverse_repo_buy(
     timeout=60.0
 )
 
-if result["data"]["result"]["success"]:
-    message = result["data"]["result"]["data"]["message"]
+if result["success"]:
+    message = result["data"]["message"]
     print(f"购买成功: {message}")
 else:
-    error = result["data"]["result"]["error"]
+    error = result["message"]
     print(f"购买失败: {error}")
 ```
 
@@ -267,8 +267,8 @@ result = client.cancel_condition_orders(
     order_type="买入"
 )
 
-if result["data"]["result"]["success"]:
-    message = result["data"]["result"]["data"]["message"]
+if result["success"]:
+    message = result["data"]["message"]
     print(f"删除成功: {message}")
 ```
 
@@ -280,12 +280,12 @@ if result["data"]["result"]["success"]:
 
 ```python
 result = client.query_holdings(
-    return_type="json",  # str/json/dict/df/markdown
+    return_type="json",  # str/json/dict/markdown
     timeout=30.0
 )
 
-if result["data"]["result"]["success"]:
-    holdings = result["data"]["result"]["data"]["holdings"]
+if result["success"]:
+    holdings = result["data"]["holdings"]
     for position in holdings:
         print(f"{position['股票代码']}: {position['持仓数量']}股")
 ```
@@ -295,8 +295,8 @@ if result["data"]["result"]["success"]:
 ```python
 result = client.query_funds(timeout=30.0)
 
-if result["data"]["result"]["success"]:
-    funds = result["data"]["result"]["data"]
+if result["success"]:
+    funds = result["data"]
     print(f"总资产: {funds['总资产']}")
     print(f"可用金额: {funds['可用金额']}")
 ```
@@ -313,8 +313,8 @@ result = client.query_orders(
     return_type="json"
 )
 
-if result["data"]["result"]["success"]:
-    orders = result["data"]["result"]["data"]["orders"]
+if result["success"]:
+    orders = result["data"]["orders"]
     for order in orders:
         print(f"{order['股票代码']}: {order['委托数量']}股 @ {order['委托价格']}")
 ```
@@ -324,8 +324,8 @@ if result["data"]["result"]["success"]:
 ```python
 result = client.query_historical_commission(return_type="json")
 
-if result["data"]["result"]["success"]:
-    commissions = result["data"]["result"]["data"]
+if result["success"]:
+    commissions = result["data"]
     print(commissions)
 ```
 
@@ -336,8 +336,8 @@ if result["data"]["result"]["success"]:
 ```python
 result = client.query_reverse_repo(timeout=30.0)
 
-if result["data"]["result"]["success"]:
-    rates = result["data"]["result"]["data"]["reverse_repo_interest"]
+if result["success"]:
+    rates = result["data"]["reverse_repo_interest"]
     for item in rates:
         print(f"{item['市场类型']} - {item['时间类型']}: {item['年化利率']}")
 ```
@@ -348,12 +348,12 @@ if result["data"]["result"]["success"]:
 
 ```python
 result = client.query_condition_orders(
-    return_type="json",  # str/json/dict/df/markdown
+    return_type="json",  # str/json/dict/markdown
     timeout=30.0
 )
 
-if result["data"]["result"]["success"]:
-    orders = result["data"]["result"]["data"]["condition_orders"]
+if result["success"]:
+    orders = result["data"]["condition_orders"]
     print(orders)
 ```
 
@@ -395,8 +395,8 @@ result = client.get_operation_result(
     timeout=30.0  # 超时时间（可选）
 )
 
-if result["data"]["result"]["success"]:
-    print("操作成功:", result["data"]["result"]["data"])
+if result["success"]:
+    print("操作成功:", result["data"])
 ```
 
 ### 取消操作
@@ -418,7 +418,7 @@ from easyths import TradeClient, TradeClientError
 try:
     with TradeClient(host="127.0.0.1", port=7648) as client:
         result = client.buy("600000", 10.50, 100)
-        if result["data"]["result"]["success"]:
+        if result["success"]:
             print("买入成功")
 
 except TradeClientError as e:
@@ -458,16 +458,16 @@ def simple_trade():
 
         # 查询资金
         funds = client.query_funds()
-        if funds["data"]["result"]["success"]:
-            available = funds["data"]["result"]["data"]["可用金额"]
+        if funds["success"]:
+            available = funds["data"]["可用金额"]
             print(f"可用资金: {available}")
 
         # 买入股票
         result = client.buy("600000", 10.50, 100)
-        if result["data"]["result"]["success"]:
+        if result["success"]:
             print("买入成功")
         else:
-            print(f"买入失败: {result['data']['result']['error']}")
+            print(f"买入失败: {result['message']}")
 
 if __name__ == "__main__":
     try:
@@ -506,11 +506,11 @@ def async_trade_example():
 
         # 处理结果
         for result in results:
-            if result["data"]["result"]["success"]:
-                data = result["data"]["result"]["data"]
+            if result["success"]:
+                data = result["data"]
                 print(f"操作成功: {data.get('message', 'N/A')}")
             else:
-                print(f"操作失败: {result['data']['result']['error']}")
+                print(f"操作失败: {result['message']}")
 ```
 
 ---
@@ -531,34 +531,34 @@ class TradeClient:
     ): ...
 
     # 系统管理
-    def health_check(self) -> APIResponse: ...
-    def get_system_status(self) -> APIResponse: ...
-    def get_system_info(self) -> APIResponse: ...
-    def get_queue_stats(self) -> APIResponse: ...
-    def list_operations(self) -> APIResponse: ...
+    def health_check(self) -> dict: ...
+    def get_system_status(self) -> dict: ...
+    def get_system_info(self) -> dict: ...
+    def get_queue_stats(self) -> dict: ...
+    def list_operations(self) -> dict: ...
 
     # 通用操作
     def execute_operation(self, operation_name: str, params: dict, priority: int = 0) -> str: ...
-    def get_operation_status(self, operation_id: str) -> APIResponse: ...
-    def get_operation_result(self, operation_id: str, timeout: float = None) -> APIResponse: ...
+    def get_operation_status(self, operation_id: str) -> dict: ...
+    def get_operation_result(self, operation_id: str, timeout: float = None) -> dict: ...
     def cancel_operation(self, operation_id: str) -> bool: ...
 
     # 交易操作
-    def buy(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> APIResponse: ...
-    def sell(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> APIResponse: ...
-    def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = 60.0) -> APIResponse: ...
-    def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = 60.0) -> APIResponse: ...
-    def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = 60.0) -> APIResponse: ...
-    def query_condition_orders(self, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
-    def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = 60.0) -> APIResponse: ...
-    def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = 60.0) -> APIResponse: ...
+    def buy(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> dict: ...
+    def sell(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> dict: ...
+    def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = 60.0) -> dict: ...
+    def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = 60.0) -> dict: ...
+    def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = 60.0) -> dict: ...
+    def query_condition_orders(self, return_type: str = "json", timeout: float = 30.0) -> dict: ...
+    def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = 60.0) -> dict: ...
+    def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = 60.0) -> dict: ...
 
     # 查询操作
-    def query_holdings(self, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
-    def query_funds(self, timeout: float = 30.0) -> APIResponse: ...
-    def query_orders(self, stock_code: str = None, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
-    def query_historical_commission(self, return_type: str = "json", timeout: float = 30.0) -> APIResponse: ...
-    def query_reverse_repo(self, timeout: float = 30.0) -> APIResponse: ...
+    def query_holdings(self, return_type: str = "json", timeout: float = 30.0) -> dict: ...
+    def query_funds(self, timeout: float = 30.0) -> dict: ...
+    def query_orders(self, stock_code: str = None, return_type: str = "json", timeout: float = 30.0) -> dict: ...
+    def query_historical_commission(self, return_type: str = "json", timeout: float = 30.0) -> dict: ...
+    def query_reverse_repo(self, timeout: float = 30.0) -> dict: ...
 
     # 连接管理
     def close(self): ...
@@ -566,36 +566,47 @@ class TradeClient:
     def __exit__(self, exc_type, exc_val, exc_tb): ...
 ```
 
-### APIResponse 类型
+### 交易操作返回格式
 
-所有 API 方法返回的响应格式：
-
-```python
-class APIResponse(TypedDict):
-    success: bool      # 操作是否成功
-    message: str       # 响应消息
-    data: Any          # 响应数据
-    error: str | None  # 错误信息（如果有）
-    timestamp: str     # 响应时间戳
-```
-
-对于交易操作（如 `buy`, `sell`），实际返回的数据结构为：
+所有交易操作（`buy`, `sell`, `condition_buy` 等）返回 `OperationResult` 格式：
 
 ```python
 {
-    "success": True,
-    "message": "查询成功",
-    "data": {
-        "operation_id": "...",     # 操作ID
-        "result": {
-            "success": bool,        # 业务操作是否成功
-            "data": {...},          # 业务数据
-            "error": str | None,    # 业务错误信息
-            "timestamp": str
-        }
-    },
-    "error": None,
-    "timestamp": "..."
+    "success": bool,        # 业务操作是否成功
+    "data": {...},          # 业务数据
+    "message": str | None,  # 错误信息或成功消息
+    "timestamp": str        # 操作时间（ISO 8601 格式）
+}
+```
+
+**示例**：
+```python
+result = client.buy("600000", 10.50, 100)
+# {
+#     "success": True,
+#     "data": {
+#         "stock_code": "600000",
+#         "price": "10.50",
+#         "quantity": 100,
+#         "operation": "buy",
+#         "success": True,
+#         "message": "成功提交600000的买入委托"
+#     },
+#     "message": None,
+#     "timestamp": "2025-12-26T10:30:00.123456"
+# }
+```
+
+### 系统接口返回格式
+
+系统管理接口（`health_check`, `get_system_status` 等）返回 `APIResponse` 格式：
+
+```python
+{
+    "success": bool,      # 操作是否成功
+    "message": str,       # 响应消息
+    "data": Any,          # 响应数据
+    "timestamp": str      # 响应时间戳（ISO 8601 格式）
 }
 ```
 

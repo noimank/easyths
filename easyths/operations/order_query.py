@@ -21,7 +21,7 @@ class OrderQueryOperation(BaseOperation):
                     "type": "string",
                     "required": True,
                     "description": "",
-                    "enum": ["str", "markdown", "df", "json", "dict"],
+                    "enum": ["str", "markdown", "json", "dict"],
                 },
                 "stock_code": {
                     "type": "string",
@@ -46,8 +46,8 @@ class OrderQueryOperation(BaseOperation):
 
             # 验证返回类型
             return_type = params.get("return_type")
-            if return_type not in ["str", "json", "dict", "df", "markdown"]:
-                self.logger.error("参数return_type无效，有效值为：str、json、dict、df、markdown")
+            if return_type not in ["str", "json", "dict", "markdown"]:
+                self.logger.error("参数return_type无效，有效值为：str、json、dict、markdown")
                 return False
 
             return True
@@ -119,14 +119,13 @@ class OrderQueryOperation(BaseOperation):
             result_data = {
                 "orders": f"没有对应的委托订单" if len(table_data) ==0 else table_data,
                 "stock_code": stock_code if stock_code else "全部查询",
-                "timestamp": datetime.datetime.now().isoformat(),
-                "success": is_op_success
             }
 
             self.logger.info(f"委托查询完成，耗时{time.time() - start_time}秒",
                            stock_code=stock_code or "全部")
 
             return OperationResult(
+                message= f"委托查询完成，耗时{time.time() - start_time}秒",
                 success=is_op_success,
                 data=result_data
             )
@@ -136,6 +135,5 @@ class OrderQueryOperation(BaseOperation):
             self.logger.exception(error_msg)
             return OperationResult(
                 success=False,
-                error=error_msg,
-                data={"timestamp": time.time()}
+                message=error_msg
             )

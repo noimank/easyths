@@ -203,8 +203,7 @@ GET /api/v1/operations/{operation_id}/status
       }
     },
     "error": null,
-    "timestamp": "2025-12-26T10:30:00",
-    "retry_count": 0
+    "timestamp": "2025-12-26T10:30:00"
   }
 }
 ```
@@ -234,20 +233,27 @@ GET /api/v1/operations/{operation_id}/result?timeout=30
 ```json
 {
   "success": true,
-  "message": "查询成功",
   "data": {
-    "operation_id": "550e8400-e29b-41d4-a716-446655440000",
-    "result": {
-      "success": true,
-      "data": {
-        "stock_code": "600000",
-        "price": "10.50",
-        "quantity": 100
-      }
-    }
-  }
+    "stock_code": "600000",
+    "price": "10.50",
+    "quantity": 100,
+    "operation": "buy",
+    "success": true,
+    "message": "成功提交600000的买入委托"
+  },
+  "message": null,
+  "timestamp": "2025-12-26T10:30:00.123456"
 }
 ```
+
+**响应字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | bool | 操作是否成功 |
+| data | object \| null | 业务数据 |
+| message | string \| null | 错误信息或成功消息 |
+| timestamp | string | 操作时间（ISO 8601 格式） |
 
 ### 取消操作
 
@@ -398,7 +404,7 @@ POST /api/v1/operations/holding_query
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| return_type | string | 否 | 返回类型：str/json/dict/df/markdown，默认 json |
+| return_type | string | 否 | 返回类型：str/json/dict/markdown，默认 json |
 
 ### funds_query - 资金查询
 
@@ -436,7 +442,7 @@ POST /api/v1/operations/order_query
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | stock_code | string | 否 | 股票代码，不指定则查询全部 |
-| return_type | string | 是 | 返回类型：str/json/dict/df/markdown |
+| return_type | string | 是 | 返回类型：str/json/dict/markdown |
 
 ### order_cancel - 撤单
 
@@ -482,7 +488,7 @@ POST /api/v1/operations/historical_commission_query
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| return_type | string | 否 | 返回类型：str/json/dict/df/markdown，默认 json |
+| return_type | string | 否 | 返回类型：str/json/dict/markdown，默认 json |
 | stock_code | string | 否 | 股票代码（6位数字），不指定则查询所有股票 |
 | time_range | string | 否 | 时间范围：当日/近一周/近一月/近三月/近一年，默认当日 |
 
@@ -526,7 +532,9 @@ POST /api/v1/operations/reverse_repo_buy
         "amount": 10000,
         "success": true,
         "message": "国债逆回购操作成功， 成功出借:10000 元， 年化利率为：2.50%"
-      }
+      },
+      "message": null,
+      "timestamp": "2025-12-26T10:30:00.123456"
     }
   }
 }
@@ -570,7 +578,9 @@ POST /api/v1/operations/reverse_repo_query
         "timestamp": "2025-12-27T10:30:00",
         "success": true,
         "message": "查询国债逆回购年化利率成功"
-      }
+      },
+      "message": null,
+      "timestamp": "2025-12-27T10:30:00.123456"
     }
   }
 }
@@ -621,7 +631,9 @@ POST /api/v1/operations/condition_buy
         "operation": "condition_buy",
         "success": true,
         "message": "执行600000的条件单成功"
-      }
+      },
+      "message": null,
+      "timestamp": "2025-12-26T10:30:00.123456"
     }
   }
 }
@@ -676,7 +688,9 @@ POST /api/v1/operations/stop_loss_profit
         "operation": "stop_loss_profit",
         "success": true,
         "message": "执行600000的止盈止损单成功"
-      }
+      },
+      "message": null,
+      "timestamp": "2025-12-26T10:30:00.123456"
     }
   }
 }
@@ -703,7 +717,7 @@ POST /api/v1/operations/condition_order_query
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| return_type | string | 否 | 返回类型：str/json/dict/df/markdown，默认 json |
+| return_type | string | 否 | 返回类型：str/json/dict/markdown，默认 json |
 
 **响应示例**:
 ```json
@@ -719,7 +733,9 @@ POST /api/v1/operations/condition_order_query
         "message": "条件单查询成功，共获取到2条数据",
         "timestamp": "2025-12-27T10:30:00",
         "success": true
-      }
+      },
+      "message": null,
+      "timestamp": "2025-12-27T10:30:00.123456"
     }
   }
 }
@@ -766,7 +782,9 @@ POST /api/v1/operations/condition_order_cancel
         "message": "条件单删除成功",
         "timestamp": "2025-12-27T10:30:00",
         "success": true
-      }
+      },
+      "message": null,
+      "timestamp": "2025-12-27T10:30:00.123456"
     }
   }
 }

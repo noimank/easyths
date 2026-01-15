@@ -68,7 +68,7 @@ def _execute_operation(operation_name: str, params: dict) -> dict:
     return {
         "success": result.success,
         "data": result.data,
-        "error": result.error,
+        "message": result.message,
         "operation_id": operation_id
     }
 

@@ -48,8 +48,6 @@ class FundsQueryOperation(BaseOperation):
 
             # 准备返回数据
             result_data = {
-                "timestamp": time.time(),
-                "success": True
             }
 
             # 一次遍历完成信息提取
@@ -82,6 +80,5 @@ class FundsQueryOperation(BaseOperation):
             self.logger.exception(error_msg)
             return OperationResult(
                 success=False,
-                error=error_msg,
-                data={ "timestamp": time.time()}
+                message=error_msg
             )

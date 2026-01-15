@@ -173,12 +173,11 @@ class ReverseRepoBuyOperation(BaseOperation):
                 "market": market,
                 "time_range": time_range,
                 "amount": amount,
-                "success": is_op_success,
-                "message": op_message
             }
 
             self.logger.info(f"国债逆回购操作完成，耗时{time.time() - start_time}s, 操作结果：", **result_data)
             return OperationResult(
+                message=op_message,
                 success=is_op_success,
                 data=result_data,
             )
@@ -186,4 +185,4 @@ class ReverseRepoBuyOperation(BaseOperation):
         except Exception as e:
             error_msg = f"国债逆回购操作异常: {str(e)}"
             self.logger.exception(error_msg)
-            return OperationResult(success=False, error=error_msg)
+            return OperationResult(success=False, message=error_msg)

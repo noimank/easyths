@@ -175,13 +175,11 @@ class ConditionOrderCancelOperation(BaseOperation):
                 "stock_code": stock_code,
                 "order_type": order_type,
                 "deleted_count": delete_count,
-                "message": op_message,
-                "timestamp": time.time(),
-                "success": is_op_success
             }
 
             self.logger.info(f"条件单删除操作耗时{time.time() - start_time}秒")
             return OperationResult(
+                message=op_message,
                 success=is_op_success,
                 data=result_data
             )
@@ -191,6 +189,6 @@ class ConditionOrderCancelOperation(BaseOperation):
             self.logger.exception(error_msg)
             return OperationResult(
                 success=False,
-                error=error_msg,
+                message=error_msg,
                 data={"timestamp": time.time()}
             )

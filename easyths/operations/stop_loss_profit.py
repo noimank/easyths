@@ -242,19 +242,17 @@ class StopLossProfitOperation(BaseOperation):
             result_data = {
                 "stock_code": stock_code,
                 "stop_loss_percent": stop_loss_percent,
-                "stop_profit_percent": stop_profit_percent,
-                "operation": "stop_loss_profit",
-                "success": is_op_success,
-                "message": op_message
+                "stop_profit_percent": stop_profit_percent
             }
 
             self.logger.info(f"止盈止损操作耗时{time.time() - start_time}, 操作结果：", **result_data)
             return OperationResult(
+                message=op_message,
                 success=is_op_success,
-                data=result_data,
+                data=result_data
             )
 
         except Exception as e:
             error_msg = f"止盈止损操作异常: {str(e)}"
             self.logger.exception(error_msg)
-            return OperationResult(success=False, error=error_msg)
+            return OperationResult(success=False, message=error_msg)

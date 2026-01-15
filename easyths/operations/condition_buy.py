@@ -189,13 +189,11 @@ class ConditionBuyOperation(BaseOperation):
                 "stock_code": stock_code,
                 "target_price": target_price,
                 "quantity": quantity,
-                "operation": "condition_buy",
-                "success": is_op_success,
-                "message": op_message
             }
 
             self.logger.info(f"条件买入操作耗时{time.time() - start_time}, 操作结果：", **result_data)
             return OperationResult(
+                message=op_message,
                 success=is_op_success,
                 data=result_data,
             )
@@ -203,4 +201,4 @@ class ConditionBuyOperation(BaseOperation):
         except Exception as e:
             error_msg = f"条件买入操作异常: {str(e)}"
             self.logger.exception(error_msg)
-            return OperationResult(success=False, error=error_msg)
+            return OperationResult(success=False, message=error_msg)

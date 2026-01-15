@@ -24,7 +24,6 @@ class APIResponse(TypedDict):
     success: bool
     message: str
     data: Any
-    error: Optional[str]
     timestamp: str
 
 
@@ -50,11 +49,13 @@ class TradeClient:
         >>>
         >>> # 买入股票
         >>> result = client.buy("600000", 10.50, 100)
-        >>> print(result["data"]["result"]["data"]["message"])
+        >>> if result["success"]:
+        ...     print(result["data"]["message"])
         >>>
         >>> # 查询持仓
         >>> result = client.query_holdings()
-        >>> holdings = result["data"]["result"]["data"]["holdings"]
+        >>> if result["success"]:
+        ...     holdings = result["data"]["holdings"]
         >>>
         >>> # 使用上下文管理器
         >>> with TradeClient(...) as client:
@@ -217,7 +218,7 @@ class TradeClient:
         self,
         operation_id: str,
         timeout: Optional[float] = None
-    ) -> APIResponse:
+    ) -> dict:
         """
         获取操作结果（阻塞等待直到操作完成）
 
@@ -226,15 +227,15 @@ class TradeClient:
             timeout: 超时时间（秒），None 表示使用客户端默认超时时间
 
         Returns:
-            操作结果，包含 success、message、data 等字段
+            操作结果（OperationResult），包含 success、message、data、timestamp 等字段
 
         Raises:
             TradeClientError: 操作超时或其他错误
 
         Examples:
             >>> result = client.get_operation_result(op_id)
-            >>> if result["data"]["result"]["success"]:
-            ...     print("操作成功:", result["data"]["result"]["data"])
+            >>> if result["success"]:
+            ...     print("操作成功:", result["data"])
         """
         params = {}
         if timeout is not None:
@@ -267,8 +268,8 @@ class TradeClient:
         stock_code: str,
         price: float,
         quantity: int,
-        timeout: float = 60.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         买入股票
 
@@ -279,21 +280,12 @@ class TradeClient:
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，格式为：
+            操作结果（OperationResult），格式为：
             {
-                "success": True,
-                "message": "查询成功",
-                "data": {
-                    "operation_id": "...",
-                    "result": {
-                        "success": bool,
-                        "data": {...},  # 业务数据
-                        "error": None,
-                        "timestamp": str
-                    }
-                },
-                "error": None,
-                "timestamp": str
+                "success": bool,
+                "data": {...},  # 业务数据
+                "message": str | None,  # 错误信息或成功消息
+                "timestamp": str  # ISO 8601 格式时间
             }
 
         Raises:
@@ -302,8 +294,8 @@ class TradeClient:
         Examples:
             >>> client = TradeClient(...)
             >>> result = client.buy("600000", 10.50, 100)
-            >>> if result["data"]["result"]["success"]:
-            ...     print(result["data"]["result"]["data"]["message"])
+            >>> if result["success"]:
+            ...     print(result["data"]["message"])
         """
         params = {
             "stock_code": stock_code,
@@ -318,8 +310,8 @@ class TradeClient:
         stock_code: str,
         price: float,
         quantity: int,
-        timeout: float = 60.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         卖出股票
 
@@ -330,11 +322,12 @@ class TradeClient:
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，格式与 buy() 相同
+            操作结果（OperationResult），格式与 buy() 相同
 
         Examples:
             >>> result = client.sell("600000", 11.00, 100)
-            >>> print(result["data"]["result"]["data"]["message"])
+            >>> if result["success"]:
+            ...     print(result["data"]["message"])
         """
         params = {
             "stock_code": stock_code,
@@ -348,8 +341,8 @@ class TradeClient:
         self,
         stock_code: Optional[str] = None,
         cancel_type: Literal["all", "buy", "sell"] = "all",
-        timeout: float = 60.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         撤销委托单
 
@@ -384,8 +377,8 @@ class TradeClient:
         target_price: float,
         quantity: int,
         expire_days: int = 30,
-        timeout: float = 60.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         条件买入股票
 
@@ -399,21 +392,12 @@ class TradeClient:
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，格式为：
+            操作结果（OperationResult），格式为：
             {
-                "success": True,
-                "message": "查询成功",
-                "data": {
-                    "operation_id": "...",
-                    "result": {
-                        "success": bool,
-                        "data": {...},  # 业务数据
-                        "error": None,
-                        "timestamp": str
-                    }
-                },
-                "error": None,
-                "timestamp": str
+                "success": bool,
+                "data": {...},  # 业务数据
+                "message": str | None,  # 错误信息或成功消息
+                "timestamp": str  # ISO 8601 格式时间
             }
 
         Raises:
@@ -422,8 +406,8 @@ class TradeClient:
         Examples:
             >>> client = TradeClient(...)
             >>> result = client.condition_buy("600000", 10.50, 100, expire_days=30)
-            >>> if result["data"]["result"]["success"]:
-            ...     print(result["data"]["result"]["data"]["message"])
+            >>> if result["success"]:
+            ...     print(result["data"]["message"])
         """
         params = {
             "stock_code": stock_code,
@@ -441,8 +425,8 @@ class TradeClient:
         stop_profit_percent: float,
         quantity: Optional[int] = None,
         expire_days: int = 30,
-        timeout: float = 60.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         设置止盈止损
 
@@ -457,7 +441,7 @@ class TradeClient:
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，格式与 condition_buy() 相同
+            操作结果（OperationResult），格式与 condition_buy() 相同
 
         Raises:
             TradeClientError: 连接失败、API 错误或操作超时
@@ -465,7 +449,8 @@ class TradeClient:
         Examples:
             >>> # 设置止盈止损
             >>> result = client.stop_loss_profit("600000", 3.0, 5.0, quantity=100)
-            >>> print(result["data"]["result"]["data"]["message"])
+            >>> if result["success"]:
+            ...     print(result["data"]["message"])
         """
         params = {
             "stock_code": stock_code,
@@ -481,9 +466,9 @@ class TradeClient:
 
     def query_condition_orders(
         self,
-        return_type: Literal["str", "json", "dict", "df", "markdown"] = "json",
-        timeout: float = 30.0
-    ) -> APIResponse:
+        return_type: Literal["str", "json", "dict", "markdown"] = "json",
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         查询条件单
 
@@ -492,26 +477,16 @@ class TradeClient:
                 - "str": 字符串格式
                 - "json": JSON 格式（默认）
                 - "dict": 字典格式
-                - "df": pandas DataFrame
                 - "markdown": Markdown 表格
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，格式为：
+            操作结果（OperationResult），格式为：
             {
-                "success": True,
-                "message": "查询成功",
-                "data": {
-                    "operation_id": "...",
-                    "result": {
-                        "success": bool,
-                        "data": {...},  # 业务数据
-                        "error": None,
-                        "timestamp": str
-                    }
-                },
-                "error": None,
-                "timestamp": str
+                "success": bool,
+                "data": {...},  # 业务数据
+                "message": str | None,  # 错误信息或成功消息
+                "timestamp": str  # ISO 8601 格式时间
             }
 
         Raises:
@@ -520,8 +495,8 @@ class TradeClient:
         Examples:
             >>> client = TradeClient(...)
             >>> result = client.query_condition_orders()
-            >>> if result["data"]["result"]["success"]:
-            ...     orders = result["data"]["result"]["data"]["condition_orders"]
+            >>> if result["success"]:
+            ...     orders = result["data"]["condition_orders"]
             ...     print(orders)
         """
         params = {"return_type": return_type}
@@ -532,8 +507,8 @@ class TradeClient:
         self,
         stock_code: Optional[str] = None,
         order_type: Optional[Literal["买入", "卖出"]] = None,
-        timeout: float = 60.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         删除条件单
 
@@ -571,9 +546,9 @@ class TradeClient:
 
     def query_holdings(
         self,
-        return_type: Literal["str", "json", "dict", "df", "markdown"] = "json",
-        timeout: float = 30.0
-    ) -> APIResponse:
+        return_type: Literal["str", "json", "dict", "markdown"] = "json",
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         查询持仓
 
@@ -582,16 +557,16 @@ class TradeClient:
                 - "str": 字符串格式
                 - "json": JSON 格式（默认）
                 - "dict": 字典格式
-                - "df": pandas DataFrame
                 - "markdown": Markdown 表格
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，持仓数据在 result["data"]["result"]["data"]["holdings"]
+            操作结果（OperationResult），持仓数据在 result["data"]["holdings"]
 
         Examples:
             >>> result = client.query_holdings()
-            >>> holdings = result["data"]["result"]["data"]["holdings"]
+            >>> if result["success"]:
+            ...     holdings = result["data"]["holdings"]
         """
         params = {"return_type": return_type}
         operation_id = self.execute_operation("holding_query", params)
@@ -599,19 +574,20 @@ class TradeClient:
 
     def query_funds(
         self,
-        timeout: float = 30.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         查询资金
 
         Returns:
-            操作结果，资金数据在 result["data"]["result"]["data"]
+            操作结果（OperationResult），资金数据在 result["data"]
             包含：资金余额、冻结金额、可用金额、可取金额、股票市值、总资产、持仓盈亏
 
         Examples:
             >>> result = client.query_funds()
-            >>> funds = result["data"]["result"]["data"]
-            >>> print(funds["总资产"])
+            >>> if result["success"]:
+            ...     funds = result["data"]
+            ...     print(funds["总资产"])
         """
         operation_id = self.execute_operation("funds_query", {})
         return self.get_operation_result(operation_id, timeout=timeout)
@@ -619,9 +595,9 @@ class TradeClient:
     def query_orders(
         self,
         stock_code: Optional[str] = None,
-        return_type: Literal["str", "json", "dict", "df", "markdown"] = "json",
-        timeout: float = 30.0
-    ) -> APIResponse:
+        return_type: Literal["str", "json", "dict", "markdown"] = "json",
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         查询委托单
 
@@ -631,12 +607,13 @@ class TradeClient:
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，委托单数据在 result["data"]["result"]["data"]["orders"]
+            操作结果（OperationResult），委托单数据在 result["data"]["orders"]
 
         Examples:
             >>> # 查询所有委托
             >>> result = client.query_orders()
-            >>> orders = result["data"]["result"]["data"]["orders"]
+            >>> if result["success"]:
+            ...     orders = result["data"]["orders"]
             >>>
             >>> # 查询指定股票的委托
             >>> result = client.query_orders("600000")
@@ -650,11 +627,11 @@ class TradeClient:
 
     def query_historical_commission(
         self,
-        return_type: Literal["str", "json", "dict", "df", "markdown"] = "json",
+        return_type: Literal["str", "json", "dict", "markdown"] = "json",
         stock_code: Optional[str] = None,
         time_range: Literal["当日", "近一周", "近一月", "近三月", "近一年"] = "当日",
-        timeout: float = 30.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         查询历史成交
 
@@ -663,18 +640,19 @@ class TradeClient:
                 - "str": 字符串格式
                 - "json": JSON 格式（默认）
                 - "dict": 字典格式
-                - "df": pandas DataFrame
                 - "markdown": Markdown 表格
             stock_code: 股票代码（6位数字），不指定则查询所有股票的历史成交
             time_range: 查询时间范围，可选"当日"/"近一周"/"近一月"/"近三月"/"近一年"，默认"当日"
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，历史成交数据在 result["data"]["result"]["data"]
+            操作结果（OperationResult），历史成交数据在 result["data"]
 
         Examples:
             >>> # 查询当日所有历史成交
             >>> result = client.query_historical_commission()
+            >>> if result["success"]:
+            ...     commissions = result["data"]
             >>>
             >>> # 查询指定股票近一周的历史成交
             >>> result = client.query_historical_commission(stock_code="600000", time_range="近一周")
@@ -694,8 +672,8 @@ class TradeClient:
         market: Literal["上海", "深圳"],
         time_range: Literal["1天期", "2天期", "3天期", "4天期", "7天期"],
         amount: int,
-        timeout: float = 60.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         购买国债逆回购
 
@@ -706,13 +684,13 @@ class TradeClient:
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果
+            操作结果（OperationResult）
 
         Examples:
             >>> # 购买上海市场1天期国债逆回购，出借10000元
             >>> result = client.reverse_repo_buy("上海", "1天期", 10000)
-            >>> if result["data"]["result"]["success"]:
-            ...     print(result["data"]["result"]["data"]["message"])
+            >>> if result["success"]:
+            ...     print(result["data"]["message"])
         """
         params = {
             "market": market,
@@ -724,8 +702,8 @@ class TradeClient:
 
     def query_reverse_repo(
         self,
-        timeout: float = 30.0
-    ) -> APIResponse:
+        timeout: Optional[float] = None
+    ) -> dict:
         """
         查询国债逆回购年化利率
 
@@ -733,12 +711,12 @@ class TradeClient:
             timeout: 操作超时时间（秒）
 
         Returns:
-            操作结果，年化利率数据在 result["data"]["result"]["data"]["reverse_repo_interest"]
+            操作结果（OperationResult），年化利率数据在 result["data"]["reverse_repo_interest"]
 
         Examples:
             >>> result = client.query_reverse_repo()
-            >>> if result["data"]["result"]["success"]:
-            ...     rates = result["data"]["result"]["data"]["reverse_repo_interest"]
+            >>> if result["success"]:
+            ...     rates = result["data"]["reverse_repo_interest"]
             ...     for item in rates:
             ...         print(f"{item['市场类型']} - {item['时间类型']}: {item['年化利率']}")
         """

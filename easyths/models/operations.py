@@ -16,8 +16,8 @@ class OperationStatus(Enum):
 class OperationResult(BaseModel):
     """操作结果模型"""
     success: bool
-    data: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    data: Any = None
+    message: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
     class Config:
@@ -76,10 +76,4 @@ class APIResponse(BaseModel):
     success: bool
     message: str
     data: Optional[Any] = None
-    error: Optional[str] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
-
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())

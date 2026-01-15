@@ -3,9 +3,7 @@ import time
 from typing import Dict, Any
 
 from easyths.core import BaseOperation
-from easyths.utils import df_format_convert, text2df
 from easyths.models.operations import PluginMetadata, OperationResult
-import pandas as pd
 
 class ReverseRepoQueryOperation(BaseOperation):
     """国债逆回购查询操作"""
@@ -92,18 +90,19 @@ class ReverseRepoQueryOperation(BaseOperation):
                                                    class_name="Button").click()
 
             # 3. 准备返回数据
-            result_data = {
-                "reverse_repo_interest": reverse_repo_interest_data,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "success": is_op_success,
-                "message": op_message
-            }
+            # result_data = {
+            #     "reverse_repo_interest": reverse_repo_interest_data,
+            #     "timestamp": datetime.datetime.now().isoformat(),
+            #     "success": is_op_success,
+            #     "message": op_message
+            # }
 
             self.logger.info(f"国债逆回购查询完成，耗时{time.time() - start_time}秒")
 
             return OperationResult(
+                message=op_message,
                 success=is_op_success,
-                data=result_data
+                data=reverse_repo_interest_data
             )
 
         except Exception as e:

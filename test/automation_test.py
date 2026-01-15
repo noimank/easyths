@@ -386,7 +386,7 @@ def test_condition_order_cancel_op():
 
 if __name__ == "__main__":
     # test_automator_basic()
-    # test_buy_op()
+    test_buy_op()
     # test_sell_op()
     # test_funds_query_op()
     # test_order_cancel_op()
@@ -398,4 +398,4 @@ if __name__ == "__main__":
     # test_condition_buy_op()
     # test_stop_loss_profit_op()
     # test_condition_order_query_op()
-    test_condition_order_cancel_op()
+    # test_condition_order_cancel_op()

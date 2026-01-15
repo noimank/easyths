@@ -7,7 +7,7 @@ Email: noimank@163.com
 """
 
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
 import structlog
 from pywinauto.application import Application

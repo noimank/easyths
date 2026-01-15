@@ -22,7 +22,7 @@ class ConditionOrderQueryOperation(BaseOperation):
                     "type": "string",
                     "required": False,
                     "description": "结果返回类型",
-                    "enum": ["str", "json", "dict", "df", "markdown"],
+                    "enum": ["str", "json", "dict",  "markdown"],
                     "default": "json"
                 }
             }
@@ -32,8 +32,8 @@ class ConditionOrderQueryOperation(BaseOperation):
         """验证查询参数"""
         try:
             return_type = params.get("return_type", "json")
-            if return_type not in ["str", "json", "dict", "df", "markdown"]:
-                self.logger.error("参数return_type无效，有效值为：str、json、dict、df、markdown")
+            if return_type not in ["str", "json", "dict",  "markdown"]:
+                self.logger.error("参数return_type无效，有效值为：str、json、dict、markdown")
                 return False
             return True
 
@@ -97,17 +97,11 @@ class ConditionOrderQueryOperation(BaseOperation):
             df_format = df_format_convert(df, return_type)
 
 
-            result_data = {
-                "condition_orders": df_format,
-                "message": f"条件单查询成功，共获取到{len(df)}条数据",
-                "timestamp": time.time(),
-                "success": True
-            }
-
             self.logger.info(f"条件单查询操作耗时{time.time() - start_time}秒")
             return OperationResult(
+                message=f"条件单查询成功，共获取到{len(df)}条数据",
                 success=True,
-                data=result_data
+                data=df_format
             )
 
         except Exception as e:
@@ -115,6 +109,5 @@ class ConditionOrderQueryOperation(BaseOperation):
             self.logger.exception(error_msg)
             return OperationResult(
                 success=False,
-                error=error_msg,
-                data={"timestamp": time.time()}
+                message=error_msg
             )

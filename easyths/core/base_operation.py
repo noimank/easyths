@@ -129,11 +129,11 @@ class BaseOperation(ABC):
                 if not is_param_valid:
                     error_msg = f"{stage}失败：参数验证失败，请检查接口参数"
                     self.logger.error(error_msg, params=params)
-                    return OperationResult(success=False, error=error_msg, timestamp=start_time)
+                    return OperationResult(success=False, message=error_msg, timestamp=start_time)
             except Exception as e:
                 error_msg = f"{stage}异常: {str(e)}"
                 self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(success=False, error=error_msg, timestamp=start_time)
+                return OperationResult(success=False, message=error_msg, timestamp=start_time)
 
             # 阶段2：执行前检查
             stage = "执行前检查"
@@ -142,11 +142,11 @@ class BaseOperation(ABC):
                 if not pre_execute_result:
                     error_msg = f"{stage}失败：同花顺未连接或环境准备失败"
                     self.logger.error(error_msg, params=params)
-                    return OperationResult(success=False, error=error_msg, timestamp=start_time)
+                    return OperationResult(success=False, message=error_msg, timestamp=start_time)
             except Exception as e:
                 error_msg = f"{stage}异常: {str(e)}"
                 self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(success=False, error=error_msg, timestamp=start_time)
+                return OperationResult(success=False, message=error_msg, timestamp=start_time)
 
             # 阶段3：执行核心操作
             stage = "核心操作执行"
@@ -155,7 +155,7 @@ class BaseOperation(ABC):
             except Exception as e:
                 error_msg = f"{stage}异常: {str(e)}"
                 self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(success=False, error=error_msg, timestamp=start_time)
+                return OperationResult(success=False, message=error_msg, timestamp=start_time)
 
             # 阶段4：执行后处理
             stage = "执行后处理"
@@ -167,7 +167,7 @@ class BaseOperation(ABC):
                 if result.success:
                     self.logger.warning(f"操作成功但{stage}失败: {error_msg}")
                 else:
-                    return OperationResult(success=False, error=error_msg, timestamp=start_time)
+                    return OperationResult(success=False, message=error_msg, timestamp=start_time)
 
             # 记录执行结果
             end_time = datetime.now()
@@ -183,7 +183,7 @@ class BaseOperation(ABC):
         except Exception as e:
             error_msg = f"操作执行异常（{stage}阶段）: {str(e)}"
             self.logger.exception(error_msg, params=params)
-            return OperationResult(success=False, error=error_msg, timestamp=start_time)
+            return OperationResult(success=False, message=error_msg, timestamp=start_time)
 
     # ============ 辅助方法 ============
 

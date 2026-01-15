@@ -31,8 +31,8 @@ class HoldingQueryOperation(BaseOperation):
         """验证查询参数"""
         try:
             return_type = params.get("return_type")
-            if return_type not in ["str", "json", "dict","df", "markdown"]:
-                self.logger.error("参数return_type无效，有效值为：str、json、dict、df、markdown")
+            if return_type not in ["str", "json", "dict", "markdown"]:
+                self.logger.error("参数return_type无效，有效值为：str、json、dict、markdown")
                 return False
             return True
 
@@ -86,18 +86,19 @@ class HoldingQueryOperation(BaseOperation):
                 table_data = df_format_convert(table_data, return_type)
 
             # 准备返回数据
-            result_data = {
-                "holdings": table_data,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "success": is_op_success
-            }
+            # result_data = {
+            #     "holdings": table_data,
+            #     "timestamp": datetime.datetime.now().isoformat(),
+            #     "success": is_op_success
+            # }
 
             self.logger.info(f"持仓查询完成，耗时{time.time() - start_time}秒",
                            holding=table_data)
 
             return OperationResult(
+                message=f"持仓查询完成，耗时{time.time() - start_time}秒",
                 success=is_op_success,
-                data=result_data
+                data=table_data
             )
 
         except Exception as e:
@@ -105,6 +106,5 @@ class HoldingQueryOperation(BaseOperation):
             self.logger.exception(error_msg)
             return OperationResult(
                 success=False,
-                error=error_msg,
-                data={"timestamp": time.time()}
+                message=error_msg
             )

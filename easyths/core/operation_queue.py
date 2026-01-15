@@ -84,8 +84,8 @@ class OperationQueue:
                 except queue.Empty:
                     continue
 
-                # 检查操作是否已取消（失败且error为"操作已取消"）
-                if operation.status == OperationStatus.FAILED and operation.error == "操作已取消":
+                # 检查操作是否已取消（失败且message为"操作已取消"）
+                if operation.status == OperationStatus.FAILED and operation.result and operation.result.message == "操作已取消":
                     self._completed_operations[operation.id] = operation
                     self._stats['total_processed'] += 1
                     continue
@@ -104,7 +104,7 @@ class OperationQueue:
                         operation.update_status(OperationStatus.COMPLETED)
                         self._stats['total_success'] += 1
                     else:
-                        operation.update_status(OperationStatus.FAILED, result.error)
+                        operation.update_status(OperationStatus.FAILED)
                         self._stats['total_failed'] += 1
 
                     operation.result = result
@@ -112,8 +112,8 @@ class OperationQueue:
                 except Exception as e:
                     error_msg = f"执行操作异常: {str(e)}"
                     self.logger.exception(error_msg, operation_id=operation.id)
-                    operation.update_status(OperationStatus.FAILED, error_msg)
-                    operation.result = OperationResult(success=False, error=error_msg)
+                    operation.update_status(OperationStatus.FAILED)
+                    operation.result = OperationResult(success=False, message=error_msg)
                     self._stats['total_failed'] += 1
 
                 finally:
@@ -288,7 +288,8 @@ class OperationQueue:
 
         # 只能标记未执行的操作为取消状态
         if operation.status == OperationStatus.QUEUED:
-            operation.update_status(OperationStatus.FAILED, "操作已取消")
+            operation.update_status(OperationStatus.FAILED)
+            operation.result = OperationResult(success=False, message="操作已取消")
             self.logger.info("操作已标记为取消", operation_id=operation_id)
             return True
 

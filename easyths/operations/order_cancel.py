@@ -116,7 +116,7 @@ class OrderCancelOperation(BaseOperation):
                 cancel_btn = self.get_control_with_children(main_panel, class_name="Button", control_type="Button", auto_id="30003")
             else:
                 self.logger.error(f"不支持的撤单类型: {cancel_type}")
-                return OperationResult(success=False, error=f"不支持的撤单类型: {cancel_type}")
+                return OperationResult(success=False, message=f"不支持的撤单类型: {cancel_type}")
 
             #必须有单才可以撤，没单的话，按钮是灰色的，click会报错
             if cancel_btn.is_enabled():
@@ -127,13 +127,12 @@ class OrderCancelOperation(BaseOperation):
             result_data = {
                 "stock_code": stock_code,
                 "operation": "cancel",
-                "success": is_op_success,
-                "message": f"撤销{stock_code}的委托{'成功' if is_op_success else '失败'}" if stock_code else "已成功撤销所有委托",
             }
 
             self.logger.info(f"撤单操作{'成功' if is_op_success else '失败'}，耗时{time.time() - start_time}, 操作结果：",
                              **result_data)
             return OperationResult(
+                message=f"撤销{stock_code}的委托{'成功' if is_op_success else '失败'}" if stock_code else "已成功撤销所有委托",
                 success=is_op_success,
                 data=result_data,
             )
@@ -141,4 +140,4 @@ class OrderCancelOperation(BaseOperation):
         except Exception as e:
             error_msg = f"撤单操作异常: {str(e)}"
             self.logger.exception(error_msg)
-            return OperationResult(success=False, error=error_msg)
+            return OperationResult(success=False, message=error_msg)

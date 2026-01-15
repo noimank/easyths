@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from easyths.api.dependencies.common import get_operation_queue
 from easyths.core import operation_registry
-from easyths.models.operations import Operation, APIResponse
+from easyths.models.operations import Operation, APIResponse, OperationResult
 
 router = APIRouter(prefix="/api/v1/operations", tags=["操作"])
 
@@ -83,10 +83,9 @@ async def get_operation_status(
             "operation_id": operation_id,
             "name": operation.name,
             "status": operation.status.value if operation.status else None,
-            "result": operation.result.dict() if operation.result else None,
+            "result": operation.result.model_dump() if operation.result else None,
             "error": operation.error,
-            "timestamp": operation.timestamp.isoformat() if operation.timestamp else None,
-            "retry_count": operation.retry_count
+            "timestamp": operation.timestamp.isoformat() if operation.timestamp else None
         }
     )
 
@@ -96,7 +95,7 @@ async def get_operation_result(
         operation_id: str,
         timeout: float = None,
         queue=Depends(get_operation_queue)
-) -> APIResponse:
+) -> OperationResult:
     """获取操作结果（阻塞等待）"""
     result = queue.get_result(operation_id, timeout=timeout)
 
@@ -106,14 +105,7 @@ async def get_operation_result(
             detail="操作未完成或超时"
         )
 
-    return APIResponse(
-        success=True,
-        message="查询成功",
-        data={
-            "operation_id": operation_id,
-            "result": result.dict()
-        }
-    )
+    return result
 
 
 @router.delete("/{operation_id}")
