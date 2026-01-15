@@ -139,8 +139,7 @@ ops = client.list_operations()
 result = client.buy(
     stock_code="600000",  # 股票代码
     price=10.50,          # 买入价格
-    quantity=100,         # 买入数量（100的倍数）
-    timeout=60.0          # 超时时间（可选，默认60秒）
+    quantity=100          # 买入数量（100的倍数）
 )
 
 # 检查结果
@@ -158,8 +157,7 @@ else:
 result = client.sell(
     stock_code="600000",
     price=11.00,
-    quantity=100,
-    timeout=60.0
+    quantity=100
 )
 
 if result["success"]:
@@ -191,8 +189,7 @@ result = client.condition_buy(
     stock_code="600000",      # 股票代码
     target_price=10.50,       # 目标触发价格
     quantity=100,             # 买入数量（100的倍数）
-    expire_days=30,           # 有效期（可选1/3/5/10/20/30，默认30）
-    timeout=60.0              # 超时时间（可选，默认60秒）
+    expire_days=30            # 有效期（可选1/3/5/10/20/30，默认30）
 )
 
 if result["success"]:
@@ -213,8 +210,7 @@ result = client.stop_loss_profit(
     stop_loss_percent=3.0,       # 止损百分比（如3表示3%）
     stop_profit_percent=5.0,     # 止盈百分比（如5表示5%）
     quantity=100,                # 卖出数量（可选，不指定则使用全部可用持仓）
-    expire_days=30,              # 有效期（可选1/3/5/10/20/30，默认30）
-    timeout=60.0                 # 超时时间（可选，默认60秒）
+    expire_days=30               # 有效期（可选1/3/5/10/20/30，默认30）
 )
 
 if result["success"]:
@@ -234,8 +230,7 @@ else:
 result = client.reverse_repo_buy(
     market="上海",        # 交易市场：上海/深圳
     time_range="1天期",   # 回购期限：1天期/2天期/3天期/4天期/7天期
-    amount=10000,         # 出借金额（1000的倍数）
-    timeout=60.0
+    amount=10000          # 出借金额（1000的倍数）
 )
 
 if result["success"]:
@@ -280,8 +275,7 @@ if result["success"]:
 
 ```python
 result = client.query_holdings(
-    return_type="json",  # str/json/dict/markdown
-    timeout=30.0
+    return_type="json"  # str/json/dict/markdown
 )
 
 if result["success"]:
@@ -293,7 +287,7 @@ if result["success"]:
 ### 查询资金
 
 ```python
-result = client.query_funds(timeout=30.0)
+result = client.query_funds()
 
 if result["success"]:
     funds = result["data"]
@@ -334,7 +328,7 @@ if result["success"]:
 ### 查询国债逆回购年化利率
 
 ```python
-result = client.query_reverse_repo(timeout=30.0)
+result = client.query_reverse_repo()
 
 if result["success"]:
     rates = result["data"]["reverse_repo_interest"]
@@ -348,8 +342,7 @@ if result["success"]:
 
 ```python
 result = client.query_condition_orders(
-    return_type="json",  # str/json/dict/markdown
-    timeout=30.0
+    return_type="json"  # str/json/dict/markdown
 )
 
 if result["success"]:
@@ -391,8 +384,7 @@ print(status)
 ```python
 # 阻塞等待直到操作完成
 result = client.get_operation_result(
-    operation_id=operation_id,
-    timeout=30.0  # 超时时间（可选）
+    operation_id=operation_id
 )
 
 if result["success"]:
@@ -501,7 +493,7 @@ def async_trade_example():
         # 等待所有操作完成
         results = []
         for op_id in operation_ids:
-            result = client.get_operation_result(op_id, timeout=60)
+            result = client.get_operation_result(op_id)
             results.append(result)
 
         # 处理结果
@@ -544,21 +536,21 @@ class TradeClient:
     def cancel_operation(self, operation_id: str) -> bool: ...
 
     # 交易操作
-    def buy(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> dict: ...
-    def sell(self, stock_code: str, price: float, quantity: int, timeout: float = 60.0) -> dict: ...
-    def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = 60.0) -> dict: ...
-    def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = 60.0) -> dict: ...
-    def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = 60.0) -> dict: ...
-    def query_condition_orders(self, return_type: str = "json", timeout: float = 30.0) -> dict: ...
-    def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = 60.0) -> dict: ...
-    def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = 60.0) -> dict: ...
+    def buy(self, stock_code: str, price: float, quantity: int, timeout: float = None) -> dict: ...
+    def sell(self, stock_code: str, price: float, quantity: int, timeout: float = None) -> dict: ...
+    def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = None) -> dict: ...
+    def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None) -> dict: ...
+    def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = None) -> dict: ...
+    def query_condition_orders(self, return_type: str = "json", timeout: float = None) -> dict: ...
+    def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = None) -> dict: ...
+    def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = None) -> dict: ...
 
     # 查询操作
-    def query_holdings(self, return_type: str = "json", timeout: float = 30.0) -> dict: ...
-    def query_funds(self, timeout: float = 30.0) -> dict: ...
-    def query_orders(self, stock_code: str = None, return_type: str = "json", timeout: float = 30.0) -> dict: ...
-    def query_historical_commission(self, return_type: str = "json", timeout: float = 30.0) -> dict: ...
-    def query_reverse_repo(self, timeout: float = 30.0) -> dict: ...
+    def query_holdings(self, return_type: str = "json", timeout: float = None) -> dict: ...
+    def query_funds(self, timeout: float = None) -> dict: ...
+    def query_orders(self, stock_code: str = None, return_type: str = "json", timeout: float = None) -> dict: ...
+    def query_historical_commission(self, return_type: str = "json", timeout: float = None) -> dict: ...
+    def query_reverse_repo(self, timeout: float = None) -> dict: ...
 
     # 连接管理
     def close(self): ...

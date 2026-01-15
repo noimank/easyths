@@ -223,11 +223,11 @@ GET /api/v1/operations/{operation_id}/status
 阻塞等待并获取操作结果。
 
 ```http
-GET /api/v1/operations/{operation_id}/result?timeout=30
+GET /api/v1/operations/{operation_id}/result
 ```
 
 **查询参数**:
-- `timeout`: 超时时间（秒），可选，默认阻塞等待
+- `timeout`: 超时时间（秒），可选，不传则阻塞等待
 
 **响应示例**:
 ```json
