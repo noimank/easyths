@@ -97,12 +97,12 @@ from easyths import TradeClient
 with TradeClient(host="127.0.0.1", port=7648, api_key="your-api-key") as client:
     # 买入股票
     result = client.buy("000001", 10.50, 100)
-    if result["data"]["result"]["success"]:
+    if result["success"]:
         print("买入成功")
 
     # 查询持仓
     result = client.query_holdings()
-    holdings = result["data"]["result"]["data"]["holdings"]
+    holdings = result["data"]["holdings"]
     print(f"持仓数: {len(holdings)}")
 ```
 
