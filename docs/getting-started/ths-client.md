@@ -6,7 +6,7 @@
 
 > **下载地址**
 >
-> - [同花顺官网 - 同花顺远航版下载](https://download.10jqka.com.cn/)
+> - [同花顺官网 - 同花顺远航版下载（推荐）](https://download.10jqka.com.cn/)
 > - [同花顺官网 - 同花顺标准版下载](https://download.10jqka.com.cn/)
 
 1. 访问上述下载地址
