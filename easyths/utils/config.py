@@ -98,7 +98,7 @@ class ProjectConfig:
             if "level" in logging_config:
                 self.logging_level = logging_config["level"]
             if "file" in logging_config:
-                self.logging_file = logging_config["file"]
+                self.logging_file = str(Path("~/easyths/log.txt").expanduser()) if logging_config["file"] == "" else logging_config["file"]
 
         # exe_path 参数优先级最高
         if exe_path:
