@@ -117,7 +117,9 @@ class BuyOperation(BaseOperation):
             # 防抖
             self.sleep(0.25)
             # 拿到显示面板, 大约会有 34个children
-            main_panel = main_window.children(control_type="Pane")[0].children(control_type="Pane",class_name='AfxMDIFrame140s')[0]
+            # main_panel = main_window.children(control_type="Pane")[0].children(control_type="Pane",class_name='AfxMDIFrame140s')[0]
+            main_panel = self.get_control_with_children(main_window, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
+
             # # 1. 输入股票代码
             self.get_control_with_children(main_panel, control_type="Edit", auto_id="1032").type_keys(stock_code)
             self.sleep(0.08)

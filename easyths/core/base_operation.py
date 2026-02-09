@@ -309,6 +309,10 @@ class BaseOperation(ABC):
                 return "提示信息", children
             elif "先输入验证码" in content:
                 return "验证码提示框",children
+            elif "委托价格的小数部分应" in content:
+                return "委托价格提示框", children
+            elif "不支持历史委托查询" in content:
+                return "不支持历史委托查询提示框", children
             # 买入、卖出时的弹窗
             elif "提交失败" in content:
                 return "失败提示", children
@@ -357,13 +361,16 @@ class BaseOperation(ABC):
             pop_dialog_title, pop_control = self.get_pop_dialog()
             if pop_dialog_title == "风险测评提示":
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
-            elif pop_dialog_title == "提示信息":
+            elif pop_dialog_title in ["提示信息", "委托价格提示框"]:
                 #点击否
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
 
             elif pop_dialog_title == "验证码提示框":
                 #点击取消
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="2").click()
+            elif pop_dialog_title == "不支持历史委托查询提示框":
+                #点击确定
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()
             elif pop_dialog_title == "失败提示":
                 #点击确定
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()

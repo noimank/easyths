@@ -86,7 +86,8 @@ class HistoricalCommissionQueryOperation(BaseOperation):
             # 1. 打开历史委托查询界面（通常是F7或Ctrl+F7）
             main_window = self.get_main_window(wrapper_obj=True)
             # 尝试使用Ctrl+F7打开历史委托，如果不行再尝试其他快捷键
-            main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            main_panel = self.get_control_with_children(main_window, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
+
 
             # auto_id
             control_map ={

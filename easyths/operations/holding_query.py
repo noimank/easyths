@@ -54,7 +54,7 @@ class HoldingQueryOperation(BaseOperation):
             self.clear_clipboard()
             self.sleep(0.3)
             main_window_wrapper = self.get_main_window(wrapper_obj=True)
-            main_panel = main_window_wrapper.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            main_panel = self.get_control_with_children(main_window_wrapper, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
 
             HexinScrollWnd = self.get_control_with_children(main_panel, title='HexinScrollWnd', auto_id="1047")
 

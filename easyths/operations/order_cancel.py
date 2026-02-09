@@ -92,7 +92,9 @@ class OrderCancelOperation(BaseOperation):
             # # 切换到撤单界面（假设使用某个快捷键或菜单）
             main_window.type_keys("{F3}")
             time.sleep(0.2)
-            main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            # main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            main_panel = self.get_control_with_children(main_window, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
+
             #
             # # 如果指定了股票代码，定位到对应的委托，默认清空，点击查询代码按钮相当于刷新数据
             # 模拟清空

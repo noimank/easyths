@@ -71,7 +71,9 @@ class OrderQueryOperation(BaseOperation):
             self.sleep(0.1)
             main_window.type_keys("{F5}")
             self.sleep(0.25)
-            main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            # main_panel = main_window.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            main_panel = self.get_control_with_children(main_window, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
+
 
 
             edit_stock_code = self.get_control_with_children(main_panel, control_type="Edit", class_name="Edit",

@@ -42,7 +42,7 @@ class FundsQueryOperation(BaseOperation):
             # main_panel = main_window.child_window(auto_id="59649", control_type="Pane", depth=2).wrapper_object()
                  # 改进版：不使用child_window从 1.5s降低到1s
             main_window_wrapper = self.get_main_window(wrapper_obj=True)
-            main_panel = main_window_wrapper.children(control_type="Pane")[0].children(class_name='AfxMDIFrame140s')[0]
+            main_panel = self.get_control_with_children(main_window_wrapper, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
             # 再进一步筛选
             text_controls = main_panel.children(control_type="Text",class_name="Static")
 
