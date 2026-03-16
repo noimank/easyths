@@ -400,7 +400,7 @@ class BaseOperation(ABC):
         处理验证码弹窗
         """
         count = 0
-        while self.is_exist_pop_dialog() and count < 3:
+        while self.is_exist_pop_dialog() and count < 5:
             pop_dialog_title, pop_control = self.get_pop_dialog()
             if pop_dialog_title == "验证码提示框":
                 code_edit = self.get_control_with_children(pop_control, control_type="Edit", auto_id="2404",

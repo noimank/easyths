@@ -8,9 +8,12 @@ from .screen_capture import get_mss_instance
 
 
 @functools.lru_cache(maxsize=1)
-def _get_ocr_instance():
+def _get_ocr_instance()->ddddocr.DdddOcr:
     """获取 ddddocr 实例（全局单例）"""
-    return ddddocr.DdddOcr(show_ad=False)
+    ocr = ddddocr.DdddOcr(show_ad=False,beta=True)
+    # 小写英文 + 大写英文 + 数字
+    ocr.set_ranges("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+    return ocr
 
 
 class CaptchaOCR:
@@ -47,6 +50,7 @@ class CaptchaOCR:
             # 获取 OCR 实例并识别
             ocr = _get_ocr_instance()
             result = ocr.classification(image)
+            self.logger.debug(f"验证码识别结果: {result}")
             return result
 
         except Exception as e:
