@@ -328,7 +328,7 @@ def train(config: Dict) -> CaptchaRecognizer:
     # Load training data first to create scheduler
     train_dir = config["dataset"]["train_dir"]
     print(f"Loading training data from: {train_dir}")
-    train_loader = create_dataloader(train_dir, config, is_training=True)
+    train_loader = create_dataloader(train_dir, config, is_training=True, num_workers=config["training"]["num_workers"])
 
     scheduler = create_scheduler(optimizer, config, train_loader)
     criterion = CTCLoss(blank=0, reduction="mean", zero_infinity=True)
@@ -340,7 +340,7 @@ def train(config: Dict) -> CaptchaRecognizer:
         val_path = Path(val_dir)
         if val_path.exists():
             print(f"Loading validation data from: {val_dir}")
-            val_loader = create_dataloader(val_dir, config, is_training=False)
+            val_loader = create_dataloader(val_dir, config, is_training=False, num_workers=config["training"]["num_workers"])
 
     epochs = config["training"]["epochs"]
 
