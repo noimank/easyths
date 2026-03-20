@@ -84,6 +84,8 @@ class EarlyStopping:
 
     def get_info(self) -> str:
         """Get current early stopping status."""
+        if self.best_score is None:
+            return f"first evaluation"
         return f"no improvement for {self.counter}/{self.patience} epochs (best: {self.best_score:.4f})"
 
 
@@ -388,8 +390,9 @@ def train(config: Dict) -> CaptchaRecognizer:
 
             # Check early stopping
             if early_stopping is not None:
+                should_stop = early_stopping(val_seq_acc)
                 log_msg += f", {early_stopping.get_info()}"
-                if early_stopping(val_seq_acc):
+                if should_stop:
                     print(log_msg)
                     print(f"\nEarly stopping triggered at epoch {epoch}")
                     break
