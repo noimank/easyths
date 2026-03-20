@@ -1,0 +1,77 @@
+# Captcha Recognition Model v2 Configuration
+# ========================================
+# Optimized configuration for improved accuracy
+
+# Character set for captcha
+# Digits, lowercase and uppercase letters (0-9, a-z, A-Z)
+charset: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+# Captcha length range (for variable-length captchas)
+captcha_length:
+  min: 4
+  max: 6
+
+# Image settings
+image:
+  channels: 3
+  width: 160
+  height: 64
+
+# Model architecture settings
+model:
+  input_height: 64
+  input_width: 160
+  dropout: 0.2
+  hidden_size: 384
+  num_tcn_layers: 4
+  kernel_size: 3
+
+# Data preprocessing settings
+preprocessing:
+  normalize: true
+  # Custom normalization (optional, defaults to ImageNet)
+  normalization:
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+  # Data augmentation settings (moderate for captcha)
+  augmentation:
+    enabled: true
+    rotation_range: 2
+    width_shift_range: 0.02
+    height_shift_range: 0.02
+    zoom_range: 0.02
+    brightness_range: [0.95, 1.05]
+    contrast_range: [0.95, 1.05]
+    noise_std: 0.005
+    # Disable heavy augmentations that distort characters
+    blur_prob: 0.0
+    blur_radius: 0.0
+    line_prob: 0.0
+    num_lines: 0
+    elastic_prob: 0.0
+
+# Dataset paths
+dataset:
+  train_dir: "data/train"
+  val_dir: "data/val"
+  test_dir: "data/test"
+
+# Training settings
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  warmup_epochs: 5
+  log_interval: 50
+  checkpoint_interval: 5
+  output_dir: "outputs"
+  # Early stopping settings
+  early_stopping:
+    enabled: true
+    patience: 15  # Number of epochs to wait for improvement
+    min_delta: 0.0001  # Minimum change to qualify as an improvement
+
+# Evaluation settings
+evaluation:
+  batch_size: 32

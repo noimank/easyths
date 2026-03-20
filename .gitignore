@@ -144,3 +144,7 @@ openspec
 .claude
 CLAUDE.md
 AGENTS.md
+
+captcha_model/data
+captcha_model/outputs
+
