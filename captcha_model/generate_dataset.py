@@ -15,6 +15,9 @@ Usage:
 
     # Generate with custom split ratios
     python -m captcha_model.generate_dataset --train_ratio 0.7 --val_ratio 0.2 --test_ratio 0.1
+
+    # Generate case-sensitive dataset (uppercase rendered larger for visual distinction)
+    python -m captcha_model.generate_dataset --case_sensitive
 """
 
 import argparse
@@ -33,12 +36,35 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from io import BytesIO
     from captcha.image import ImageCaptcha
 except ImportError:
     raise ImportError(
         "captcha library is required. Install it with: pip install captcha"
     )
+
+
+class CaseSensitiveCaptcha(ImageCaptcha):
+    """ImageCaptcha subclass that scales lowercase letters smaller to ensure
+    visual distinguishability between upper and lower case characters.
+
+    Uppercase letters are rendered at normal size, while lowercase letters
+    are randomly scaled down within [lower_scale_min, lower_scale_max].
+    """
+
+    def __init__(self, *args, lower_scale_min: float = 0.7, lower_scale_max: float = 0.85, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lower_scale_min = lower_scale_min
+        self.lower_scale_max = lower_scale_max
+
+    def _draw_character(self, c, draw, color):
+        im = super()._draw_character(c, draw, color)
+        if c.islower():
+            scale = random.uniform(self.lower_scale_min, self.lower_scale_max)
+            w, h = im.size
+            new_w = max(1, int(w * scale))
+            new_h = max(1, int(h * scale))
+            im = im.resize((new_w, new_h), Image.Resampling.BILINEAR)
+        return im
 
 
 def generate_and_split_dataset(
@@ -49,6 +75,7 @@ def generate_and_split_dataset(
     test_ratio: float = 0.1,
     config_path: Optional[str] = None,
     seed: int = 42,
+    case_sensitive: Optional[bool] = None,
 ) -> Dict[str, int]:
     """
     Generate captcha images and split into train/val/test sets.
@@ -61,6 +88,7 @@ def generate_and_split_dataset(
         test_ratio: Test set ratio (default: 0.1).
         config_path: Path to configuration file (default: None, uses default config).
         seed: Random seed for reproducibility (default: 42).
+        case_sensitive: Override config case_sensitive setting (default: None, uses config).
 
     Returns:
         Dictionary with generation and split statistics.
@@ -70,7 +98,10 @@ def generate_and_split_dataset(
     # Load config
     config = load_config(config_path)
 
-    # Get parameters from config
+    # Determine case sensitivity: CLI arg > config > default (false)
+    if case_sensitive is None:
+        case_sensitive = config.get("case_sensitive", False)
+
     charset = config["charset"]
     captcha_length = config.get("captcha_length", {"min": 4, "max": 6})
     min_length = captcha_length.get("min", 4) if isinstance(captcha_length, dict) else captcha_length
@@ -100,14 +131,20 @@ def generate_and_split_dataset(
     test_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize captcha generator
-    generator = ImageCaptcha(
-        width=image_width,
-        height=image_height,
-        fonts=None,
-    )
+    if case_sensitive:
+        lower_scale_cfg = config.get("lower_scale", {})
+        generator = CaseSensitiveCaptcha(
+            width=image_width,
+            height=image_height,
+            lower_scale_min=lower_scale_cfg.get("min", 0.7),
+            lower_scale_max=lower_scale_cfg.get("max", 0.85),
+        )
+    else:
+        generator = ImageCaptcha(width=image_width, height=image_height, fonts=None)
 
     # Generate all samples to temp directory
-    print(f"Generating {num_samples} captcha images...")
+    mode_str = f"case-sensitive (lowercase scaled to {generator.lower_scale_min:.0%}-{generator.lower_scale_max:.0%})" if case_sensitive else "case-insensitive"
+    print(f"Generating {num_samples} captcha images ({mode_str})...")
     print(f"  Charset: {charset} ({len(charset)} characters)")
     print(f"  Length range: {min_length}-{max_length}")
     print(f"  Image size: {image_width}x{image_height}")
@@ -201,6 +238,9 @@ Examples:
 
     # Custom split ratios
     python -m captcha_model.generate_dataset --train_ratio 0.7 --val_ratio 0.2 --test_ratio 0.1
+
+    # Generate case-sensitive dataset (uppercase rendered larger)
+    python -m captcha_model.generate_dataset --case_sensitive
         """
     )
     parser.add_argument(
@@ -245,7 +285,27 @@ Examples:
         default=42,
         help="Random seed for reproducibility (default: 42)",
     )
+    case_group = parser.add_mutually_exclusive_group()
+    case_group.add_argument(
+        "--case_sensitive",
+        action="store_true",
+        default=None,
+        help="Generate case-sensitive dataset (lowercase scaled down for distinction)",
+    )
+    case_group.add_argument(
+        "--no_case_sensitive",
+        action="store_true",
+        default=None,
+        help="Generate case-insensitive dataset (no size distinction)",
+    )
     args = parser.parse_args()
+
+    # Determine case_sensitive override
+    case_sensitive = None
+    if args.case_sensitive:
+        case_sensitive = True
+    elif args.no_case_sensitive:
+        case_sensitive = False
 
     generate_and_split_dataset(
         output_dir=args.output_dir,
@@ -255,6 +315,7 @@ Examples:
         test_ratio=args.test_ratio,
         config_path=args.config,
         seed=args.seed,
+        case_sensitive=case_sensitive,
     )
 
 

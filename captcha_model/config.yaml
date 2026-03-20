@@ -3,7 +3,15 @@
 # Optimized configuration for improved accuracy
 
 # Character set for captcha
-# Digits, lowercase and uppercase letters (0-9, a-z, A-Z)
+# case_sensitive: controls visual distinction of upper/lower case in generated images
+#   - true: uppercase letters rendered with larger font sizes for visual distinction
+#   - false: all characters rendered with the same font sizes (no case distinction)
+# lower_scale: scale range for lowercase letters when case_sensitive is true
+#   each character randomly picks a scale between min and max
+case_sensitive: true
+lower_scale:
+  min: 0.62
+  max: 0.85
 charset: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 # Captcha length range (for variable-length captchas)
