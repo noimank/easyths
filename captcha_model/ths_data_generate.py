@@ -20,7 +20,7 @@ def generate_ths_captcha(output_dir="./", code=None):
 
     # 1. 生成随机验证码（如果未指定）
     if code is None:
-        chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
+        chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         code = ''.join(random.choice(chars) for _ in range(4))
 
     # 2. 创建画布（120x40是同花顺验证码的标准尺寸）
@@ -28,6 +28,7 @@ def generate_ths_captcha(output_dir="./", code=None):
     img = Image.new('RGB', (width, height), (255, 255, 255))
 
     # 3. 加载字体（优先使用系统无衬线粗体）
+    font_path = None
     try:
         font_paths = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -38,6 +39,7 @@ def generate_ths_captcha(output_dir="./", code=None):
         font = ImageFont.load_default()
         for fp in font_paths:
             if os.path.exists(fp):
+                font_path = fp
                 font = ImageFont.truetype(fp, 30)
                 break
     except:
@@ -61,10 +63,19 @@ def generate_ths_captcha(output_dir="./", code=None):
         # 随机旋转角度（-12度到12度）
         angle = random.randint(-12, 12)
 
+        # 小写字母使用较小字体（0.7~0.9倍），大写字母和数字保持原大小
+        if char.islower():
+            scale = random.uniform(0.7, 0.9)
+            char_font = ImageFont.truetype(font_path, int(30 * scale)) if font_path else font
+            layer_size = int(36 * scale)
+        else:
+            char_font = font
+            layer_size = 36
+
         # 创建透明图层绘制单个字符
-        char_layer = Image.new('RGBA', (36, 36), (255, 255, 255, 0))
+        char_layer = Image.new('RGBA', (layer_size, layer_size), (255, 255, 255, 0))
         char_draw = ImageDraw.Draw(char_layer)
-        char_draw.text((4, 2), char, font=font, fill=color)
+        char_draw.text((4, 2), char, font=char_font, fill=color)
 
         # 旋转并粘贴到主图
         if angle != 0:
