@@ -18,6 +18,7 @@ import warnings
 import logging
 from pathlib import Path
 import numpy as np
+
 os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '3')
 logging.getLogger('torch.onnx').setLevel(logging.ERROR)
 warnings.filterwarnings('ignore')
@@ -42,8 +43,8 @@ def parse_args():
                         help="Output directory")
     parser.add_argument("--name", type=str, default="captcha_ocr.onnx",
                         help="Output ONNX file name")
-    parser.add_argument("--opset", type=int, default=14,
-                        help="ONNX opset version")
+    parser.add_argument("--opset", type=int, default=18,
+                        help="ONNX opset version (18 recommended, use 17+ for best compatibility)")
 
     return parser.parse_args()
 
@@ -110,6 +111,9 @@ def main():
     try:
         dummy_input = torch.randn(1, 3, img_h, img_w)
 
+        # Export with specified opset version
+        # Note: onnxscript may attempt version conversion for lower opsets
+        # Use opset 17+ for best compatibility with modern PyTorch operations
         torch.onnx.export(
             model,
             dummy_input,
