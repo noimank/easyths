@@ -28,6 +28,9 @@ def generate_ths_captcha(output_dir="./", code=None):
         # chars = "0OoPpUuIiLl1WwMmNnVvBbXxZzJjKkSsHh9g8Cc"
 
         code = ''.join(random.choice(chars) for _ in range(4))
+    else:
+        code = ''.join(random.choice(code) for _ in range(4))
+
 
     # 2. 创建画布（120x40是同花顺验证码的标准尺寸）
     width, height = random.randint(100, 146) , random.randint(36, 64)
@@ -144,18 +147,14 @@ if __name__ == "__main__":
         "--code",
         type=str,
         default=None,
-        help="指定验证码内容，仅在 num_sample=1 时有效",
+        help="指定验证码字符集",
     )
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    if args.num_sample > 1:
-        print(f"开始批量生成 {args.num_sample} 张验证码图片...")
-        print(f"输出目录: {os.path.abspath(args.output_dir)}")
-        for _ in tqdm(range(args.num_sample), desc="生成进度"):
-            generate_ths_captcha(args.output_dir)
-        print(f"\n✓ 成功生成 {args.num_sample} 张，保存至: {os.path.abspath(args.output_dir)}")
-    else:
-        filepath, code = generate_ths_captcha(args.output_dir, args.code)
-        print(f"已生成: {filepath} (验证码: {code})")
+    print(f"开始批量生成 {args.num_sample} 张验证码图片...")
+    print(f"输出目录: {os.path.abspath(args.output_dir)}")
+    for _ in tqdm(range(args.num_sample), desc="生成进度"):
+        generate_ths_captcha(args.output_dir, code=args.code)
+    print(f"\n✓ 成功生成 {args.num_sample} 张，保存至: {os.path.abspath(args.output_dir)}")
