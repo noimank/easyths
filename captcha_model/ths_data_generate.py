@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 import uuid
 import os
-
+import string
 
 def generate_ths_captcha(output_dir="./", code=None):
     """
@@ -20,11 +20,17 @@ def generate_ths_captcha(output_dir="./", code=None):
 
     # 1. 生成随机验证码（如果未指定）
     if code is None:
-        chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        # 大小写+数字
+        chars = string.ascii_letters + string.digits
+        # 数字
+        # chars = string.digits
+        # 混淆的字符集，增强模型区分度
+        # chars = "0OoPpUuIiLl1WwMmNnVvBbXxZzJjKkSsHh9g8Cc"
+
         code = ''.join(random.choice(chars) for _ in range(4))
 
     # 2. 创建画布（120x40是同花顺验证码的标准尺寸）
-    width, height = 120, 40
+    width, height = random.randint(100, 146) , random.randint(36, 64)
     img = Image.new('RGB', (width, height), (255, 255, 255))
 
     # 3. 加载字体（优先使用系统无衬线粗体）
