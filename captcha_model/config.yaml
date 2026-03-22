@@ -38,8 +38,8 @@ Scheduler:
   epochs: 200
 
 Training:
-  batch_size: 32
-  num_workers: 0
+  batch_size: 64
+  num_workers: 4
   amp: false
   save_interval: 20
 

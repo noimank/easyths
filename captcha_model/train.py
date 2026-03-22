@@ -399,7 +399,7 @@ def main():
         batch_size=cfg.batch_size,
         shuffle=True,
         num_workers=cfg.num_workers,
-        pin_memory=False,
+        pin_memory=torch.cuda.is_available(),
         drop_last=True,
         collate_fn=collate_fn
     )
@@ -411,7 +411,7 @@ def main():
             batch_size=cfg.batch_size,
             shuffle=False,
             num_workers=cfg.num_workers,
-            pin_memory=False,
+            pin_memory=torch.cuda.is_available(),
             collate_fn=collate_fn
         )
 
