@@ -19,4 +19,4 @@ onnxruntime>=1.15.0
 # Progress Bar
 tqdm>=4.65.0
 # 其他包
-
+ddddocr==1.6.1
