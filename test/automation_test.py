@@ -3,7 +3,9 @@
 Author: noimank
 Email: noimank@163.com
 """
+from dotenv import load_dotenv
 
+load_dotenv("../.env")
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.operations.buy import BuyOperation
 from easyths.operations.sell import SellOperation
@@ -18,9 +20,6 @@ from easyths.operations.condition_buy import ConditionBuyOperation
 from easyths.operations.stop_loss_profit import StopLossProfitOperation
 from easyths.operations.condition_order_query import ConditionOrderQueryOperation
 from easyths.operations.condition_order_cancel import ConditionOrderCancelOperation
-from dotenv import load_dotenv
-
-load_dotenv("../.env")
 
 
 def test_buy_op():
@@ -78,6 +77,7 @@ def test_automator_basic():
     finally:
         pass
 
+
 def test_sell_op():
     # 创建自动化器
     automator = TonghuashunAutomator()
@@ -103,6 +103,7 @@ def test_sell_op():
         # 断开连接
         automator.disconnect()
 
+
 def test_funds_query_op():
     # 创建自动化器
     automator = TonghuashunAutomator()
@@ -125,6 +126,7 @@ def test_funds_query_op():
     finally:
         # 断开连接
         automator.disconnect()
+
 
 def test_order_cancel_op():
     # 创建自动化器
@@ -150,6 +152,7 @@ def test_order_cancel_op():
     finally:
         # 断开连接
         automator.disconnect()
+
 
 def test_holding_query_op():
     # 创建自动化器
@@ -199,6 +202,7 @@ def test_order_query_op():
         # 断开连接
         automator.disconnect()
 
+
 def test_historical_commission_query_op():
     # 创建自动化器
     automator = TonghuashunAutomator()
@@ -223,6 +227,7 @@ def test_historical_commission_query_op():
         # 断开连接
         automator.disconnect()
 
+
 def test_reverse_repo_buy_op():
     # 创建自动化器
     automator = TonghuashunAutomator()
@@ -234,7 +239,6 @@ def test_reverse_repo_buy_op():
         # 创建操作
         op = ReverseRepoBuyOperation(automator)
 
-
         # 执行操作（同步）
         params = {
             # 交易市场   ["上海", "深圳"],
@@ -250,6 +254,8 @@ def test_reverse_repo_buy_op():
     finally:
         # 断开连接
         automator.disconnect()
+
+
 def test_reverse_repo_query_op():
     # 创建自动化器
     automator = TonghuashunAutomator()
@@ -261,7 +267,6 @@ def test_reverse_repo_query_op():
         # 创建操作
         op = ReverseRepoQueryOperation(automator)
 
-
         # 执行操作（同步）
         params = {
             # 交易市场   ["上海", "深圳"],
@@ -278,6 +283,7 @@ def test_reverse_repo_query_op():
         # 断开连接
         automator.disconnect()
 
+
 def test_condition_buy_op():
     # 创建自动化器
     automator = TonghuashunAutomator()
@@ -288,7 +294,6 @@ def test_condition_buy_op():
     try:
         # 创建操作
         op = ConditionBuyOperation(automator)
-
 
         # 执行操作（同步）
         params = {
@@ -315,7 +320,6 @@ def test_stop_loss_profit_op():
     try:
         # 创建操作
         op = StopLossProfitOperation(automator)
-
 
         # 执行操作（同步）
         params = {
@@ -383,16 +387,15 @@ def test_condition_order_cancel_op():
         automator.disconnect()
 
 
-
 if __name__ == "__main__":
     # test_automator_basic()
-    test_buy_op()
-    test_sell_op()
-    test_funds_query_op()
-    test_order_cancel_op()
+    # test_buy_op()
+    # test_sell_op()
+    # test_funds_query_op()
+    # test_order_cancel_op()
     test_holding_query_op()
-    test_order_query_op()
-    test_historical_commission_query_op()
+    # test_order_query_op()
+    # test_historical_commission_query_op()
     # test_reverse_repo_buy_op()
     # test_reverse_repo_query_op()
     # test_condition_buy_op()
