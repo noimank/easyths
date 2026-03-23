@@ -410,15 +410,15 @@ class BaseOperation(ABC):
                 code_edit.type_keys('{{BACKSPACE {}}}'.format(captcha_code_length))
                 code_image_control = self.get_control_with_children(pop_control, control_type="Image", auto_id="2405",
                                                                     class_name="Static")
-                code_image_control.click_input()
-                # 等待刷新验证码
-                self.sleep(0.2)
+                if captcha_code_length != 0:
+                    code_image_control.click_input()
+                    # 等待刷新验证码
+                    self.sleep(0.2)
                 captcha_code = self.ocr_captcha(code_image_control)
                 captcha_code_length = len(captcha_code)
                 code_edit.type_keys(captcha_code)
                 self.sleep(0.1)
                 # 按确定键
-                # self.get_control_with_children(pop_control,control_type="Button", auto_id="1", class_name="Button").click_input()
                 # self.get_control_with_children(pop_control,control_type="Button", auto_id="1", class_name="Button").click_input()
                 pop_control.type_keys("{ENTER}")
                 self.sleep(0.2)
