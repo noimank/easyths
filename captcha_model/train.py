@@ -58,10 +58,19 @@ class TrainConfig:
         self.weight_decay = o.get('weight_decay', 1e-5)
         self.epochs = s.get('epochs', 150)
         self.scheduler_type = s.get('type', 'onecycle')
+        # OneCycle params
         self.max_lr = s.get('max_lr', 3e-3)
         self.div_factor = s.get('div_factor', 25)
         self.final_div_factor = s.get('final_div_factor', 1000)
         self.pct_start = s.get('pct_start', 0.3)
+        # CosineAnnealing params
+        self.t0 = s.get('T_0', 10)          # restart period
+        self.t_mult = s.get('T_mult', 2)    # period multiplier
+        self.eta_min = s.get('eta_min', 1e-6)
+        # ReduceLROnPlateau params
+        self.factor = s.get('factor', 0.5)
+        self.patience = s.get('patience', 5)
+        self.min_lr = s.get('min_lr', 1e-7)
 
         self.batch_size = t.get('batch_size', 32)
         self.num_workers = t.get('num_workers', 0)
@@ -141,9 +150,72 @@ def compute_accuracy(pred_seqs, label_seqs):
     return char_acc, seq_acc
 
 
+# ── Scheduler Factory ─────────────────────────────────────────
+
+def build_scheduler(cfg: TrainConfig, optimizer, steps_per_epoch: int):
+    """Build learning rate scheduler based on config.
+
+    Scheduler types:
+    - onecycle: OneCycleLR - good for training from scratch
+    - constant: ConstantLR - fixed LR, best for fine-tuning
+    - cosine: CosineAnnealingWarmRestarts - smooth decay with restarts
+    - reduce_on_plateau: ReduceLROnPlateau - dynamic based on val metrics
+    - linear: LinearLR with warmup - linear decay
+    """
+    scheduler_type = cfg.scheduler_type.lower()
+
+    if scheduler_type == 'onecycle':
+        return torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=cfg.max_lr,
+            epochs=cfg.epochs,
+            steps_per_epoch=steps_per_epoch,
+            div_factor=cfg.div_factor,
+            final_div_factor=cfg.final_div_factor,
+            pct_start=cfg.pct_start,
+            anneal_strategy='cos',
+        ), 'step'  # step mode: call scheduler.step() per batch
+
+    elif scheduler_type == 'constant':
+        return torch.optim.lr_scheduler.ConstantLR(
+            optimizer,
+            factor=1.0,
+            total_iters=cfg.epochs,
+        ), 'epoch'  # epoch mode: call scheduler.step() per epoch
+
+    elif scheduler_type == 'cosine':
+        return torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=cfg.t0,
+            T_mult=cfg.t_mult,
+            eta_min=cfg.eta_min,
+        ), 'epoch'
+
+    elif scheduler_type == 'reduce_on_plateau':
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='max',          # maximize seq_acc
+            factor=cfg.factor,
+            patience=cfg.patience,
+            min_lr=cfg.min_lr,
+        ), 'plateau'  # plateau mode: call scheduler.step(metric)
+
+    elif scheduler_type == 'linear':
+        return torch.optim.lr_scheduler.LinearLR(
+            optimizer,
+            start_factor=1.0,
+            end_factor=0.01,
+            total_iters=cfg.epochs,
+        ), 'epoch'
+
+    else:
+        raise ValueError(f"Unknown scheduler type: {scheduler_type}. "
+                        f"Options: onecycle, constant, cosine, reduce_on_plateau, linear")
+
+
 # ── Train / Eval ─────────────────────────────────────────────
 
-def train_epoch(model, loader, optimizer, scheduler, device, num_classes):
+def train_epoch(model, loader, optimizer, scheduler, device, num_classes, scheduler_mode: str):
     model.train()
     total_loss, n = 0.0, len(loader)
     t0 = datetime.now()
@@ -154,7 +226,8 @@ def train_epoch(model, loader, optimizer, scheduler, device, num_classes):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step()
+        if scheduler_mode == 'step':
+            scheduler.step()
         total_loss += loss.item()
     return {'loss': total_loss / n, 'time': (datetime.now() - t0).total_seconds()}
 
@@ -271,23 +344,19 @@ def main():
     # Optimizer / Scheduler
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     steps_per_epoch = len(train_loader)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer,
-        max_lr=cfg.max_lr,
-        epochs=cfg.epochs,
-        steps_per_epoch=steps_per_epoch,
-        div_factor=cfg.div_factor,
-        final_div_factor=cfg.final_div_factor,
-        pct_start=cfg.pct_start,
-        anneal_strategy='cos',
-    )
+    scheduler, scheduler_mode = build_scheduler(cfg, optimizer, steps_per_epoch)
 
     # Resume
     out_dir = Path(cfg.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     best_path = out_dir / "best_model.pt"
     if cfg.resume and best_path.exists():
-        model.load_state_dict(torch.load(best_path, map_location=device, weights_only=True))
+        model_data = torch.load(best_path, map_location=device, weights_only=True)
+        if model_data.get("model_state_dict"):
+            model.load_state_dict(model_data["model_state_dict"])
+        else:
+            model.load_state_dict(model_data)
+        # model.load_state_dict(torch.load(best_path, map_location=device, weights_only=True))
         print(f"Resumed from {best_path}")
 
     logger = TrainingLogger(str(out_dir / "train_log.csv"))
@@ -304,8 +373,15 @@ def main():
     print("-" * len(hdr))
 
     for epoch in range(cfg.epochs):
-        tr = train_epoch(model, train_loader, optimizer, scheduler, device, nc)
+        tr = train_epoch(model, train_loader, optimizer, scheduler, device, nc, scheduler_mode)
         va = evaluate(model, val_loader, device, nc) if val_loader else {'loss': 0, 'char_acc': 0, 'seq_acc': 0}
+
+        # Step scheduler based on mode
+        if scheduler_mode == 'epoch':
+            scheduler.step()
+        elif scheduler_mode == 'plateau' and val_loader:
+            scheduler.step(va['seq_acc'])
+
         lr = scheduler.get_last_lr()[0]
 
         print(f"{epoch+1:>4} | {tr['loss']:>10.4f} | {va['loss']:>10.4f} | "

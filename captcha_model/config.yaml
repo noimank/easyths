@@ -19,13 +19,30 @@ Optimizer:
   weight_decay: 0.00001
 
 Scheduler:
-  type: onecycle  # onecycle or cosine
+  # Scheduler types:
+  #   - onecycle: OneCycleLR, good for training from scratch
+  #   - constant: Fixed LR, best for fine-tuning stable phase
+  #   - cosine: CosineAnnealingWarmRestarts, smooth decay with restarts
+  #   - reduce_on_plateau: Dynamic based on val metrics, recommended for fine-tuning
+  #   - linear: LinearLR, linear decay
+  type: onecycle
   epochs: 150
-  # OneCycleLR params
+
+  # OneCycleLR params (used when type=onecycle)
   max_lr: 0.003
   div_factor: 25        # initial_lr = max_lr / div_factor = 1.2e-4
   final_div_factor: 1000 # final_lr = max_lr / (div_factor * final_div_factor) = 1.2e-7
   pct_start: 0.3         # 30% warmup, 70% decay
+
+  # CosineAnnealingWarmRestarts params (used when type=cosine)
+  T_0: 10               # initial restart period (epochs)
+  T_mult: 2             # period multiplier after each restart
+  eta_min: 0.000001     # minimum LR
+
+  # ReduceLROnPlateau params (used when type=reduce_on_plateau)
+  factor: 0.5           # LR = LR * factor when plateau
+  patience: 5           # epochs to wait before reducing LR
+  min_lr: 0.0000001     # minimum LR
 
 Training:
   batch_size: 64
