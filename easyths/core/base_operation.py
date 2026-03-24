@@ -322,6 +322,8 @@ class BaseOperation(ABC):
                 return "国债逆回购窗口", children
             elif "退出确认" in content:
                 return "程序退出确认窗口", children
+            elif "failed" in content:
+                return "BeginFailed失败提示", children
             else:
                 pass
 
@@ -379,7 +381,8 @@ class BaseOperation(ABC):
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
             elif pop_dialog_title == "国债逆回购窗口":
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
-
+            elif pop_dialog_title == "BeginFailed失败提示":
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()
             #条件单触发提醒
             elif pop_dialog_title == 'CDlgTriggeredConfitionTip':
                 pop_control.close()
