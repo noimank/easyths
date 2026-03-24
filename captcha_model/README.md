@@ -181,6 +181,86 @@ LR
 - 峰值 LR：`3e-3`（30% 位置）
 - 终止 LR：`~1e-7`
 
+## 模型微调
+
+当需要适配特定验证码样式时，可以对预训练模型进行微调。
+
+### 微调配置
+
+项目提供了专门的微调配置文件 `config_finetune.yaml`，与从头训练的主要区别：
+
+| 参数 | 从头训练 (`config.yaml`) | 微调 (`config_finetune.yaml`) |
+|------|-------------------------|------------------------------|
+| 学习率调度 | `onecycle` | `constant` |
+| 学习率 | 0.0001 | 0.00001 (更低) |
+| 数据增强噪声 | 0.02 | 0.04 (更强) |
+
+### 微调步骤
+
+#### 1. 准备数据集
+
+使用数据生成工具或真实验证码样本：
+
+```bash
+# 生成训练集（推荐 1000+ 张）
+python data_generate.py --num_samples 2000 --output_dir data/train
+
+# 生成验证集
+python data_generate.py --num_samples 500 --output_dir data/val
+
+# 生成测试集
+python data_generate.py --num_samples 500 --output_dir data/test
+```
+
+#### 2. 准备预训练模型
+
+将预训练模型 `best_model.pt` 放到 `outputs/` 目录：
+
+```bash
+# 确保模型文件存在
+ls outputs/best_model.pt
+```
+
+#### 3. 开始微调
+
+```bash
+# 使用微调配置
+python train.py --config config_finetune.yaml
+```
+
+配置文件中 `resume: true` 会自动加载 `outputs/best_model.pt` 作为初始权重。
+
+#### 4. 评估微调效果
+
+```bash
+python eval.py --model outputs/best_model.pt --test_dir data/test
+```
+
+### 微调配置说明
+
+```yaml
+# config_finetune.yaml 关键配置
+Optimizer:
+  lr: 0.00001  # 更低的学习率，避免破坏预训练权重
+
+Scheduler:
+  type: constant  # 固定学习率，适合微调稳定阶段
+  # 或使用 reduce_on_plateau 基于验证指标动态调整
+
+Training:
+  early_stopping:
+    patience: 20  # 防止过拟合
+```
+
+### 学习率调度器选择
+
+| 调度器 | 适用场景 |
+|--------|----------|
+| `constant` | 微调稳定阶段（推荐） |
+| `reduce_on_plateau` | 基于验证指标动态调整 |
+| `cosine` | 平滑衰减 |
+| `onecycle` | 从头训练 |
+
 ## 模型评估
 
 ```bash
@@ -379,5 +459,5 @@ print(f"验证码: {result}")
 
 ## 作者
 
-- 作者：noimank（康康）
+- 作者：noimank
 - 邮箱：noimank@163.com

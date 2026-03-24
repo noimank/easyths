@@ -1,65 +1,65 @@
-# Fine-tuning configuration
-# Use this config when fine-tuning a pre-trained model
-#
-# Usage: python train.py --config config_finetune.yaml
-
 Global:
   use_gpu: true
+  # Character set (auto-sorted at runtime for consistent index mapping)
   character: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
   img_h: 64
   img_w: 256
-  seed: 42742
+  seed: 472
   output_dir: "outputs"
-  resume: true  # load best_model.pt
+  resume: true
 
 Architecture:
   backbone:
-    nc: 1
+    nc: 1  # 1=grayscale, 3=RGB
   head:
     hidden_dim: 128
 
 Optimizer:
-  # Lower LR for fine-tuning
-  lr: 0.00012
-  weight_decay: 0.0001
+  lr: 0.00001
+  weight_decay: 0.00001
 
 Scheduler:
-  # ReduceLROnPlateau is recommended for fine-tuning:
-  # - Starts with fixed LR
-  # - Reduces LR when validation metric plateaus
-  # - Allows model to converge at its own pace
-  type: reduce_on_plateau
-  epochs: 200
-  factor: 0.5           # LR * 0.5 when plateau
-  patience: 15           # wait 15 epochs before reducing
-  min_lr: 0.000004     # minimum LR
+  # Scheduler types:
+  #   - onecycle: OneCycleLR, good for training from scratch
+  #   - constant: Fixed LR, best for fine-tuning stable phase
+  #   - cosine: CosineAnnealingWarmRestarts, smooth decay with restarts
+  #   - reduce_on_plateau: Dynamic based on val metrics, recommended for fine-tuning
+  #   - linear: LinearLR, linear decay
+  type: constant
+  epochs: 150
 
-  # Alternative options for fine-tuning:
-  #
-  # type: constant       # Fixed LR throughout, simplest option
-  #
-  # type: cosine         # Smooth decay with restarts
-  # T_0: 10
-  # T_mult: 2
-  # eta_min: 0.000001
+  # OneCycleLR params (used when type=onecycle)
+  max_lr: 0.003
+  div_factor: 25        # initial_lr = max_lr / div_factor = 1.2e-4
+  final_div_factor: 1000 # final_lr = max_lr / (div_factor * final_div_factor) = 1.2e-7
+  pct_start: 0.3         # 30% warmup, 70% decay
+
+  # CosineAnnealingWarmRestarts params (used when type=cosine)
+  T_0: 10               # initial restart period (epochs)
+  T_mult: 2             # period multiplier after each restart
+  eta_min: 0.000001     # minimum LR
+
+  # ReduceLROnPlateau params (used when type=reduce_on_plateau)
+  factor: 0.5           # LR = LR * factor when plateau
+  patience: 5           # epochs to wait before reducing LR
+  min_lr: 0.0000001     # minimum LR
 
 Training:
   batch_size: 64
   num_workers: 4
-  save_interval: 10
+  save_interval: 20
   early_stopping:
-    patience: 40
-    min_delta: 0.0001
+    patience: 20
+    min_delta: 0.001
 
 DataAugmentation:
-  # Lighter augmentation for fine-tuning
   enabled: true
-  brightness_prob: 0.3
-  brightness_range: [0.9, 1.3]
-  contrast_prob: 0.3
-  contrast_range: [0.9, 1.3]
-  rotation_prob: 0.1
-  rotation_range: [-3, 3]
+  brightness_prob: 0.5
+  brightness_range: [0.8, 1.2]
+  contrast_prob: 0.5
+  contrast_range: [0.8, 1.2]
+  rotation_prob: 0.3
+  rotation_range: [-5, 5]
   noise_prob: 0.3
   noise_std: 0.04
   blur_prob: 0.3
