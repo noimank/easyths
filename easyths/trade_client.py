@@ -276,7 +276,7 @@ class TradeClient:
         Args:
             stock_code: 股票代码（6位数字）
             price: 买入价格
-            quantity: 买入数量（必须是100的倍数）
+            quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
             timeout: 操作超时时间（秒）
 
         Returns:
@@ -318,7 +318,7 @@ class TradeClient:
         Args:
             stock_code: 股票代码（6位数字）
             price: 卖出价格
-            quantity: 卖出数量（必须是100的倍数）
+            quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
             timeout: 操作超时时间（秒）
 
         Returns:
@@ -387,7 +387,7 @@ class TradeClient:
         Args:
             stock_code: 股票代码（6位数字）
             target_price: 目标价格（触发价格）
-            quantity: 买入数量（必须是100的倍数）
+            quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
             expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
             timeout: 操作超时时间（秒）
 
@@ -436,7 +436,7 @@ class TradeClient:
             stock_code: 股票代码（6位数字）
             stop_loss_percent: 止损百分比（如3表示3%）
             stop_profit_percent: 止盈百分比（如5表示5%）
-            quantity: 卖出数量（必须是100的倍数），可选，不指定则使用全部可用持仓
+            quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数），可选，不指定则使用全部可用持仓
             expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
             timeout: 操作超时时间（秒）
 

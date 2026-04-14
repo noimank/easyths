@@ -35,9 +35,9 @@ class ConditionBuyOperation(BaseOperation):
                 "quantity": {
                     "type": "integer",
                     "required": True,
-                    "description": "买入数量（必须是100的倍数）",
-                    "minimum": 100,
-                    "multiple_of": 100
+                    "description": "买入数量（股票必须是100的倍数，可转债必须是10的倍数）",
+                    "minimum": 10,
+                    "multiple_of": 10
                 },
                 "expire_days": {
                     "type": "integer",
@@ -74,9 +74,12 @@ class ConditionBuyOperation(BaseOperation):
                 self.logger.error("目标价格必须大于0")
                 return False
 
-            # 验证数量
-            if not isinstance(quantity, int) or quantity < 100 or quantity % 100 != 0:
-                self.logger.error("数量必须是100的倍数且不小于100")
+            # 验证数量（可转债11/12开头为10的倍数，其余为100的倍数）
+            is_convertible_bond = stock_code.startswith(("11", "12"))
+            min_qty = 10 if is_convertible_bond else 100
+            multiple = 10 if is_convertible_bond else 100
+            if not isinstance(quantity, int) or quantity < min_qty or quantity % multiple != 0:
+                self.logger.error(f"数量必须是{multiple}的倍数且不小于{min_qty}" + ("（可转债）" if is_convertible_bond else ""))
                 return False
             # 验证有效期
             if expire_days not in [1, 3, 5, 10, 20, 30]:

@@ -82,7 +82,7 @@ def buy(stock_code: str, price: float, quantity: int) -> dict:
     Args:
         stock_code: 股票代码（6位数字）
         price: 买入价格
-        quantity: 买入数量（必须是100的倍数）
+        quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
 
     Returns:
         买入结果
@@ -101,7 +101,7 @@ def sell(stock_code: str, price: float, quantity: int) -> dict:
     Args:
         stock_code: 股票代码（6位数字）
         price: 卖出价格
-        quantity: 卖出数量（必须是100的倍数）
+        quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
 
     Returns:
         卖出结果
@@ -217,7 +217,7 @@ def condition_buy(
     Args:
         stock_code: 股票代码（6位数字）
         target_price: 目标触发价格
-        quantity: 买入数量（必须是100的倍数）
+        quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
         expire_days: 策略有效期（天），可选值: 1, 3, 5, 10, 20, 30
 
     Returns:
@@ -284,7 +284,7 @@ def stop_loss_profit(
         stock_code: 股票代码（6位数字）
         stop_loss_percent: 止损百分比（如3表示3%）
         stop_profit_percent: 止盈百分比（如5表示5%）
-        quantity: 卖出数量（必须是100的倍数），不指定则使用全部持仓
+        quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数），不指定则使用全部持仓
         expire_days: 策略有效期（天），可选值: 1, 3, 5, 10, 20, 30
 
     Returns:

@@ -42,9 +42,9 @@ class StopLossProfitOperation(BaseOperation):
                 "quantity": {
                     "type": "integer",
                     "required": False,
-                    "description": "买入数量（必须是100的倍数）,可以不指定，默认买完所有持仓数量，建议还是传入，受T+1影响，如果不指定，当天就无法设置止盈止损",
-                    "minimum": 100,
-                    "multiple_of": 100
+                    "description": "买入数量（股票必须是100的倍数，可转债必须是10的倍数）,可以不指定，默认卖完所有持仓数量",
+                    "minimum": 10,
+                    "multiple_of": 10
                 },
                 "expire_days": {
                     "type": "integer",
@@ -95,10 +95,13 @@ class StopLossProfitOperation(BaseOperation):
                 self.logger.error("有效期必须是1,3,5,10,20,30中的任意一个")
                 return False
 
-            # 验证数量
+            # 验证数量（可转债11/12开头为10的倍数，其余为100的倍数）
             if quantity is not None:
-                if not isinstance(quantity, int) or quantity < 100 or quantity % 100 != 0:
-                    self.logger.error("数量必须是100的倍数且不小于100")
+                is_convertible_bond = stock_code.startswith(("11", "12"))
+                min_qty = 10 if is_convertible_bond else 100
+                multiple = 10 if is_convertible_bond else 100
+                if not isinstance(quantity, int) or quantity < min_qty or quantity % multiple != 0:
+                    self.logger.error(f"数量必须是{multiple}的倍数且不小于{min_qty}" + ("（可转债）" if is_convertible_bond else ""))
                     return False
 
             self.logger.info("止盈止损参数验证通过")
