@@ -207,6 +207,14 @@ python eval.py --model outputs/best_model.pt
 
 详细配置说明和高级用法请参考 [captcha_model/README.md](captcha_model/README.md)。
 
+## 版本号说明
+
+本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)（Semantic Versioning）规范，版本号格式为 `MAJOR.MINOR.PATCH`：
+
+- **PATCH**（如 `1.6.3` → `1.6.4`）：问题修复、性能优化等，不涉及功能变更，可放心升级
+- **MINOR**（如 `1.6.3` → `1.7.0`）：新增功能或调整已有功能的行为，向下兼容
+- **MAJOR**（如 `1.7.0` → `2.0.0`）：不兼容的 API 变更，升级需注意迁移
+
 ## 安全须知
 
 - 本系统仅供学习和研究使用
