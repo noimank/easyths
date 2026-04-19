@@ -43,6 +43,16 @@ def test_buy():
     res = client.buy("000001", 100, 100)
     print(f"买入结果: {res}")
 
+def test_market_buy():
+    """测试买入"""
+    res = client.market_buy("000001", 100, 1)
+    print(f"市价买入结果: {res}")
+
+def test_market_sell():
+    """测试买入"""
+    res = client.market_sell("000001", 100, 1)
+    print(f"市价卖出结果: {res}")
+
 
 def test_sell():
     """测试卖出"""
@@ -152,6 +162,9 @@ if __name__ == '__main__':
     # test_stop_loss_profit()
     # test_condition_order_query()
     # test_condition_order_canel()
+    test_market_buy()
+    test_market_sell()
+
 
     # 撤单操作测试
     print("\n=== 撤单操作测试 ===")
@@ -162,7 +175,7 @@ if __name__ == '__main__':
 
     # 查询操作测试
     # print("\n=== 查询操作测试 ===")
-    test_query_holdings()
+    # test_query_holdings()
     # test_query_holdings_markdown()
     # test_query_funds()
     # test_query_orders()

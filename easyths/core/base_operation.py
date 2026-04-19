@@ -284,6 +284,21 @@ class BaseOperation(ABC):
             return True
         return len(childrens) != 0
 
+    def get_pop_dialog_content(self)-> str | None:
+        """获取弹窗内容"""
+        if not self.is_exist_pop_dialog():
+            return None
+
+        main_window = self.get_main_window(wrapper_obj=True)
+        childrens = main_window.children(control_type="Pane", class_name="#32770")
+        # 可能会出现多个（概率很小），但是不管，找到一个直接返回，由上层应用兜底和判断
+        for children in childrens:
+            # 根据
+            sub_childrens = children.children(class_name="Static")
+            content = "".join([child.window_text() for child in sub_childrens])
+            return content
+        return None
+
     def get_pop_dialog(self) -> Tuple[Optional[str], Optional[Any]]:
         """
         获取弹窗标题和对应弹窗控件，搭配get_control_in_children实现更细化的使用

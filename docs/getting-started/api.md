@@ -358,7 +358,7 @@ POST /api/v1/operations/buy
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
 | price | number | 是 | 买入价格 |
-| quantity | integer | 是 | 买入数量（必须是100的倍数） |
+| quantity | integer | 是 | 买入数量（股票必须是100的倍数，可转债必须是10的倍数） |
 
 ### sell - 卖出股票
 
@@ -383,7 +383,76 @@ POST /api/v1/operations/sell
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
 | price | number | 是 | 卖出价格 |
-| quantity | integer | 是 | 卖出数量（必须是100的倍数） |
+| quantity | integer | 是 | 卖出数量（股票必须是100的倍数，可转债必须是10的倍数） |
+
+### market_buy - 市价买入
+
+以市价方式买入股票，无需指定价格，通过成交策略决定成交方式。
+
+```http
+POST /api/v1/operations/market_buy
+```
+
+**请求参数**:
+```json
+{
+  "params": {
+    "stock_code": "600000",
+    "quantity": 100,
+    "execution_strategy": 3
+  }
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 是 | 股票代码（6位数字） |
+| quantity | integer | 是 | 买入数量（股票必须是100的倍数，可转债必须是10的倍数） |
+| execution_strategy | integer | 否 | 成交策略（见下表），默认 3 |
+
+**成交策略**:
+
+| 值 | 策略名称 | 说明 |
+|----|----------|------|
+| 1 | 对手方最优 | 以对手方最优价格成交 |
+| 2 | 本方最优 | 以本方最优价格成交 |
+| 3 | 五档即成剩撤 | 逐档成交，剩余撤销（默认） |
+| 4 | 即成剩撤 | 立即成交，剩余撤销 |
+| 5 | 全额成交或撤 | 全部成交或不成交 |
+| 6 | 五档即成剩转限 | 逐档成交，剩余转限价单 |
+
+> **注意**：并不是所有类型的标的都支持市价交易。且支持市价交易的标的，可用的成交策略也不总是有以上 6 种。如果设置了该标的不支持的成交策略，系统会自动使用默认策略「五档即成剩撤」进行提交。
+
+### market_sell - 市价卖出
+
+以市价方式卖出股票，无需指定价格，通过成交策略决定成交方式。
+
+```http
+POST /api/v1/operations/market_sell
+```
+
+**请求参数**:
+```json
+{
+  "params": {
+    "stock_code": "600000",
+    "quantity": 100,
+    "execution_strategy": 3
+  }
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 是 | 股票代码（6位数字） |
+| quantity | integer | 是 | 卖出数量（股票必须是100的倍数，可转债必须是10的倍数） |
+| execution_strategy | integer | 否 | 成交策略（同 market_buy），默认 3 |
+
+> **注意**：同 market_buy，并不是所有类型的标的都支持市价交易，且可用成交策略数量因标的而异。如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
 
 ### holding_query - 持仓查询
 
@@ -612,7 +681,7 @@ POST /api/v1/operations/condition_buy
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
 | target_price | number | 是 | 目标价格（触发价格） |
-| quantity | integer | 是 | 买入数量（必须是100的倍数） |
+| quantity | integer | 是 | 买入数量（股票必须是100的倍数，可转债必须是10的倍数） |
 | expire_days | integer | 否 | 有效期（自然日），可选1/3/5/10/20/30，默认30 |
 
 **响应示例**:
@@ -667,7 +736,7 @@ POST /api/v1/operations/stop_loss_profit
 | stock_code | string | 是 | 股票代码（6位数字） |
 | stop_loss_percent | number | 是 | 止损百分比（如3表示3%） |
 | stop_profit_percent | number | 是 | 止盈百分比（如5表示5%） |
-| quantity | integer | 否 | 卖出数量（必须是100的倍数），可选，不指定则使用全部可用持仓 |
+| quantity | integer | 否 | 卖出数量（股票必须是100的倍数，可转债必须是10的倍数），可选，不指定则使用全部可用持仓 |
 | expire_days | integer | 否 | 有效期（自然日），可选1/3/5/10/20/30，默认30 |
 
 > **注意**：止盈百分比必须大于止损百分比。quantity 参数建议指定，因为受 T+1 限制，当天买入的股票如果不指定数量无法设置止盈止损。

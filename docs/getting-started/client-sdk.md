@@ -139,7 +139,7 @@ ops = client.list_operations()
 result = client.buy(
     stock_code="600000",  # 股票代码
     price=10.50,          # 买入价格
-    quantity=100          # 买入数量（100的倍数）
+    quantity=100          # 买入数量（股票100的倍数，可转债10的倍数）
 )
 
 # 检查结果
@@ -163,6 +163,55 @@ result = client.sell(
 if result["success"]:
     print("卖出成功")
 ```
+
+### 市价买入
+
+以市价方式买入股票，无需指定价格，通过成交策略决定成交方式。
+
+```python
+result = client.market_buy(
+    stock_code="600000",       # 股票代码
+    quantity=100,              # 买入数量（100的倍数）
+    execution_strategy=3       # 成交策略（可选，默认3-五档即成剩撤）
+)
+
+if result["success"]:
+    print(f"市价买入成功: {result['message']}")
+else:
+    print(f"市价买入失败: {result['message']}")
+```
+
+**成交策略**:
+
+| 值 | 策略名称 |
+|----|----------|
+| 1 | 对手方最优 |
+| 2 | 本方最优 |
+| 3 | 五档即成剩撤（默认） |
+| 4 | 即成剩撤 |
+| 5 | 全额成交或撤 |
+| 6 | 五档即成剩转限 |
+
+> **注意**：并不是所有类型的标的都支持市价交易。且支持市价交易的标的，可用的成交策略也不总是有以上 6 种。如果设置了该标的不支持的成交策略，系统会自动使用默认策略「五档即成剩撤」进行提交。
+
+### 市价卖出
+
+以市价方式卖出股票，无需指定价格，通过成交策略决定成交方式。
+
+```python
+result = client.market_sell(
+    stock_code="600000",       # 股票代码
+    quantity=100,              # 卖出数量（100的倍数）
+    execution_strategy=3       # 成交策略（可选，默认3-五档即成剩撤）
+)
+
+if result["success"]:
+    print(f"市价卖出成功: {result['message']}")
+else:
+    print(f"市价卖出失败: {result['message']}")
+```
+
+> **注意**：同市价买入，并不是所有类型的标的都支持市价交易，且可用成交策略数量因标的而异。如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
 
 ### 撤销委托单
 
@@ -188,7 +237,7 @@ result = client.cancel_order(cancel_type="sell")
 result = client.condition_buy(
     stock_code="600000",      # 股票代码
     target_price=10.50,       # 目标触发价格
-    quantity=100,             # 买入数量（100的倍数）
+    quantity=100,             # 买入数量（股票100的倍数，可转债10的倍数）
     expire_days=30            # 有效期（可选1/3/5/10/20/30，默认30）
 )
 
@@ -538,6 +587,8 @@ class TradeClient:
     # 交易操作
     def buy(self, stock_code: str, price: float, quantity: int, timeout: float = None) -> dict: ...
     def sell(self, stock_code: str, price: float, quantity: int, timeout: float = None) -> dict: ...
+    def market_buy(self, stock_code: str, quantity: int, execution_strategy: int = 3, timeout: float = None) -> dict: ...
+    def market_sell(self, stock_code: str, quantity: int, execution_strategy: int = 3, timeout: float = None) -> dict: ...
     def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = None) -> dict: ...
     def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None) -> dict: ...
     def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = None) -> dict: ...

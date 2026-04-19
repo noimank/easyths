@@ -113,6 +113,48 @@ def sell(stock_code: str, price: float, quantity: int) -> dict:
     })
 
 
+@mcp_server.tool
+def market_buy(stock_code: str, quantity: int, execution_strategy: int = 3) -> dict:
+    """市价买入股票，无需指定价格，通过成交策略决定成交方式。
+    注意：并不是所有类型的标的都支持市价交易，且可用成交策略因标的而异。
+    如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
+
+    Args:
+        stock_code: 股票代码（6位数字）
+        quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
+        execution_strategy: 成交策略，默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
+
+    Returns:
+        市价买入结果
+    """
+    return _execute_operation("market_buy", {
+        "stock_code": stock_code,
+        "quantity": quantity,
+        "execution_strategy": execution_strategy
+    })
+
+
+@mcp_server.tool
+def market_sell(stock_code: str, quantity: int, execution_strategy: int = 3) -> dict:
+    """市价卖出股票，无需指定价格，通过成交策略决定成交方式。
+    注意：并不是所有类型的标的都支持市价交易，且可用成交策略因标的而异。
+    如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
+
+    Args:
+        stock_code: 股票代码（6位数字）
+        quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
+        execution_strategy: 成交策略，默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
+
+    Returns:
+        市价卖出结果
+    """
+    return _execute_operation("market_sell", {
+        "stock_code": stock_code,
+        "quantity": quantity,
+        "execution_strategy": execution_strategy
+    })
+
+
 # ============= 查询操作工具 =============
 
 @mcp_server.tool

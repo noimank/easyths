@@ -20,6 +20,8 @@ from easyths.operations.condition_buy import ConditionBuyOperation
 from easyths.operations.stop_loss_profit import StopLossProfitOperation
 from easyths.operations.condition_order_query import ConditionOrderQueryOperation
 from easyths.operations.condition_order_cancel import ConditionOrderCancelOperation
+from easyths.operations.market_buy import MarketBuyOperation
+from easyths.operations.market_sell import MarketSellOperation
 
 
 def test_buy_op():
@@ -386,6 +388,56 @@ def test_condition_order_cancel_op():
         # 断开连接
         automator.disconnect()
 
+def test_market_buy_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = MarketBuyOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "stock_code": "000001",
+            "quantity": 100,
+            "execution_strategy": 7
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}， message： {result.message}")
+
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+def test_market_sell_op():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = MarketSellOperation(automator)
+
+        # 执行操作（同步）
+        params = {
+            "stock_code": "000001",
+            "quantity": 100,
+            "execution_strategy": 2
+
+        }
+
+        result = op.run(params)
+        print(f"操作结果: {result.success}, data: {result.data}， message： {result.message}")
+    finally:
+        # 断开连接
+        automator.disconnect()
+
 
 if __name__ == "__main__":
     # test_automator_basic()
@@ -393,7 +445,7 @@ if __name__ == "__main__":
     # test_sell_op()
     # test_funds_query_op()
     # test_order_cancel_op()
-    test_holding_query_op()
+    # test_holding_query_op()
     # test_order_query_op()
     # test_historical_commission_query_op()
     # test_reverse_repo_buy_op()
@@ -402,3 +454,5 @@ if __name__ == "__main__":
     # test_stop_loss_profit_op()
     # test_condition_order_query_op()
     # test_condition_order_cancel_op()
+    test_market_buy_op()
+    # test_market_sell_op()
