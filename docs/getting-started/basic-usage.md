@@ -93,6 +93,9 @@ uvx easyths[server] --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
 [app]
 name = "同花顺交易自动化程序"
 version = "1.0.0"
+# 自定义验证码识别模型目录（留空使用内置模型）
+# 目录下必须包含 captcha_ocr.onnx 和 captcha_ocr.onnx.data 两个文件
+onnx_model_dir = ""
 ```
 
 ### [trading] 交易程序配置
@@ -144,6 +147,9 @@ file = ""
 [app]
 name = "同花顺交易自动化程序"
 version = "1.0.0"
+# 自定义验证码识别模型目录（留空使用内置模型）
+# 目录下必须包含 captcha_ocr.onnx 和 captcha_ocr.onnx.data 两个文件
+onnx_model_dir = ""
 
 # ============================================
 # 交易程序配置
