@@ -20,3 +20,4 @@ onnxruntime>=1.15.0
 tqdm>=4.65.0
 # 其他包
 ddddocr==1.6.1
+onnxscript
