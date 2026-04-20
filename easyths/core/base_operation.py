@@ -9,6 +9,9 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
+
+from PIL import Image
 from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
 
 import pyperclip
@@ -21,6 +24,7 @@ if TYPE_CHECKING:
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.models.operations import OperationResult, PluginMetadata
 from easyths.utils import get_captcha_ocr_server
+from easyths.utils.config import project_config_instance
 logger = structlog.get_logger(__name__)
 
 
@@ -419,9 +423,14 @@ class BaseOperation(ABC):
         """
         captcha_code_length = 0
         count = 0
+        captcha_image = None
         while self.is_exist_pop_dialog() and count < 5:
             pop_dialog_title, pop_control = self.get_pop_dialog()
             if pop_dialog_title == "验证码提示框":
+                if captcha_image is not None and captcha_code_length != 0 and project_config_instance.save_error_captcha_image:
+                    # 保存错误的图片
+                    captcha_image.save(f"{str(Path("~/easyths/captcha_error").expanduser())}/{uuid4().hex[:12]}.png")
+
                 code_edit = self.get_control_with_children(pop_control, control_type="Edit", auto_id="2404",
                                                            class_name="Edit")
                 # 尝试删除可能存在的旧验证码
@@ -432,7 +441,7 @@ class BaseOperation(ABC):
                     code_image_control.click_input()
                     # 等待刷新验证码
                     self.sleep(0.2)
-                captcha_code = self.ocr_captcha(code_image_control)
+                captcha_code, captcha_image = self.ocr_captcha(code_image_control)
                 captcha_code_length = len(captcha_code)
                 code_edit.type_keys(captcha_code)
                 self.sleep(0.1)
@@ -475,10 +484,10 @@ class BaseOperation(ABC):
         return None
 
 
-    def ocr_captcha(self, control: Any) -> str:
+    def ocr_captcha(self, control: Any) -> Tuple[str, Image.Image]:
         """根据控件获取OCR验证码结果"""
-        code = get_captcha_ocr_server().recognize(control)
-        return code
+        code, image = get_captcha_ocr_server().recognize(control)
+        return code, image
 
 
     def get_clipboard_data(self) -> str:

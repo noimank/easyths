@@ -8,6 +8,7 @@ class ProjectConfig:
     app_name = os.getenv("APP_NAME", "同花顺交易自动化程序")
     app_version = os.getenv("APP_VERSION", "1.0.0")
     onnx_model_dir = os.getenv("APP_ONNX_MODEL_DIR", None)
+    save_error_captcha_image = os.getenv("APP_SAVE_ERROR_CAPTCHA_IMAGE", "false").lower() == "true"
 
     # Trading配置
     trading_app_path = os.getenv("TRADING_APP_PATH", "C:/同花顺远航版/transaction/xiadan.exe")
@@ -32,7 +33,11 @@ class ProjectConfig:
 
 
     def __init__(self):
-        pass
+        if self.save_error_captcha_image:
+            pa = Path("~/easyths/captcha_error").expanduser()
+            if not pa.exists():
+                pa.mkdir(parents=True, exist_ok=True)
+
 
     def update_from_toml_file(self, toml_file_path: str, exe_path: str | None = None) -> None:
         """从 TOML 配置文件更新配置
@@ -52,7 +57,13 @@ class ProjectConfig:
                 self.app_version = app_config["version"]
             if "onnx_model_dir" in app_config:
                 # 空字符串转换为 None
-                self.onnx_model_dir = app_config["onnx_model_dir"] or None
+                self.onnx_model_dir =  app_config["onnx_model_dir"] or None
+
+            if "save_error_captcha_image" in app_config:
+                self.save_error_captcha_image = app_config["save_error_captcha_image"]
+                pa = Path("~/easyths/captcha_error").expanduser()
+                if not pa.exists():
+                    pa.mkdir(parents=True, exist_ok=True)
 
         # 处理 [trading] 部分
         if "trading" in config:

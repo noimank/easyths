@@ -1,5 +1,6 @@
 import functools
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 import onnx
@@ -119,13 +120,14 @@ class CaptchaOCR:
     def __init__(self):
         self.logger = structlog.get_logger(__name__)
 
-    def recognize(self, captcha_control) -> str:
+    def recognize(self, captcha_control) -> Tuple[str, Image.Image]:
         """识别验证码
         Args:
             captcha_control : 验证码控件
 
         Returns:
             str: 识别结果
+            Image.Image: 验证码图片
         """
         try:
             # 判断控件是否有效
@@ -150,11 +152,11 @@ class CaptchaOCR:
             ocr = _get_ocr_instance()
             result = ocr.recognize(image)
             self.logger.debug(f"验证码识别结果: {result}")
-            return result
+            return result, image
 
         except Exception as e:
             self.logger.error(f"验证码识别失败: {e}")
-            return ""
+            return "", Image.Image()
 
 
 @functools.lru_cache(maxsize=1)
