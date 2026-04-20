@@ -8,7 +8,8 @@ class ProjectConfig:
     app_name = os.getenv("APP_NAME", "同花顺交易自动化程序")
     app_version = os.getenv("APP_VERSION", "1.0.0")
     onnx_model_dir = os.getenv("APP_ONNX_MODEL_DIR", None)
-    save_error_captcha_image = os.getenv("APP_SAVE_ERROR_CAPTCHA_IMAGE", "false").lower() == "true"
+    # 默认保存
+    save_error_captcha_image = os.getenv("APP_SAVE_ERROR_CAPTCHA_IMAGE", "true").lower() == "true"
 
     # Trading配置
     trading_app_path = os.getenv("TRADING_APP_PATH", "C:/同花顺远航版/transaction/xiadan.exe")
