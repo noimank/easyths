@@ -1,0 +1,13 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 常见问题 (FAQ)
+    url: https://noimank.github.io/easyths/getting-started/faq/
+    about: 遇到问题请先查看常见问题，可能有你需要的答案
+
+  - name: 同花顺软件配置文档
+    url: https://noimank.github.io/easyths/getting-started/ths-client/
+    about: 查看完整文档和使用指南
+
+  - name: 文档站点
+    url: https://noimank.github.io/easyths/
+    about: 查看完整文档和使用指南

@@ -1,0 +1,74 @@
+name: 性能问题
+description: 报告响应慢、卡顿、资源占用高等性能相关问题
+title: "[Performance] "
+labels: ["performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        自动化交易的性能至关重要。请详细描述性能问题，帮助我们优化。
+
+  - type: input
+    id: version
+    attributes:
+      label: EasyTHS 版本
+      placeholder: "例如: 1.7.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 性能问题区域
+      options:
+        - API 响应速度
+        - GUI 控件查找
+        - 验证码识别
+        - 同花顺客户端交互
+        - 并发/队列处理
+        - 内存/CPU 占用
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 具体描述性能问题的表现
+      placeholder: |
+        例如：买入接口平均响应时间从 2s 增加到 8s
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: 性能数据
+      description: 如果有具体的耗时数据、资源监控图表等，请提供
+      placeholder: |
+        例如：
+        - 平均响应时间: 8s
+        - 同花顺客户端版本: 9.20.30
+        - 并发请求数: 5
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现方式
+      description: 如何稳定复现该性能问题
+      placeholder: |
+        例如：连续发送 10 个买入请求
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 分析数据
+      description: 相关日志片段或性能分析结果
+      render: text
+    validations:
+      required: false

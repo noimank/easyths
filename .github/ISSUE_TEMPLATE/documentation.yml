@@ -1,0 +1,49 @@
+name: 文档改进
+description: 文档错误、缺失或改进建议
+title: "[Docs] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        帮助我们改进文档质量！
+
+  - type: dropdown
+    id: doc_type
+    attributes:
+      label: 文档类型
+      options:
+        - 用户文档 (getting-started/)
+        - API 文档
+        - 开发文档 (development/)
+        - README
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: page
+    attributes:
+      label: 相关页面 / 文件
+      description: 文档链接或文件路径
+      placeholder: "例如: docs/getting-started/installation.md"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 文档有什么问题或需要改进的地方
+      placeholder: |
+        例如：安装文档中缺少 uv 的安装步骤说明
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 改进建议
+      description: 你希望如何改进
+    validations:
+      required: false

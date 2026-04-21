@@ -1,0 +1,95 @@
+name: Bug 报告
+description: 报告一个 bug 或问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你的反馈！请填写以下信息，帮助我们更快地定位和修复问题。
+
+  - type: input
+    id: version
+    attributes:
+      label: EasyTHS 版本
+      description: 你使用的 EasyTHS 版本号
+      placeholder: "例如: 1.7.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ths_version
+    attributes:
+      label: 同花顺客户端类型
+      description: 同花顺客户端类型（推荐远航版）
+      options:
+        - 远航版
+        - 普通版
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: 问题描述
+      description: 请清晰描述发生了什么 bug
+      placeholder: |
+        例如：调用买入接口时，程序报错无法找到确认按钮控件
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 如何一步步复现这个问题
+      placeholder: |
+        1. 启动同花顺客户端并登录
+        2. 调用 API 'POST /api/buy'
+        3. 参数: {...}
+        4. 出现错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 你期望发生什么
+      placeholder: |
+        例如：应该成功提交买入委托
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 错误日志 / 截图
+      description: |
+        请粘贴相关的错误日志、堆栈跟踪或截图。
+        如果涉及 OCR/验证码识别错误，请一并上传错误图片（默认保存在 `error_captcha_images/` 目录）。
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: 相关配置
+      description: |
+        如果有特殊配置，请提供（注意脱敏，不要泄露账号密码）
+      render: toml
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查清单
+      options:
+        - label: 同花顺客户端已正确配置 [同花顺客户端配置文档](https://noimank.github.io/easyths/getting-started/ths-client/)
+          required: true
+        - label: 已阅读 [常见问题](https://noimank.github.io/easyths/getting-started/faq/)
+          required: true
+        - label: 已确认使用的是最新版本
+          required: true
