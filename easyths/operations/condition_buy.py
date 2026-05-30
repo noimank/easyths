@@ -156,10 +156,10 @@ class ConditionBuyOperation(BaseOperation):
                 # 下一步
                 self.get_control_with_children(document_panel, control_type="Button", title="下一步").click()
                 # 等页面重绘渲染
-                self.sleep(0.4)
+                self.sleep(0.5)
                 # 只能根据序号定位
                 document_panel.children(control_type="Edit")[2].set_text(str(quantity))
-                self.sleep(0.05)
+                self.sleep(0.15)
                 # 选择全自动委托
                 weituo_btn = self.get_control_with_children(document_panel, control_type="RadioButton", title="全自动委托")
                 # 模拟交易中全自动委托是灰色的
@@ -183,9 +183,9 @@ class ConditionBuyOperation(BaseOperation):
                 expire_list_control = self.get_control_with_children(document_panel, control_type="List")
                 expire_list_control.children(control_type="ListItem")[count_map.get(str(expire_days))].invoke()
 
-                self.sleep(0.1)
+                self.sleep(0.2)
                 expire_list_control.type_keys("{ENTER}")
-                self.sleep(0.1)
+                self.sleep(0.2)
                 self.get_control_with_children(document_panel, control_type="Button", title="提交确认").click()
                 # 等待弹窗出现，看是否会出现提示成功添加到条件单的窗口，直接关闭，关不关都无所谓了，反正会被close_pop_dailog函数关闭，这里还省掉sleep呢
                 # 关闭可能出现的成功提示弹窗
@@ -198,6 +198,8 @@ class ConditionBuyOperation(BaseOperation):
                 "stock_code": stock_code,
                 "target_price": target_price,
                 "quantity": quantity,
+                "message": op_message,
+                "expire_days": expire_days
             }
 
             self.logger.info(f"条件买入操作耗时{time.time() - start_time}, 操作结果：", **result_data)

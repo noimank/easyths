@@ -103,7 +103,7 @@ class ConditionOrderCancelOperation(BaseOperation):
             confirm_pop_old = self.get_control_with_children(chrome_render_win, control_type="Custom", title="提示")
             if confirm_pop_old:
                 self.get_control_with_children(confirm_pop_old, control_type="Button", title="取消").click()
-                self.sleep(0.1)
+                self.sleep(0.3)
 
             # 要选择  未触发
             type_tab_control = self.get_control_with_children(chrome_render_win, control_type="Tab")
@@ -155,13 +155,13 @@ class ConditionOrderCancelOperation(BaseOperation):
                         self.ensure_check(check_btn)
                         delete_count += 1
             # 等待按钮变颜色
-            self.sleep(0.2)
+            self.sleep(0.3)
             # 删除按钮
             delete_btn = self.get_control_with_children(chrome_render_win, control_type="Button", title="删除")
             if delete_btn.is_enabled():
                 delete_btn.click()
                 #等待确认弹窗
-                self.sleep(0.35)
+                self.sleep(0.5)
                 confirm_pop = self.get_control_with_children(chrome_render_win, control_type="Custom", title="提示")
                 yes_btn = self.get_control_with_children(confirm_pop, control_type="Button", title="确认")
                 yes_btn.click()
@@ -176,6 +176,7 @@ class ConditionOrderCancelOperation(BaseOperation):
                 "stock_code": stock_code,
                 "order_type": order_type,
                 "deleted_count": delete_count,
+                "message": op_message
             }
 
             self.logger.info(f"条件单删除操作耗时{time.time() - start_time}秒")

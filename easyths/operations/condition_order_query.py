@@ -66,7 +66,7 @@ class ConditionOrderQueryOperation(BaseOperation):
             confirm_pop_old = self.get_control_with_children(chrome_render_win, control_type="Custom", title="提示")
             if confirm_pop_old:
                 self.get_control_with_children(confirm_pop_old, control_type="Button", title="取消").click()
-                self.sleep(0.15)
+                self.sleep(0.3)
             # 要选择  未触发
             type_tab_control = self.get_control_with_children(chrome_render_win, control_type="Tab")
             wcf_control = self.get_control_with_children(type_tab_control, control_type="TabItem", title="未触发")

@@ -161,7 +161,7 @@ class StopLossProfitOperation(BaseOperation):
                 # 设置股票代码
                 # stock_edit.set_text(stock_code),不支持输入完整的代码，需要特殊处理
                 document_panel.children(control_type="Edit")[0].set_text(stock_code[:5])
-                self.sleep(0.3)
+                self.sleep(0.5)
                 has_order = False
                 try:
                     # 获取筛选出来的股票持仓
@@ -183,7 +183,7 @@ class StopLossProfitOperation(BaseOperation):
                     is_op_success = False
                     op_message = f"执行{stock_code}的止盈止损单失败，不支持该品种的标的,请检查是否持仓该股票"
                     # 有些奇怪必须指定pause才能生效
-                    main_panel.type_keys("{ESC}", pause=0.15)
+                    main_panel.type_keys("{ESC}", pause=0.25)
 
                 else:
                     # 盈利填写
@@ -196,7 +196,7 @@ class StopLossProfitOperation(BaseOperation):
                     # 下一步
                     self.get_control_with_children(document_panel, control_type="Button", title="下一步").click()
                     # 画面渲染需要时间
-                    self.sleep(0.3)
+                    self.sleep(0.5)
 
                     #填写委托数量
                     if quantity is None:
@@ -221,7 +221,7 @@ class StopLossProfitOperation(BaseOperation):
                             # 勾选不再提醒
                             self.get_control_with_children(inner_pane, control_type="CheckBox").click()
                             # 点击我知道了按钮
-                            self.sleep(0.2)
+                            self.sleep(0.3)
                             self.get_control_with_children(inner_pane, control_type="Button", title="我知道了").click()
 
                     # 策略有效期选择
@@ -232,9 +232,9 @@ class StopLossProfitOperation(BaseOperation):
                     expire_list_control = self.get_control_with_children(document_panel, control_type="List")
                     expire_list_control.children(control_type="ListItem")[count_map.get(str(expire_days))].invoke()
 
-                    self.sleep(0.1)
+                    self.sleep(0.25)
                     expire_list_control.type_keys("{ENTER}")
-                    self.sleep(0.2)
+                    self.sleep(0.3)
                     # 提交确认
                     self.get_control_with_children(document_panel, control_type="Button", title="提交确认").click()
                     # 关闭可能出现的成功提示弹窗
@@ -247,7 +247,9 @@ class StopLossProfitOperation(BaseOperation):
             result_data = {
                 "stock_code": stock_code,
                 "stop_loss_percent": stop_loss_percent,
-                "stop_profit_percent": stop_profit_percent
+                "stop_profit_percent": stop_profit_percent,
+                "message": op_message,
+                "expire_days": expire_days
             }
 
             self.logger.info(f"止盈止损操作耗时{time.time() - start_time}, 操作结果：", **result_data)
