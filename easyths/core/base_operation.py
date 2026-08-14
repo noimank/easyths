@@ -345,6 +345,8 @@ class BaseOperation(ABC):
                 return "BeginFailed失败提示", children
             elif "数据发送错误" in content:
                 return "数据发送错误提示", children
+            elif "委托确认" in content:
+                return  "委托确认窗口", children
             else:
                 pass
 
@@ -417,6 +419,12 @@ class BaseOperation(ABC):
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
             elif pop_dialog_title == "数据发送错误提示":
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="1009").click()
+
+            elif pop_dialog_title == "委托确认窗口":
+                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+                # Alt+N 确认（% = Alt，^ = Ctrl，+ = Shift）
+                # pop_control.type_keys("%n")
+
             else:
                 try:
                     pop_control.type_keys("{ESC}")
