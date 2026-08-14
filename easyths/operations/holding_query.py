@@ -77,8 +77,9 @@ class HoldingQueryOperation(BaseOperation):
             table_data = self.get_clipboard_data()
             table_data = text2df(table_data)
             if not table_data.empty:
-                # 丢弃多余列
-                table_data = table_data.drop(columns=["操作", "Unnamed: 19"], errors="ignore")
+                # 丢弃操作列及所有未命名的多余列（Unnamed）
+                drop_cols = [col for col in table_data.columns if "Unnamed" in str(col) or col == "操作"]
+                table_data = table_data.drop(columns=drop_cols, errors="ignore")
 
             is_op_success = not self.is_exist_pop_dialog()  #没有弹窗了，说明没有其他意外情况发生
             if is_op_success:
