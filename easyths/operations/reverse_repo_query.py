@@ -63,7 +63,7 @@ class ReverseRepoQueryOperation(BaseOperation):
             # 先跳到其他页面，要是停留在国债逆回购的话，再次点击可能没反应
             main_window.type_keys("{F3}")
             self.sleep(0.2)
-            self.switch_left_menus("国债逆回购")
+            self.switch_left_menus("通用回购")
 
             is_pop_up = self.wait_for_pop_dialog(5)
             reverse_repo_interest_data = None
@@ -72,7 +72,7 @@ class ReverseRepoQueryOperation(BaseOperation):
 
             if is_pop_up:
                 pop_dialog_title, pop_control = self.get_pop_dialog()
-                if pop_dialog_title == "国债逆回购窗口":
+                if pop_dialog_title == "通用回购":
                     AfxWnd140s_pane = self.get_control_with_children(pop_control, control_type="Pane", auto_id="3001", class_name="AfxWnd140s")
                     CefBrowserWindow_pane = self.get_control_with_children(AfxWnd140s_pane, control_type="Pane", class_name="CefBrowserWindow")
                     Chrome_WidgetWin_0_pane = self.get_control_with_children(CefBrowserWindow_pane, control_type="Pane", class_name="Chrome_WidgetWin_0")

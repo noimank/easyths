@@ -109,7 +109,7 @@ class ReverseRepoBuyOperation(BaseOperation):
             #先跳到其他页面，要是停留在国债逆回购的话，再次点击可能没反应
             main_window.type_keys("{F3}")
             self.sleep(0.2)
-            self.switch_left_menus("国债逆回购")
+            self.switch_left_menus("通用回购")
 
             # 1. 根据 market 和 time_range 获取对应的国债逆回购代码
             code_map = {
@@ -127,7 +127,7 @@ class ReverseRepoBuyOperation(BaseOperation):
             op_message = "国债逆回购操作成功"
             if is_pop_up:
                 pop_dialog_title, pop_control = self.get_pop_dialog()
-                if pop_dialog_title == "国债逆回购窗口":
+                if pop_dialog_title == "通用回购":
                     AfxWnd140s_pane = self.get_control_with_children(pop_control, control_type="Pane", auto_id="3001",
                                                                      class_name="AfxWnd140s")
                     CefBrowserWindow_pane = self.get_control_with_children(AfxWnd140s_pane, control_type="Pane",

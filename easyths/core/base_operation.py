@@ -215,7 +215,7 @@ class BaseOperation(ABC):
             logger.error(f"未找到主菜单{main_option}")
             raise Exception(f"未找到主菜单{main_option}")
         # 展开主菜单
-        if main_option in ["国债逆回购","双向委托"]:
+        if main_option in ["通用回购","双向委托"]:
             main_option_control.select()
             # 没有下级子菜单，也用不了expand()方法
             return
@@ -337,8 +337,8 @@ class BaseOperation(ABC):
                 return "失败提示", children
             elif "一键打新" in content:
                 return "一键打新提示框", children
-            elif "国债逆回购" in content:
-                return "国债逆回购窗口", children
+            elif "通用回购" in content:
+                return "通用回购", children
             elif "退出确认" in content:
                 return "程序退出确认窗口", children
             elif "failed" in content:
@@ -400,7 +400,7 @@ class BaseOperation(ABC):
             elif pop_dialog_title == "一键打新提示框":
                 # 点击窗口右上角的 X 触发关闭
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
-            elif pop_dialog_title == "国债逆回购窗口":
+            elif pop_dialog_title == "通用回购":
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
             elif pop_dialog_title == "BeginFailed失败提示":
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()
@@ -418,7 +418,10 @@ class BaseOperation(ABC):
             elif pop_dialog_title == "数据发送错误提示":
                 self.get_control_with_children(pop_control, control_type="Button", auto_id="1009").click()
             else:
-                pop_control.type_keys("{ESC}")
+                try:
+                    pop_control.type_keys("{ESC}")
+                except:
+                    self.logger.warning("未知的弹窗类型，无法关闭")
 
         self.sleep(0.05)
 
