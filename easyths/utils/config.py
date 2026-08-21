@@ -1,18 +1,23 @@
-import toml
 import os
 from pathlib import Path
 
-class ProjectConfig:
+import toml
 
+
+class ProjectConfig:
     # App配置
     app_name = os.getenv("APP_NAME", "同花顺交易自动化程序")
     app_version = os.getenv("APP_VERSION", "1.0.0")
     onnx_model_dir = os.getenv("APP_ONNX_MODEL_DIR", None)
     # 默认保存
-    save_error_captcha_image = os.getenv("APP_SAVE_ERROR_CAPTCHA_IMAGE", "true").lower() == "true"
+    save_error_captcha_image = (
+        os.getenv("APP_SAVE_ERROR_CAPTCHA_IMAGE", "true").lower() == "true"
+    )
 
     # Trading配置
-    trading_app_path = os.getenv("TRADING_APP_PATH", "C:/同花顺远航版/transaction/xiadan.exe")
+    trading_app_path = os.getenv(
+        "TRADING_APP_PATH", "C:/同花顺远航版/transaction/xiadan.exe"
+    )
     # Queue
     queue_max_size = int(os.getenv("QUEUE_MAX_SIZE", 1000))
     queue_priority_levels = int(os.getenv("QUEUE_PRIORITY_LEVELS", 5))
@@ -24,14 +29,21 @@ class ProjectConfig:
     api_rate_limit = int(os.getenv("API_RATE_LIMIT", 10))
     api_cors_origins = os.getenv("API_CORS_ORIGINS", "*")
     api_key = os.getenv("API_KEY", None)
-    api_ip_whitelist = os.getenv("API_IP_WHITELIST", None)  # None表示允许所有，逗号分隔如"127.0.0.1,192.168.1.*"
-    api_mcp_server_type = os.getenv("API_MCP_SERVER_TYPE", "streamable-http")  # MCP服务器传输类型: http, streamable-http, sse
+    api_ip_whitelist = os.getenv(
+        "API_IP_WHITELIST", None
+    )  # None表示允许所有，逗号分隔如"127.0.0.1,192.168.1.*"
+    api_mcp_server_type = os.getenv(
+        "API_MCP_SERVER_TYPE", "streamable-http"
+    )  # MCP服务器传输类型: http, streamable-http, sse
 
     # Logging配置
     logging_level = os.getenv("LOGGING_LEVEL", "INFO")
     # 默认为用户主目录下
-    logging_file = str(Path("~/easyths/log.txt").expanduser()) if  os.getenv("LOGGING_FILE", "") == "" else  os.getenv("LOGGING_FILE")
-
+    logging_file = (
+        str(Path("~/easyths/log.txt").expanduser())
+        if os.getenv("LOGGING_FILE", "") == ""
+        else os.getenv("LOGGING_FILE", "")
+    )
 
     def __init__(self):
         if self.save_error_captcha_image:
@@ -39,8 +51,9 @@ class ProjectConfig:
             if not pa.exists():
                 pa.mkdir(parents=True, exist_ok=True)
 
-
-    def update_from_toml_file(self, toml_file_path: str, exe_path: str | None = None) -> None:
+    def update_from_toml_file(
+        self, toml_file_path: str, exe_path: str | None = None
+    ) -> None:
         """从 TOML 配置文件更新配置
 
         Args:
@@ -58,7 +71,7 @@ class ProjectConfig:
                 self.app_version = app_config["version"]
             if "onnx_model_dir" in app_config:
                 # 空字符串转换为 None
-                self.onnx_model_dir =  app_config["onnx_model_dir"] or None
+                self.onnx_model_dir = app_config["onnx_model_dir"] or None
 
             if "save_error_captcha_image" in app_config:
                 self.save_error_captcha_image = app_config["save_error_captcha_image"]
@@ -106,7 +119,9 @@ class ProjectConfig:
                 if mcp_type in valid_types:
                     self.api_mcp_server_type = mcp_type
                 else:
-                    raise ValueError(f"无效的 mcp_server_type: {mcp_type}，可选值: {valid_types}")
+                    raise ValueError(
+                        f"无效的 mcp_server_type: {mcp_type}，可选值: {valid_types}"
+                    )
 
         # 处理 [logging] 部分
         if "logging" in config:
@@ -114,7 +129,11 @@ class ProjectConfig:
             if "level" in logging_config:
                 self.logging_level = logging_config["level"]
             if "file" in logging_config:
-                self.logging_file = str(Path("~/easyths/log.txt").expanduser()) if logging_config["file"] == "" else logging_config["file"]
+                self.logging_file = (
+                    str(Path("~/easyths/log.txt").expanduser())
+                    if logging_config["file"] == ""
+                    else logging_config["file"]
+                )
 
         # exe_path 参数优先级最高
         if exe_path:
@@ -144,7 +163,11 @@ class ProjectConfig:
         if self.api_cors_origins == "*":
             return ["*"]
         # 逗号分隔多个源
-        return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]
+        return [
+            origin.strip()
+            for origin in self.api_cors_origins.split(",")
+            if origin.strip()
+        ]
 
 
 project_config_instance = ProjectConfig()

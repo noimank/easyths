@@ -1,14 +1,15 @@
-import pandas as pd
 import io
+
+import pandas as pd
 import structlog
+
 logger = structlog.get_logger(__name__)
 
-#预留的未来可能需要
+
+# 预留的未来可能需要
 def pre_process_text(text, pre_process_type=None):
     if pre_process_type is None:
         return text
-
-
 
 
 def text2df(text, pre_process_type=None, sep="\t"):
@@ -53,11 +54,4 @@ def df_format_convert(df, format_type):
             return df
     except Exception as e:
         logger.error(f"DataFrame格式转换失败: {e}")
-        return  {} if format_type in ["json", dict] else "转换失败"
-
-
-
-
-
-
-
+        return {} if format_type in ["json", dict] else "转换失败"

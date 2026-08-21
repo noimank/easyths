@@ -12,9 +12,10 @@
 
 ## 代码规范
 
-- 使用 Black 进行代码格式化
-- 使用 Ruff 进行代码检查
-- 编写单元测试
+- 使用 Ruff 进行代码检查和格式化（`ruff check` / `ruff format`）
+- 使用 mypy 进行类型检查
+- 安装 pre-commit 钩子，提交前自动执行检查（`uv run pre-commit install`）
+- 编写单元测试（集成测试需标记 `@pytest.mark.integration`）
 - 更新相关文档
 
 ## 报告问题

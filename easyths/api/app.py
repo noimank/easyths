@@ -3,17 +3,24 @@
 Author: noimank
 Email: noimank@163.com
 """
+
 from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import structlog
 
-from easyths.api.middleware import LoggingMiddleware, RateLimitMiddleware, IPWhitelistMiddleware, APIKeyAuthMiddleware
-from easyths.api.routes import system_router, operations_router, queue_router
 from easyths.api.dependencies.common import set_global_instances
-from easyths.utils import project_config_instance
+from easyths.api.middleware import (
+    APIKeyAuthMiddleware,
+    IPWhitelistMiddleware,
+    LoggingMiddleware,
+    RateLimitMiddleware,
+)
+from easyths.api.routes import operations_router, queue_router, system_router
+from easyths.api.routes.mcp_server import mcp_asgi_app, set_queue
 from easyths.core.base_operation import operation_registry
-from easyths.api.routes.mcp_server import set_queue, mcp_asgi_app
+from easyths.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
 
@@ -39,7 +46,7 @@ class TradingAPIApp:
             title="同花顺交易自动化API",
             description="提供同花顺交易软件自动化操作接口",
             version=project_config_instance.app_version,
-            lifespan=self.lifespan
+            lifespan=self.lifespan,
         )
 
         # 设置全局实例
@@ -58,7 +65,7 @@ class TradingAPIApp:
         # IP白名单中间件（最先执行）
         self.app.add_middleware(
             IPWhitelistMiddleware,
-            allowed_hosts=project_config_instance.api_ip_whitelist_list
+            allowed_hosts=project_config_instance.api_ip_whitelist_list,
         )
 
         # API密钥认证中间件
@@ -70,7 +77,7 @@ class TradingAPIApp:
             allow_origins=project_config_instance.api_cors_origins_list,
             allow_credentials=True,
             allow_methods=["*"],
-            allow_headers=["*"]
+            allow_headers=["*"],
         )
 
         # 日志中间件
@@ -78,21 +85,18 @@ class TradingAPIApp:
         rate_limit = project_config_instance.api_rate_limit
         # 速率限制中间件
         if rate_limit > 0:
-            self.app.add_middleware(
-                RateLimitMiddleware,
-                calls=rate_limit,
-                period=1
-            )
+            self.app.add_middleware(RateLimitMiddleware, calls=rate_limit, period=1)
 
     def _add_routes(self):
         """添加路由"""
+
         # 根路径
         @self.app.get("/")
         async def root():
             return {
                 "message": "同花顺交易自动化API",
                 "version": project_config_instance.app_version,
-                "docs": "/docs"
+                "docs": "/docs",
             }
 
         # API路由
@@ -116,7 +120,9 @@ class TradingAPIApp:
         # 设置 MCP 服务器的队列引用并挂载
         set_queue(self.operation_queue)
         self.app.mount("/api", mcp_asgi_app)
-        logger.info(f"MCP 服务器已挂载到 /api/mcp-server (传输类型: {project_config_instance.api_mcp_server_type})")
+        logger.info(
+            f"MCP 服务器已挂载到 /api/mcp-server (传输类型: {project_config_instance.api_mcp_server_type})"
+        )
 
         # 使用 FastMCP 的 lifespan 管理 session_manager (最佳实践)
         # mcp_asgi_app.lifespan 会正确初始化和管理 MCP session manager
@@ -134,10 +140,11 @@ class TradingAPIApp:
         """运行API服务"""
         import uvicorn
 
+        assert self.app is not None, "必须先调用 create_app() 创建应用"
         uvicorn.run(
             self.app,
             host=project_config_instance.api_host,
             port=project_config_instance.api_port,
             log_level="info",
-            ws="wsproto"  # 使用 wsproto 替代 websockets，避免弃用警告
+            ws="wsproto",  # 使用 wsproto 替代 websockets，避免弃用警告
         )

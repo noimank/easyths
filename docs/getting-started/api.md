@@ -34,7 +34,7 @@ export API_KEY=your-secret-key
 
 在 `config.toml` 中设置：
 
-详细的配置文件参考：[基础用法](basic-usage.md) 
+详细的配置文件参考：[基础用法](basic-usage.md)
 
 ```toml
 [api]

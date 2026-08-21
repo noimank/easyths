@@ -3,24 +3,28 @@ easyths 客户端模块
 
 提供与 easyths 服务端的通信接口，支持远程调用交易操作。
 """
-from typing import Any, Dict, Optional, Literal, TypedDict
+
+from typing import Any, Literal, TypedDict
 
 import httpx
 
-
 # ==================== 异常类 ====================
+
 
 class TradeClientError(Exception):
     """客户端异常"""
-    def __init__(self, message: str, status_code: Optional[int] = None):
+
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message)
         self.status_code = status_code
 
 
 # ==================== 类型定义 ====================
 
+
 class APIResponse(TypedDict):
     """API 响应格式"""
+
     success: bool
     message: str
     data: Any
@@ -28,6 +32,7 @@ class APIResponse(TypedDict):
 
 
 # ==================== 客户端类 ====================
+
 
 class TradeClient:
     """
@@ -68,7 +73,7 @@ class TradeClient:
         port: int = 7648,
         api_key: str = "",
         timeout: float = 30.0,
-        scheme: str = "http"
+        scheme: str = "http",
     ):
         self.host = host
         self.port = port
@@ -76,23 +81,15 @@ class TradeClient:
         self.timeout = timeout
         self.scheme = scheme
         self._base_url = f"{scheme}://{host}:{port}"
-        self._client: Optional[httpx.Client] = None
+        self._client: httpx.Client | None = None
 
     def _get_client(self) -> httpx.Client:
         """获取 HTTP 客户端"""
         if self._client is None:
-            self._client = httpx.Client(
-                base_url=self._base_url,
-                timeout=self.timeout
-            )
+            self._client = httpx.Client(base_url=self._base_url, timeout=self.timeout)
         return self._client
 
-    def _request(
-        self,
-        method: str,
-        path: str,
-        **kwargs: Any
-    ) -> APIResponse:
+    def _request(self, method: str, path: str, **kwargs: Any) -> APIResponse:
         """
         发送 HTTP 请求
 
@@ -123,8 +120,7 @@ class TradeClient:
             raise TradeClientError(f"连接服务端失败: {e}") from e
         except httpx.HTTPStatusError as e:
             raise TradeClientError(
-                f"API 请求失败: {e.response.text}",
-                status_code=e.response.status_code
+                f"API 请求失败: {e.response.text}", status_code=e.response.status_code
             ) from e
         except httpx.TimeoutException as e:
             raise TradeClientError(f"请求超时: {e}") from e
@@ -181,8 +177,8 @@ class TradeClient:
     def execute_operation(
         self,
         operation_name: str,
-        params: Optional[Dict[str, Any]] = None,
-        priority: int = 0
+        params: dict[str, Any] | None = None,
+        priority: int = 0,
     ) -> str:
         """
         执行操作
@@ -195,14 +191,13 @@ class TradeClient:
         Returns:
             操作 ID
         """
-        data: Dict[str, Any] = {"params": params or {}, "priority": priority}
-        result = self._request("POST", f"/api/v1/operations/{operation_name}", json=data)
+        data: dict[str, Any] = {"params": params or {}, "priority": priority}
+        result = self._request(
+            "POST", f"/api/v1/operations/{operation_name}", json=data
+        )
         return result["data"]["operation_id"]
 
-    def get_operation_status(
-        self,
-        operation_id: str
-    ) -> APIResponse:
+    def get_operation_status(self, operation_id: str) -> APIResponse:
         """
         获取操作状态
 
@@ -215,10 +210,8 @@ class TradeClient:
         return self._request("GET", f"/api/v1/operations/{operation_id}/status")
 
     def get_operation_result(
-        self,
-        operation_id: str,
-        timeout: Optional[float] = None
-    ) -> dict:
+        self, operation_id: str, timeout: float | None = None
+    ) -> APIResponse:
         """
         获取操作结果（阻塞等待直到操作完成）
 
@@ -242,10 +235,14 @@ class TradeClient:
             params["timeout"] = timeout
 
         try:
-            return self._request("GET", f"/api/v1/operations/{operation_id}/result", params=params)
+            return self._request(
+                "GET", f"/api/v1/operations/{operation_id}/result", params=params
+            )
         except TradeClientError as e:
             if e.status_code == 408:
-                raise TradeClientError(f"操作 {operation_id} 超时", status_code=408) from e
+                raise TradeClientError(
+                    f"操作 {operation_id} 超时", status_code=408
+                ) from e
             raise
 
     def cancel_operation(self, operation_id: str) -> bool:
@@ -264,12 +261,8 @@ class TradeClient:
     # ==================== 交易操作便捷方法 ====================
 
     def buy(
-        self,
-        stock_code: str,
-        price: float,
-        quantity: int,
-        timeout: Optional[float] = None
-    ) -> dict:
+        self, stock_code: str, price: float, quantity: int, timeout: float | None = None
+    ) -> APIResponse:
         """
         买入股票
 
@@ -297,11 +290,7 @@ class TradeClient:
             >>> if result["success"]:
             ...     print(result["data"]["message"])
         """
-        params = {
-            "stock_code": stock_code,
-            "price": price,
-            "quantity": quantity
-        }
+        params = {"stock_code": stock_code, "price": price, "quantity": quantity}
         operation_id = self.execute_operation("buy", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -310,8 +299,8 @@ class TradeClient:
         stock_code: str,
         quantity: int,
         execution_strategy: Literal[1, 2, 3, 4, 5, 6] = 3,
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         市价买入股票，无需指定价格，通过成交策略决定成交方式。
 
@@ -341,7 +330,7 @@ class TradeClient:
         params = {
             "stock_code": stock_code,
             "quantity": quantity,
-            "execution_strategy": execution_strategy
+            "execution_strategy": execution_strategy,
         }
         operation_id = self.execute_operation("market_buy", params)
         return self.get_operation_result(operation_id, timeout=timeout)
@@ -351,8 +340,8 @@ class TradeClient:
         stock_code: str,
         quantity: int,
         execution_strategy: Literal[1, 2, 3, 4, 5, 6] = 3,
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         市价卖出股票，无需指定价格，通过成交策略决定成交方式。
 
@@ -382,18 +371,14 @@ class TradeClient:
         params = {
             "stock_code": stock_code,
             "quantity": quantity,
-            "execution_strategy": execution_strategy
+            "execution_strategy": execution_strategy,
         }
         operation_id = self.execute_operation("market_sell", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def sell(
-        self,
-        stock_code: str,
-        price: float,
-        quantity: int,
-        timeout: Optional[float] = None
-    ) -> dict:
+        self, stock_code: str, price: float, quantity: int, timeout: float | None = None
+    ) -> APIResponse:
         """
         卖出股票
 
@@ -411,20 +396,16 @@ class TradeClient:
             >>> if result["success"]:
             ...     print(result["data"]["message"])
         """
-        params = {
-            "stock_code": stock_code,
-            "price": price,
-            "quantity": quantity
-        }
+        params = {"stock_code": stock_code, "price": price, "quantity": quantity}
         operation_id = self.execute_operation("sell", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def cancel_order(
         self,
-        stock_code: Optional[str] = None,
+        stock_code: str | None = None,
         cancel_type: Literal["all", "buy", "sell"] = "all",
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         撤销委托单
 
@@ -446,7 +427,7 @@ class TradeClient:
             >>> # 只撤销买单
             >>> result = client.cancel_order(cancel_type="buy")
         """
-        params: Dict[str, Any] = {"cancel_type": cancel_type}
+        params: dict[str, Any] = {"cancel_type": cancel_type}
         if stock_code:
             params["stock_code"] = stock_code
 
@@ -459,8 +440,8 @@ class TradeClient:
         target_price: float,
         quantity: int,
         expire_days: int = 30,
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         条件买入股票
 
@@ -495,7 +476,7 @@ class TradeClient:
             "stock_code": stock_code,
             "target_price": target_price,
             "quantity": quantity,
-            "expire_days": expire_days
+            "expire_days": expire_days,
         }
         operation_id = self.execute_operation("condition_buy", params)
         return self.get_operation_result(operation_id, timeout=timeout)
@@ -506,8 +487,8 @@ class TradeClient:
         target_price: float,
         quantity: int,
         expire_days: int = 30,
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         条件卖出股票
 
@@ -542,7 +523,7 @@ class TradeClient:
             "stock_code": stock_code,
             "target_price": target_price,
             "quantity": quantity,
-            "expire_days": expire_days
+            "expire_days": expire_days,
         }
         operation_id = self.execute_operation("condition_sell", params)
         return self.get_operation_result(operation_id, timeout=timeout)
@@ -552,10 +533,10 @@ class TradeClient:
         stock_code: str,
         stop_loss_percent: float,
         stop_profit_percent: float,
-        quantity: Optional[int] = None,
+        quantity: int | None = None,
         expire_days: int = 30,
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         设置止盈止损
 
@@ -585,7 +566,7 @@ class TradeClient:
             "stock_code": stock_code,
             "stop_loss_percent": stop_loss_percent,
             "stop_profit_percent": stop_profit_percent,
-            "expire_days": expire_days
+            "expire_days": expire_days,
         }
         if quantity is not None:
             params["quantity"] = quantity
@@ -596,8 +577,8 @@ class TradeClient:
     def query_condition_orders(
         self,
         return_type: Literal["str", "json", "dict", "markdown"] = "json",
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         查询条件单
 
@@ -634,10 +615,10 @@ class TradeClient:
 
     def cancel_condition_orders(
         self,
-        stock_code: Optional[str] = None,
-        order_type: Optional[Literal["买入", "卖出"]] = None,
-        timeout: Optional[float] = None
-    ) -> dict:
+        stock_code: str | None = None,
+        order_type: Literal["买入", "卖出"] | None = None,
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         删除条件单
 
@@ -662,7 +643,7 @@ class TradeClient:
             >>> # 只删除买入条件单
             >>> result = client.cancel_condition_orders(order_type="买入")
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if stock_code is not None:
             params["stock_code"] = stock_code
         if order_type is not None:
@@ -676,8 +657,8 @@ class TradeClient:
     def query_holdings(
         self,
         return_type: Literal["str", "json", "dict", "markdown"] = "json",
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         查询持仓
 
@@ -701,10 +682,7 @@ class TradeClient:
         operation_id = self.execute_operation("holding_query", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
-    def query_funds(
-        self,
-        timeout: Optional[float] = None
-    ) -> dict:
+    def query_funds(self, timeout: float | None = None) -> APIResponse:
         """
         查询资金
 
@@ -723,10 +701,10 @@ class TradeClient:
 
     def query_orders(
         self,
-        stock_code: Optional[str] = None,
+        stock_code: str | None = None,
         return_type: Literal["str", "json", "dict", "markdown"] = "json",
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         查询委托单
 
@@ -747,7 +725,7 @@ class TradeClient:
             >>> # 查询指定股票的委托
             >>> result = client.query_orders("600000")
         """
-        params: Dict[str, Any] = {"return_type": return_type}
+        params: dict[str, Any] = {"return_type": return_type}
         if stock_code:
             params["stock_code"] = stock_code
 
@@ -757,10 +735,10 @@ class TradeClient:
     def query_historical_commission(
         self,
         return_type: Literal["str", "json", "dict", "markdown"] = "json",
-        stock_code: Optional[str] = None,
+        stock_code: str | None = None,
         time_range: Literal["当日", "近一周", "近一月", "近三月", "近一年"] = "当日",
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         查询历史成交
 
@@ -786,10 +764,7 @@ class TradeClient:
             >>> # 查询指定股票近一周的历史成交
             >>> result = client.query_historical_commission(stock_code="600000", time_range="近一周")
         """
-        params: Dict[str, Any] = {
-            "return_type": return_type,
-            "time_range": time_range
-        }
+        params: dict[str, Any] = {"return_type": return_type, "time_range": time_range}
         if stock_code is not None:
             params["stock_code"] = stock_code
 
@@ -801,8 +776,8 @@ class TradeClient:
         market: Literal["上海", "深圳"],
         time_range: Literal["1天期", "2天期", "3天期", "4天期", "7天期"],
         amount: int,
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: float | None = None,
+    ) -> APIResponse:
         """
         购买国债逆回购
 
@@ -821,18 +796,11 @@ class TradeClient:
             >>> if result["success"]:
             ...     print(result["data"]["message"])
         """
-        params = {
-            "market": market,
-            "time_range": time_range,
-            "amount": amount
-        }
+        params = {"market": market, "time_range": time_range, "amount": amount}
         operation_id = self.execute_operation("reverse_repo_buy", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
-    def query_reverse_repo(
-        self,
-        timeout: Optional[float] = None
-    ) -> dict:
+    def query_reverse_repo(self, timeout: float | None = None) -> APIResponse:
         """
         查询国债逆回购年化利率
 

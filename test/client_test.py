@@ -1,11 +1,18 @@
 """客户端测试
 
+需要运行中的 EasyTHS 服务端，使用 pytest -m integration 运行。
+
 Author: noimank
 Email: noimank@163.com
 """
+
+import pytest
+
 from easyths import TradeClient
 
-client = TradeClient(host='localhost', port=7648, api_key="")
+pytestmark = pytest.mark.integration
+
+client = TradeClient(host="localhost", port=7648, api_key="")
 
 
 def test_health_check():
@@ -43,10 +50,12 @@ def test_buy():
     res = client.buy("000001", 100, 100)
     print(f"买入结果: {res}")
 
+
 def test_market_buy():
     """测试买入"""
     res = client.market_buy("000001", 100, 1)
     print(f"市价买入结果: {res}")
+
 
 def test_market_sell():
     """测试买入"""
@@ -113,41 +122,49 @@ def test_query_orders_stock():
     res = client.query_orders(stock_code="000001")
     print(f"指定股票委托查询: {res}")
 
+
 def test_reverse_repo():
     interest_res = client.query_reverse_repo(20)
     print(f"逆回购查询: {interest_res}")
     interest_res = client.reverse_repo_buy("深圳", "7天期", 1000)
     print(f"逆回购买入: {interest_res}")
 
+
 def test_condition_bug():
     interest_res = client.condition_buy("000001", 12, 1000)
     print(f"条件买入: {interest_res}")
+
+
 def test_condition_sell():
     interest_res = client.condition_sell("000001", 12.4, 1000)
     print(f"条件卖出: {interest_res}")
+
 
 def test_stop_loss_profit():
     interest_res = client.stop_loss_profit("000001", 3.1, 2.5)
     print(f"止盈止损: {interest_res}")
 
+
 def test_condition_order_query():
     interest_res = client.query_condition_orders("json")
     print(f"条件单查询: {interest_res}, 数据：{interest_res['data']}")
+
 
 def test_condition_order_canel():
     interest_res = client.cancel_condition_orders()
     print(f"删除条件单: {interest_res}")
 
 
-
 def test_context_manager():
     """测试上下文管理器"""
-    with TradeClient(host='localhost', port=8888, api_key="mysuperKey87kiE@iijiu+ojiyu") as c:
+    with TradeClient(
+        host="localhost", port=8888, api_key="mysuperKey87kiE@iijiu+ojiyu"
+    ) as c:
         res = c.health_check()
         print(f"上下文管理器测试: {res}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 系统管理测试
     print("=== 系统管理测试 ===")
     test_health_check()
@@ -168,7 +185,6 @@ if __name__ == '__main__':
     # test_condition_order_canel()
     # test_market_buy()
     # test_market_sell()
-
 
     # 撤单操作测试
     print("\n=== 撤单操作测试 ===")

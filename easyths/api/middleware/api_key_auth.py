@@ -1,12 +1,14 @@
 """
 API密钥认证中间件
 """
-from typing import Callable
-from fastapi import Request, Response, status
-from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi.security import HTTPBearer
-import structlog
+
 import json
+from collections.abc import Callable
+
+import structlog
+from fastapi import Request, Response, status
+from fastapi.security import HTTPBearer
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from easyths.utils import project_config_instance
 
@@ -35,7 +37,9 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         if self.auth_enabled:
             logger.info("API密钥认证已启用")
         else:
-            logger.warning("API_KEY环境变量未设置, 生产环境可能存在被非法调用的风险，请注意")
+            logger.warning(
+                "API_KEY环境变量未设置, 生产环境可能存在被非法调用的风险，请注意"
+            )
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """处理请求
@@ -63,29 +67,33 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
             message = {
                 "error": "Unauthorized",
                 "message": "Missing authentication credentials",
-                "detail": "请提供有效的 Bearer Token"
+                "detail": "请提供有效的 Bearer Token",
             }
             return Response(
                 content=json.dumps(message),
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 media_type="application/json",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         api_key = credentials.credentials
 
         if api_key != self.expected_key:
-            logger.warning("无效的API密钥访问尝试", path=request.url.path, provided_key=api_key[:8] + "...")
+            logger.warning(
+                "无效的API密钥访问尝试",
+                path=request.url.path,
+                provided_key=api_key[:8] + "...",
+            )
             message = {
                 "error": "Unauthorized",
                 "message": "Invalid API key",
-                "detail": "API密钥无效"
+                "detail": "API密钥无效",
             }
             return Response(
                 content=json.dumps(message),
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 media_type="application/json",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         logger.info("API访问验证成功", path=request.url.path)

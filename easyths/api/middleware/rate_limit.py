@@ -1,11 +1,13 @@
 """
 速率限制中间件
 """
+
 import time
-from typing import Callable, Dict
-from fastapi import Request, Response, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
+from collections.abc import Callable
+
 import structlog
+from fastapi import HTTPException, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = structlog.get_logger(__name__)
 
@@ -25,7 +27,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.calls = calls
         self.period = period
-        self.clients: Dict[str, list] = {}
+        self.clients: dict[str, list] = {}
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 获取客户端IP
@@ -37,7 +39,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # 清理过期记录
         if client_ip in self.clients:
             self.clients[client_ip] = [
-                timestamp for timestamp in self.clients[client_ip]
+                timestamp
+                for timestamp in self.clients[client_ip]
                 if now - timestamp < self.period
             ]
         else:
@@ -49,12 +52,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 "速率限制触发",
                 ip=client_ip,
                 requests=len(self.clients[client_ip]),
-                limit=self.calls
+                limit=self.calls,
             )
-            raise HTTPException(
-                status_code=429,
-                detail="Too many requests"
-            )
+            raise HTTPException(status_code=429, detail="Too many requests")
 
         # 记录当前请求
         self.clients[client_ip].append(now)
@@ -67,8 +67,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["X-RateLimit-Remaining"] = str(
             max(0, self.calls - len(self.clients[client_ip]))
         )
-        response.headers["X-RateLimit-Reset"] = str(
-            int(now + self.period)
-        )
+        response.headers["X-RateLimit-Reset"] = str(int(now + self.period))
 
         return response

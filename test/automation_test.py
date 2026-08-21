@@ -1,28 +1,36 @@
 """自动化测试 - 同步操作模式
 
+需要运行中的同花顺客户端，使用 pytest -m integration 运行。
+
 Author: noimank
 Email: noimank@163.com
 """
+
+import pytest
 from dotenv import load_dotenv
 
 load_dotenv("../.env")
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.operations.buy import BuyOperation
-from easyths.operations.sell import SellOperation
-from easyths.operations.funds_query import FundsQueryOperation
-from easyths.operations.order_cancel import OrderCancelOperation
-from easyths.operations.holding_query import HoldingQueryOperation
-from easyths.operations.order_query import OrderQueryOperation
-from easyths.operations.historical_commission_query import HistoricalCommissionQueryOperation
-from easyths.operations.reverse_repo_buy import ReverseRepoBuyOperation
-from easyths.operations.reverse_repo_query import ReverseRepoQueryOperation
 from easyths.operations.condition_buy import ConditionBuyOperation
-from easyths.operations.condition_sell import ConditionSellOperation
-from easyths.operations.stop_loss_profit import StopLossProfitOperation
-from easyths.operations.condition_order_query import ConditionOrderQueryOperation
 from easyths.operations.condition_order_cancel import ConditionOrderCancelOperation
+from easyths.operations.condition_order_query import ConditionOrderQueryOperation
+from easyths.operations.condition_sell import ConditionSellOperation
+from easyths.operations.funds_query import FundsQueryOperation
+from easyths.operations.historical_commission_query import (
+    HistoricalCommissionQueryOperation,
+)
+from easyths.operations.holding_query import HoldingQueryOperation
 from easyths.operations.market_buy import MarketBuyOperation
 from easyths.operations.market_sell import MarketSellOperation
+from easyths.operations.order_cancel import OrderCancelOperation
+from easyths.operations.order_query import OrderQueryOperation
+from easyths.operations.reverse_repo_buy import ReverseRepoBuyOperation
+from easyths.operations.reverse_repo_query import ReverseRepoQueryOperation
+from easyths.operations.sell import SellOperation
+from easyths.operations.stop_loss_profit import StopLossProfitOperation
+
+pytestmark = pytest.mark.integration
 
 
 def test_buy_op():
@@ -38,11 +46,7 @@ def test_buy_op():
         buy_op = BuyOperation(automator)
 
         # 执行买入（同步）
-        params = {
-            "stock_code": "000001",
-            "price": 110.55,
-            "quantity": 100
-        }
+        params = {"stock_code": "000001", "price": 110.55, "quantity": 100}
 
         result = buy_op.run(params)
         print(f"买入结果: {result.success}, data: {result.data}")
@@ -93,11 +97,7 @@ def test_sell_op():
         op = SellOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "stock_code": "000001",
-            "price": 11.55,
-            "quantity": 1000
-        }
+        params = {"stock_code": "000001", "price": 11.55, "quantity": 1000}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -119,9 +119,7 @@ def test_funds_query_op():
         op = FundsQueryOperation(automator)
 
         # 执行操作（同步）
-        params = {
-
-        }
+        params = {}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -143,11 +141,7 @@ def test_order_cancel_op():
         op = OrderCancelOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "stock_code": "000001",
-            "cancel_type": "all"
-
-        }
+        params = {"stock_code": "000001", "cancel_type": "all"}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -193,10 +187,7 @@ def test_order_query_op():
         op = OrderQueryOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "return_type": "json",
-            "stock_code": "000001"
-        }
+        params = {"return_type": "json", "stock_code": "000001"}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -248,11 +239,13 @@ def test_reverse_repo_buy_op():
             "market": "上海",
             # 回购期限   ["1天期", "2天期", "3天期", "4天期", "7天期"]
             "time_range": "1天期",
-            "amount": 100000
+            "amount": 100000,
         }
 
         result = op.run(params)
-        print(f"操作结果: {result.success}, data: {result.data}, message={result.message}")
+        print(
+            f"操作结果: {result.success}, data: {result.data}, message={result.message}"
+        )
 
     finally:
         # 断开连接
@@ -276,7 +269,7 @@ def test_reverse_repo_query_op():
             "market": "上海",
             # 回购期限   ["1天期", "2天期", "3天期", "4天期", "7天期"]
             "time_range": "1天期",
-            "amount": 100000
+            "amount": 100000,
         }
 
         result = op.run(params)
@@ -299,11 +292,7 @@ def test_condition_buy_op():
         op = ConditionBuyOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "stock_code": "000001",
-            "target_price": 12.1,
-            "quantity": 100
-        }
+        params = {"stock_code": "000001", "target_price": 12.1, "quantity": 100}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -325,11 +314,7 @@ def test_condition_sell_op():
         op = ConditionSellOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "stock_code": "000001",
-            "target_price": 12.1,
-            "quantity": 100
-        }
+        params = {"stock_code": "000001", "target_price": 12.1, "quantity": 100}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -356,7 +341,7 @@ def test_stop_loss_profit_op():
             "stop_loss_percent": 3.1,
             "stop_profit_percent": 5.6,
             "quantity": 100,
-            "expire_days": 1
+            "expire_days": 1,
         }
 
         result = op.run(params)
@@ -379,9 +364,7 @@ def test_condition_order_query_op():
         op = ConditionOrderQueryOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "return_type": "json"
-        }
+        params = {"return_type": "json"}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -415,6 +398,7 @@ def test_condition_order_cancel_op():
         # 断开连接
         automator.disconnect()
 
+
 def test_market_buy_op():
     # 创建自动化器
     automator = TonghuashunAutomator()
@@ -427,18 +411,17 @@ def test_market_buy_op():
         op = MarketBuyOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "stock_code": "000001",
-            "quantity": 100,
-            "execution_strategy": 7
-        }
+        params = {"stock_code": "000001", "quantity": 100, "execution_strategy": 7}
 
         result = op.run(params)
-        print(f"操作结果: {result.success}, data: {result.data}， message： {result.message}")
+        print(
+            f"操作结果: {result.success}, data: {result.data}， message： {result.message}"
+        )
 
     finally:
         # 断开连接
         automator.disconnect()
+
 
 def test_market_sell_op():
     # 创建自动化器
@@ -452,15 +435,12 @@ def test_market_sell_op():
         op = MarketSellOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "stock_code": "000001",
-            "quantity": 100,
-            "execution_strategy": 2
-
-        }
+        params = {"stock_code": "000001", "quantity": 100, "execution_strategy": 2}
 
         result = op.run(params)
-        print(f"操作结果: {result.success}, data: {result.data}， message： {result.message}")
+        print(
+            f"操作结果: {result.success}, data: {result.data}， message： {result.message}"
+        )
     finally:
         # 断开连接
         automator.disconnect()

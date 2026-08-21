@@ -1,9 +1,9 @@
-
-import time
-from typing import Dict, Any
 import re
+import time
+from typing import Any
+
 from easyths.core import BaseOperation
-from easyths.models.operations import PluginMetadata, OperationResult
+from easyths.models.operations import OperationResult, PluginMetadata
 
 
 class StopLossProfitOperation(BaseOperation):
@@ -23,41 +23,40 @@ class StopLossProfitOperation(BaseOperation):
                     "description": "股票代码（6位数字）",
                     "min_length": 6,
                     "max_length": 6,
-                    "pattern": "^[0-9]{6}$"
+                    "pattern": "^[0-9]{6}$",
                 },
                 "stop_loss_percent": {
                     "type": "number",
                     "required": True,
                     "description": "止损百分比（如3表示3%）",
                     "minimum": 0.01,
-                    "maximum": 100
+                    "maximum": 100,
                 },
                 "stop_profit_percent": {
                     "type": "number",
                     "required": True,
                     "description": "止盈百分比（如5表示5%）",
                     "minimum": 0.01,
-                    "maximum": 100
+                    "maximum": 100,
                 },
                 "quantity": {
                     "type": "integer",
                     "required": False,
                     "description": "买入数量（股票必须是100的倍数，可转债必须是10的倍数）,可以不指定，默认卖完所有持仓数量",
                     "minimum": 10,
-                    "multiple_of": 10
+                    "multiple_of": 10,
                 },
                 "expire_days": {
                     "type": "integer",
                     "required": False,
                     "description": "止盈止损策略有效期，单位为自然日",
                     "default": 30,
-                    "enum": [1,3,5,10,20,30]
-                }
-
-            }
+                    "enum": [1, 3, 5, 10, 20, 30],
+                },
+            },
         )
 
-    def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: dict[str, Any]) -> bool:
         """验证止盈止损参数"""
         try:
             # 检查必需参数
@@ -75,23 +74,34 @@ class StopLossProfitOperation(BaseOperation):
             expire_days = params.get("expire_days", 30)
 
             # 验证股票代码
-            if not isinstance(stock_code, str) or len(stock_code) != 6 or not stock_code.isdigit():
+            if (
+                not isinstance(stock_code, str)
+                or len(stock_code) != 6
+                or not stock_code.isdigit()
+            ):
                 self.logger.error("股票代码格式错误，必须是6位数字")
                 return False
 
             # 验证止损百分比
-            if not isinstance(stop_loss_percent, (int, float)) or stop_loss_percent <= 0 or stop_loss_percent > 100:
+            if (
+                not isinstance(stop_loss_percent, (int, float))
+                or stop_loss_percent <= 0
+                or stop_loss_percent > 100
+            ):
                 self.logger.error("止损百分比必须在0-100之间")
                 return False
 
             # 验证止盈百分比
-            if not isinstance(stop_profit_percent, (int, float)) or stop_profit_percent <= 0 or stop_profit_percent > 100:
+            if (
+                not isinstance(stop_profit_percent, (int, float))
+                or stop_profit_percent <= 0
+                or stop_profit_percent > 100
+            ):
                 self.logger.error("止盈百分比必须在0-100之间")
                 return False
 
-
             # 验证有效期
-            if expire_days not in [1,3,5,10,20,30]:
+            if expire_days not in [1, 3, 5, 10, 20, 30]:
                 self.logger.error("有效期必须是1,3,5,10,20,30中的任意一个")
                 return False
 
@@ -100,8 +110,15 @@ class StopLossProfitOperation(BaseOperation):
                 is_convertible_bond = stock_code.startswith(("11", "12"))
                 min_qty = 10 if is_convertible_bond else 100
                 multiple = 10 if is_convertible_bond else 100
-                if not isinstance(quantity, int) or quantity < min_qty or quantity % multiple != 0:
-                    self.logger.error(f"数量必须是{multiple}的倍数且不小于{min_qty}" + ("（可转债）" if is_convertible_bond else ""))
+                if (
+                    not isinstance(quantity, int)
+                    or quantity < min_qty
+                    or quantity % multiple != 0
+                ):
+                    self.logger.error(
+                        f"数量必须是{multiple}的倍数且不小于{min_qty}"
+                        + ("（可转债）" if is_convertible_bond else "")
+                    )
                     return False
 
             self.logger.info("止盈止损参数验证通过")
@@ -111,8 +128,7 @@ class StopLossProfitOperation(BaseOperation):
             self.logger.exception("参数验证异常", error=str(e))
             return False
 
-
-    def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: dict[str, Any]) -> OperationResult:
         """执行止盈止损操作"""
         stock_code = params["stock_code"]
         stop_loss_percent = params["stop_loss_percent"]
@@ -124,10 +140,10 @@ class StopLossProfitOperation(BaseOperation):
 
         try:
             self.logger.info(
-                f"执行止盈止损操作",
+                "执行止盈止损操作",
                 stock_code=stock_code,
                 stop_loss_percent=stop_loss_percent,
-                stop_profit_percent=stop_profit_percent
+                stop_profit_percent=stop_profit_percent,
             )
 
             main_window = self.get_main_window(wrapper_obj=True)
@@ -137,15 +153,8 @@ class StopLossProfitOperation(BaseOperation):
             self.switch_left_menus("条件单", "止盈止损")
             self.wait_for_pop_dialog(2.51)
 
-            #用于控制选择策略有效期索引
-            count_map = {
-                "1": 0,
-                "3": 1,
-                "5": 2,
-                "10": 3,
-                "20": 4,
-                "30": 5
-            }
+            # 用于控制选择策略有效期索引
+            count_map = {"1": 0, "3": 1, "5": 2, "10": 3, "20": 4, "30": 5}
 
             pop_dialog_title, pop_toolbar_control = self.get_pop_dialog()
             is_op_success = False
@@ -153,11 +162,17 @@ class StopLossProfitOperation(BaseOperation):
 
             if pop_dialog_title == "ConditionToolBar":
                 # 获取主界面
-                main_panel = main_window.children(control_type="Pane", class_name="#32770")[0].children(control_type="Pane", class_name="AfxWnd140s")[0]
-                inner_panel2 = main_panel.children(control_type="Pane", class_name="CefBrowserWindow")[0].children(
-                    control_type="Pane", class_name="Chrome_WidgetWin_0")[0]
-                document_panel = self.get_control_with_children(inner_panel2, control_type="Document",
-                                                                class_name="Chrome_RenderWidgetHostHWND")
+                main_panel = main_window.children(
+                    control_type="Pane", class_name="#32770"
+                )[0].children(control_type="Pane", class_name="AfxWnd140s")[0]
+                inner_panel2 = main_panel.children(
+                    control_type="Pane", class_name="CefBrowserWindow"
+                )[0].children(control_type="Pane", class_name="Chrome_WidgetWin_0")[0]
+                document_panel = self.get_control_with_children(
+                    inner_panel2,
+                    control_type="Document",
+                    class_name="Chrome_RenderWidgetHostHWND",
+                )
                 # 设置股票代码
                 # stock_edit.set_text(stock_code),不支持输入完整的代码，需要特殊处理
                 document_panel.children(control_type="Edit")[0].set_text(stock_code[:5])
@@ -165,7 +180,9 @@ class StopLossProfitOperation(BaseOperation):
                 has_order = False
                 try:
                     # 获取筛选出来的股票持仓
-                    stock_list_controls = document_panel.children(control_type="List")[0].children()
+                    stock_list_controls = document_panel.children(control_type="List")[
+                        0
+                    ].children()
                     for stock_cc in stock_list_controls:
                         iitem = stock_cc.children(control_type="Text")[0]
                         item_text = iitem.window_text()
@@ -174,9 +191,15 @@ class StopLossProfitOperation(BaseOperation):
                             has_order = True
                             break
                 except IndexError as e:
-                    msg = f"没有相应的股票持仓记录，无法设置止盈止损，请检查是否持仓该股票"
+                    msg = (
+                        "没有相应的股票持仓记录，无法设置止盈止损，请检查是否持仓该股票"
+                    )
                     self.logger.warn(msg, error=str(e))
-                    return OperationResult(success=False, message=msg, data={"stock_code": stock_code, "message": msg})
+                    return OperationResult(
+                        success=False,
+                        message=msg,
+                        data={"stock_code": stock_code, "message": msg},
+                    )
 
                 # 处理没有对应持仓股票的情况，因为没有就对应持仓就不能设置止盈止损
                 if not has_order:
@@ -187,56 +210,80 @@ class StopLossProfitOperation(BaseOperation):
 
                 else:
                     # 盈利填写
-                    document_panel.children(control_type="Edit")[4].set_text(str(stop_profit_percent))
+                    document_panel.children(control_type="Edit")[4].set_text(
+                        str(stop_profit_percent)
+                    )
                     # 亏损填写
                     self.sleep(0.05)
-                    document_panel.children(control_type="Edit")[6].set_text(str(stop_loss_percent))
+                    document_panel.children(control_type="Edit")[6].set_text(
+                        str(stop_loss_percent)
+                    )
                     self.sleep(0.1)
 
                     # 下一步
-                    self.get_control_with_children(document_panel, control_type="Button", title="下一步").click()
+                    self.get_control_with_children(
+                        document_panel, control_type="Button", title="下一步"
+                    ).click()
                     # 画面渲染需要时间
                     self.sleep(0.5)
 
-                    #填写委托数量
+                    # 填写委托数量
                     if quantity is None:
                         # 尝试自动获取可用的数量
-                        quantity = self.get_control_with_children(document_panel, control_type="Text", title_re="可卖").window_text()
-                        quantity = re.search(r'\d+', quantity).group()
+                        quantity = self.get_control_with_children(
+                            document_panel, control_type="Text", title_re="可卖"
+                        ).window_text()
+                        quantity = re.search(r"\d+", quantity).group()
 
-                    document_panel.children(control_type="Edit")[4].set_text(str(quantity))
+                    document_panel.children(control_type="Edit")[4].set_text(
+                        str(quantity)
+                    )
 
                     # 处理触发类型
                     # 选择全自动委托
-                    weituo_btn = self.get_control_with_children(document_panel, control_type="RadioButton",
-                                                                title="全自动委托")
+                    weituo_btn = self.get_control_with_children(
+                        document_panel, control_type="RadioButton", title="全自动委托"
+                    )
                     # 模拟交易中全自动委托是灰色的
                     if not weituo_btn.is_selected() and weituo_btn.is_enabled():
                         weituo_btn.select()
                         self.sleep(0.6)
                         # 等待弹窗出现，看是否会出现提示成功添加到条件单的窗口，也可以勾选不再提醒
-                        inner_pane = self.get_control_with_children(document_panel, control_type="Custom",
-                                                                    title="温馨提示")
+                        inner_pane = self.get_control_with_children(
+                            document_panel, control_type="Custom", title="温馨提示"
+                        )
                         if inner_pane:
                             # 勾选不再提醒
-                            self.get_control_with_children(inner_pane, control_type="CheckBox").click()
+                            self.get_control_with_children(
+                                inner_pane, control_type="CheckBox"
+                            ).click()
                             # 点击我知道了按钮
                             self.sleep(0.3)
-                            self.get_control_with_children(inner_pane, control_type="Button", title="我知道了").click()
+                            self.get_control_with_children(
+                                inner_pane, control_type="Button", title="我知道了"
+                            ).click()
 
                     # 策略有效期选择
-                    expire_choose = document_panel.children(control_type="Edit", title="请选择")[1]
+                    expire_choose = document_panel.children(
+                        control_type="Edit", title="请选择"
+                    )[1]
                     expire_choose.click_input()
                     # 等待渲染
                     self.sleep(0.3)
-                    expire_list_control = self.get_control_with_children(document_panel, control_type="List")
-                    expire_list_control.children(control_type="ListItem")[count_map.get(str(expire_days))].invoke()
+                    expire_list_control = self.get_control_with_children(
+                        document_panel, control_type="List"
+                    )
+                    expire_list_control.children(control_type="ListItem")[
+                        count_map.get(str(expire_days))
+                    ].invoke()
 
                     self.sleep(0.25)
                     expire_list_control.type_keys("{ENTER}")
                     self.sleep(0.3)
                     # 提交确认
-                    self.get_control_with_children(document_panel, control_type="Button", title="提交确认").click()
+                    self.get_control_with_children(
+                        document_panel, control_type="Button", title="提交确认"
+                    ).click()
                     # 关闭可能出现的成功提示弹窗
                     # self.sleep(0.2)
                     # self.get_pop_dialog()[1].type_keys("{ESC}", pause=0.15)
@@ -249,14 +296,14 @@ class StopLossProfitOperation(BaseOperation):
                 "stop_loss_percent": stop_loss_percent,
                 "stop_profit_percent": stop_profit_percent,
                 "message": op_message,
-                "expire_days": expire_days
+                "expire_days": expire_days,
             }
 
-            self.logger.info(f"止盈止损操作耗时{time.time() - start_time}, 操作结果：", **result_data)
+            self.logger.info(
+                f"止盈止损操作耗时{time.time() - start_time}, 操作结果：", **result_data
+            )
             return OperationResult(
-                message=op_message,
-                success=is_op_success,
-                data=result_data
+                message=op_message, success=is_op_success, data=result_data
             )
 
         except Exception as e:

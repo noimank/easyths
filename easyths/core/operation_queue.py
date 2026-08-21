@@ -8,12 +8,12 @@ import queue
 import threading
 import time
 import uuid
-from typing import Dict, Optional
+from typing import Any
 
 import structlog
 
 from easyths.core.base_operation import operation_registry
-from easyths.models.operations import Operation, OperationStatus, OperationResult
+from easyths.models.operations import Operation, OperationResult, OperationStatus
 from easyths.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
@@ -42,20 +42,20 @@ class OperationQueue:
         # -priority 实现降序（高优先级先执行）
         # timestamp 保证相同优先级按时间顺序执行（FIFO）
         self._queue: queue.PriorityQueue = queue.PriorityQueue(maxsize=self.max_size)
-        self._operations: Dict[str, Operation] = {}  # 所有操作
-        self._running_operations: Dict[str, Operation] = {}  # 正在运行的操作
-        self._completed_operations: Dict[str, Operation] = {}  # 已完成的操作
+        self._operations: dict[str, Operation] = {}  # 所有操作
+        self._running_operations: dict[str, Operation] = {}  # 正在运行的操作
+        self._completed_operations: dict[str, Operation] = {}  # 已完成的操作
         self._queue_counter = 0  # 用于保证相同优先级的顺序
 
         # 控制标志
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._running = False
         self._lock = threading.Lock()  # 用于保护 queue_counter
         self._stats = {
-            'total_processed': 0,
-            'total_failed': 0,
-            'total_success': 0,
-            'queue_size': 0
+            "total_processed": 0,
+            "total_failed": 0,
+            "total_success": 0,
+            "queue_size": 0,
         }
 
         self.logger = structlog.get_logger(__name__)
@@ -66,7 +66,9 @@ class OperationQueue:
             return
 
         self._running = True
-        self._thread = threading.Thread(target=self._process_loop, name="OperationQueue", daemon=False)
+        self._thread = threading.Thread(
+            target=self._process_loop, name="OperationQueue", daemon=False
+        )
         self._thread.start()
         self.logger.info("操作队列已启动")
 
@@ -85,15 +87,19 @@ class OperationQueue:
                     continue
 
                 # 检查操作是否已取消（失败且message为"操作已取消"）
-                if operation.status == OperationStatus.FAILED and operation.result and operation.result.message == "操作已取消":
+                if (
+                    operation.status == OperationStatus.FAILED
+                    and operation.result
+                    and operation.result.message == "操作已取消"
+                ):
                     self._completed_operations[operation.id] = operation
-                    self._stats['total_processed'] += 1
+                    self._stats["total_processed"] += 1
                     continue
 
                 # 更新状态为运行中
                 operation.update_status(OperationStatus.RUNNING)
                 self._running_operations[operation.id] = operation
-                self._stats['queue_size'] = self._queue.qsize()
+                self._stats["queue_size"] = self._queue.qsize()
 
                 # 执行操作（同步调用）
                 try:
@@ -102,10 +108,10 @@ class OperationQueue:
                     # 更新操作状态
                     if result.success:
                         operation.update_status(OperationStatus.COMPLETED)
-                        self._stats['total_success'] += 1
+                        self._stats["total_success"] += 1
                     else:
                         operation.update_status(OperationStatus.FAILED)
-                        self._stats['total_failed'] += 1
+                        self._stats["total_failed"] += 1
 
                     operation.result = result
 
@@ -114,13 +120,13 @@ class OperationQueue:
                     self.logger.exception(error_msg, operation_id=operation.id)
                     operation.update_status(OperationStatus.FAILED)
                     operation.result = OperationResult(success=False, message=error_msg)
-                    self._stats['total_failed'] += 1
+                    self._stats["total_failed"] += 1
 
                 finally:
                     # 从运行中列表移到已完成列表
                     self._running_operations.pop(operation.id, None)
                     self._completed_operations[operation.id] = operation
-                    self._stats['total_processed'] += 1
+                    self._stats["total_processed"] += 1
 
             except Exception as e:
                 self.logger.exception("处理队列时发生异常", error=str(e))
@@ -142,7 +148,7 @@ class OperationQueue:
             "开始执行操作",
             operation_id=operation.id,
             operation_name=operation.name,
-            params=operation.params
+            params=operation.params,
         )
 
         # 获取操作实例
@@ -189,25 +195,27 @@ class OperationQueue:
         priority_item = (-operation.priority, counter, operation)
         try:
             self._queue.put(priority_item, block=False)
-        except queue.Full:
-            raise ValueError("队列已满，无法添加操作")
+        except queue.Full as e:
+            raise ValueError("队列已满，无法添加操作") from e
 
         # 更新状态
         self._operations[operation.id] = operation
         operation.update_status(OperationStatus.QUEUED)
 
-        self._stats['queue_size'] = self._queue.qsize()
+        self._stats["queue_size"] = self._queue.qsize()
         self.logger.info(
             "操作已添加到队列",
             operation_id=operation.id,
             operation_name=operation.name,
             priority=operation.priority,
-            queue_size=self._stats['queue_size']
+            queue_size=self._stats["queue_size"],
         )
 
         return operation.id
 
-    def get_result(self, operation_id: str, timeout: Optional[float] = None) -> Optional[OperationResult]:
+    def get_result(
+        self, operation_id: str, timeout: float | None = None
+    ) -> OperationResult | None:
         """获取操作结果（阻塞等待）
 
         Args:
@@ -222,7 +230,10 @@ class OperationQueue:
         while True:
             # 检查是否已完成
             operation = self._completed_operations.get(operation_id)
-            if operation and operation.status in [OperationStatus.COMPLETED, OperationStatus.FAILED]:
+            if operation and operation.status in [
+                OperationStatus.COMPLETED,
+                OperationStatus.FAILED,
+            ]:
                 return operation.result
 
             # 检查超时
@@ -233,7 +244,7 @@ class OperationQueue:
 
             time.sleep(0.1)
 
-    def get_status(self, operation_id: str) -> Optional[OperationStatus]:
+    def get_status(self, operation_id: str) -> OperationStatus | None:
         """获取操作状态
 
         Args:
@@ -245,7 +256,7 @@ class OperationQueue:
         operation = self._operations.get(operation_id)
         return operation.status if operation else None
 
-    def get_operation(self, operation_id: str) -> Optional[Operation]:
+    def get_operation(self, operation_id: str) -> Operation | None:
         """获取操作
 
         Args:
@@ -256,18 +267,18 @@ class OperationQueue:
         """
         return self._operations.get(operation_id)
 
-    def get_queue_stats(self) -> Dict[str, any]:
+    def get_queue_stats(self) -> dict[str, Any]:
         """获取队列统计信息
 
         Returns:
-            Dict[str, any]: 统计信息
+            Dict[str, Any]: 统计信息
         """
         return {
             **self._stats,
-            'processing': self._running,
-            'running_count': len(self._running_operations),
-            'completed_count': len(self._completed_operations),
-            'queued_count': self._queue.qsize()
+            "processing": self._running,
+            "running_count": len(self._running_operations),
+            "completed_count": len(self._completed_operations),
+            "queued_count": self._queue.qsize(),
         }
 
     def cancel_operation(self, operation_id: str) -> bool:
@@ -320,5 +331,5 @@ class OperationQueue:
                 self._queue.get_nowait()
             except queue.Empty:
                 break
-        self._stats['queue_size'] = 0
+        self._stats["queue_size"] = 0
         self.logger.info("操作队列已清空")

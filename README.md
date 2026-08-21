@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://pypi.org/project/easyths/"><img src="https://img.shields.io/pypi/v/easyths?logo=pypi&logoColor=white&label=PyPI&color=blue" alt="PyPI Version"></a>
-  <a href="https://github.com/noimank/easyths"><img src="https://img.shields.io/badge/python-3.12+-blue.svg?logo=python&logoColor=white" alt="Python Version"></a>
+  <a href="https://github.com/noimank/easyths"><img src="https://img.shields.io/badge/python-3.12-blue.svg?logo=python&logoColor=white" alt="Python Version"></a>
   <a href="https://github.com/noimank/easyths/blob/main/LICENSE"><img src="https://img.shields.io/github/license/noimank/easyths?color=green" alt="License"></a>
   <a href="https://github.com/noimank/easyths/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/noimank/easyths/ci.yml?branch=main&label=CI" alt="CI"></a>
 </p>
@@ -43,7 +43,7 @@
 ### 环境要求
 
 - Windows 10/11
-- Python 3.12+
+- Python 3.12
 - 同花顺交易客户端
 
 #### 请一定一定要根据项目要求设置下单客户端，否则不保证可用
@@ -161,7 +161,7 @@ EasyTHS 支持 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/)�
 ## 系统要求
 
 - **操作系统**: Windows 10/11（必须，pywinauto 要求）
-- **Python**: 3.12+
+- **Python**: 3.12
 - **交易软件**: 同花顺交易客户端
 
 ## 同花顺客户端设置

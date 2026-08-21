@@ -1,9 +1,9 @@
-import datetime
 import time
-from typing import Dict, Any
+from typing import Any
 
 from easyths.core import BaseOperation
-from easyths.models.operations import PluginMetadata, OperationResult
+from easyths.models.operations import OperationResult, PluginMetadata
+
 
 class ReverseRepoQueryOperation(BaseOperation):
     """国债逆回购查询操作"""
@@ -15,50 +15,53 @@ class ReverseRepoQueryOperation(BaseOperation):
             description="查询国债逆回购年化利率信息",
             author="noimank",
             operation_name="reverse_repo_query",
-            parameters={
-
-            }
+            parameters={},
         )
 
-    def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: dict[str, Any]) -> bool:
         """验证查询参数"""
         try:
-
             return True
 
         except Exception as e:
             self.logger.exception("参数验证异常", error=str(e))
             return False
 
-    def parse_table_panels(self, table_controls:list)->list:
-
-        data_list =[]
+    def parse_table_panels(self, table_controls: list) -> list:
+        data_list = []
         for table_item_wrapper in table_controls:
-            table_item = table_item_wrapper.children(control_type="Custom")[0].children(control_type="DataItem")[0].children(control_type="Text")
+            table_item = (
+                table_item_wrapper.children(control_type="Custom")[0]
+                .children(control_type="DataItem")[0]
+                .children(control_type="Text")
+            )
             time_type = table_item[0].window_text()
             type_flag = table_item[1].window_text()
             year_profit = table_item[2].window_text()
             if "GC" in type_flag:
-                data_list.append({
-                    "市场类型": "上海市场",
-                    "时间类型": time_type,
-                    "年化利率": year_profit
-                })
+                data_list.append(
+                    {
+                        "市场类型": "上海市场",
+                        "时间类型": time_type,
+                        "年化利率": year_profit,
+                    }
+                )
             else:
-                data_list.append({
-                    "市场类型": "深圳市场",
-                    "时间类型": time_type,
-                    "年化利率": year_profit
-                })
+                data_list.append(
+                    {
+                        "市场类型": "深圳市场",
+                        "时间类型": time_type,
+                        "年化利率": year_profit,
+                    }
+                )
         return data_list
 
-
-    def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: dict[str, Any]) -> OperationResult:
         """执行国债逆回购查询操作"""
         start_time = time.time()
 
         try:
-            self.logger.info(f"执行国债逆回购查询操作")
+            self.logger.info("执行国债逆回购查询操作")
             main_window = self.get_main_window(wrapper_obj=True)
             # 先跳到其他页面，要是停留在国债逆回购的话，再次点击可能没反应
             main_window.type_keys("{F3}")
@@ -73,21 +76,42 @@ class ReverseRepoQueryOperation(BaseOperation):
             if is_pop_up:
                 pop_dialog_title, pop_control = self.get_pop_dialog()
                 if pop_dialog_title == "通用回购":
-                    AfxWnd140s_pane = self.get_control_with_children(pop_control, control_type="Pane", auto_id="3001", class_name="AfxWnd140s")
-                    CefBrowserWindow_pane = self.get_control_with_children(AfxWnd140s_pane, control_type="Pane", class_name="CefBrowserWindow")
-                    Chrome_WidgetWin_0_pane = self.get_control_with_children(CefBrowserWindow_pane, control_type="Pane", class_name="Chrome_WidgetWin_0")
-                    document_panel = self.get_control_with_children(Chrome_WidgetWin_0_pane, control_type="Document", class_name="Chrome_RenderWidgetHostHWND")
+                    AfxWnd140s_pane = self.get_control_with_children(
+                        pop_control,
+                        control_type="Pane",
+                        auto_id="3001",
+                        class_name="AfxWnd140s",
+                    )
+                    CefBrowserWindow_pane = self.get_control_with_children(
+                        AfxWnd140s_pane,
+                        control_type="Pane",
+                        class_name="CefBrowserWindow",
+                    )
+                    Chrome_WidgetWin_0_pane = self.get_control_with_children(
+                        CefBrowserWindow_pane,
+                        control_type="Pane",
+                        class_name="Chrome_WidgetWin_0",
+                    )
+                    document_panel = self.get_control_with_children(
+                        Chrome_WidgetWin_0_pane,
+                        control_type="Document",
+                        class_name="Chrome_RenderWidgetHostHWND",
+                    )
 
                     # 会有10个元素
                     table_panel = document_panel.children(control_type="Table")
-                    #选择对应的选择
+                    # 选择对应的选择
                     reverse_repo_interest_data = self.parse_table_panels(table_panel)
-                    #输入金额
+                    # 输入金额
                     is_op_success = True
                     op_message = "查询国债逆回购年化利率成功"
                     # 成功与否都需要把窗口关闭
-                    self.get_control_with_children(pop_control, control_type="Button", auto_id="1008",
-                                                   class_name="Button").click()
+                    self.get_control_with_children(
+                        pop_control,
+                        control_type="Button",
+                        auto_id="1008",
+                        class_name="Button",
+                    ).click()
 
             # 3. 准备返回数据
             # result_data = {
@@ -102,14 +126,12 @@ class ReverseRepoQueryOperation(BaseOperation):
             return OperationResult(
                 message=op_message,
                 success=is_op_success,
-                data=reverse_repo_interest_data
+                data=reverse_repo_interest_data,
             )
 
         except Exception as e:
             error_msg = f"国债逆回购查询操作异常: {str(e)}"
             self.logger.exception(error_msg)
             return OperationResult(
-                success=False,
-                message=error_msg,
-                data={"timestamp": time.time()}
+                success=False, message=error_msg, data={"timestamp": time.time()}
             )

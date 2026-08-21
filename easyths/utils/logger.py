@@ -1,12 +1,15 @@
-import structlog
 import logging
 import sys
 from pathlib import Path
+
+import structlog
+from structlog.typing import Processor
+
 from .config import project_config_instance
 
+
 def setup_logging():
-    """设置日志系统
-    """
+    """设置日志系统"""
     level = project_config_instance.logging_level
     log_file = project_config_instance.logging_file
 
@@ -14,7 +17,7 @@ def setup_logging():
     Path(log_file).parent.mkdir(parents=True, exist_ok=True)
 
     # 基础处理器（不包含最终渲染器）
-    shared_processors = [
+    shared_processors: list[Processor] = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -31,11 +34,14 @@ def setup_logging():
     )
 
     # 文件处理器：使用无颜色的纯文本渲染
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(getattr(logging, level.upper()))
     file_formatter = structlog.stdlib.ProcessorFormatter(
-        processor=structlog.processors.JSONRenderer() if level.upper() == 'DEBUG'
-        else structlog.processors.KeyValueRenderer(sort_keys=False, key_order=['timestamp', 'level', 'event', 'logger'])
+        processor=structlog.processors.JSONRenderer()
+        if level.upper() == "DEBUG"
+        else structlog.processors.KeyValueRenderer(
+            sort_keys=False, key_order=["timestamp", "level", "event", "logger"]
+        )
     )
     file_handler.setFormatter(file_formatter)
 

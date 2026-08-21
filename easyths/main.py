@@ -11,19 +11,19 @@ Email: noimank@163.com
 """
 
 import argparse
+import platform
 import shutil
 import sys
-import platform
 from pathlib import Path
 
 import psutil
 import structlog
 
-from easyths.utils.logger import setup_logging
-from easyths.utils import project_config_instance
-from easyths.core.tonghuashun_automator import TonghuashunAutomator
-from easyths.core.operation_queue import OperationQueue
 from easyths.api.app import TradingAPIApp
+from easyths.core.operation_queue import OperationQueue
+from easyths.core.tonghuashun_automator import TonghuashunAutomator
+from easyths.utils import project_config_instance
+from easyths.utils.logger import setup_logging
 
 # 项目元信息
 PROJECT_NAME = "EasyTHS"
@@ -53,16 +53,16 @@ def get_asset_path() -> Path:
 def print_project_info():
     """打印项目信息"""
     info_text = f"""
-{'='*50}
+{"=" * 50}
   {PROJECT_NAME}
   同花顺交易自动化系统
-{'='*50}
+{"=" * 50}
   版本:     {PROJECT_VERSION}
   作者:     {PROJECT_AUTHOR} <{PROJECT_EMAIL}>
   文档:     {PROJECT_DOCS}
   仓库:     {PROJECT_REPO}
   问题反馈: {PROJECT_ISSUES}
-{'='*50}
+{"=" * 50}
 """
     print(info_text)
 
@@ -125,7 +125,7 @@ def get_config():
 
     if target_config.exists():
         response = input(f"配置文件 {target_config} 已存在，是否覆盖？(y/N): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             print("操作已取消")
             return
 
@@ -142,37 +142,23 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(
         description="同花顺交易自动化系统",
-        add_help=False  # 禁用默认的 --help，使用自定义的帮助
+        add_help=False,  # 禁用默认的 --help，使用自定义的帮助
     )
 
     parser.add_argument(
         "--exe_path",
         type=str,
         default=None,
-        help="指定同花顺交易程序路径（优先级高于配置文件）"
+        help="指定同花顺交易程序路径（优先级高于配置文件）",
     )
     parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="指定 TOML 配置文件路径"
+        "--config", type=str, default=None, help="指定 TOML 配置文件路径"
     )
     parser.add_argument(
-        "--get_config",
-        action="store_true",
-        help="将示例配置文件复制到当前目录"
+        "--get_config", action="store_true", help="将示例配置文件复制到当前目录"
     )
-    parser.add_argument(
-        "--help",
-        action="store_true",
-        help="显示帮助信息"
-    )
-    parser.add_argument(
-        "--version",
-        "-v",
-        action="store_true",
-        help="显示版本信息"
-    )
+    parser.add_argument("--help", action="store_true", help="显示帮助信息")
+    parser.add_argument("--version", "-v", action="store_true", help="显示版本信息")
 
     return parser.parse_args()
 
@@ -193,8 +179,7 @@ def check_running_env():
     # 检查是否为 Windows 系统
     if platform.system() != "Windows":
         logger.error(
-            "系统不支持，仅支持 Windows 系统",
-            current_system=platform.system()
+            "系统不支持，仅支持 Windows 系统", current_system=platform.system()
         )
         return False
 
@@ -202,10 +187,7 @@ def check_running_env():
 
     # 检查 exe 是否存在
     if not app_path or not Path(app_path).exists():
-        logger.error(
-            "同花顺交易程序不存在，无法启动系统",
-            app_path=app_path
-        )
+        logger.error("同花顺交易程序不存在，无法启动系统", app_path=app_path)
         return False
 
     # 获取进程名
@@ -213,26 +195,19 @@ def check_running_env():
 
     # 检查进程是否运行
     is_running = False
-    for proc in psutil.process_iter(['name']):
+    for proc in psutil.process_iter(["name"]):
         try:
-            if proc.info['name'] == process_name:
+            if proc.info["name"] == process_name:
                 is_running = True
                 break
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
     if not is_running:
-        logger.error(
-            "同花顺交易程序未运行，无法启动系统",
-            process_name=process_name
-        )
+        logger.error("同花顺交易程序未运行，无法启动系统", process_name=process_name)
         return False
 
-    logger.info(
-        "运行环境检查通过",
-        app_path=app_path,
-        process_name=process_name
-    )
+    logger.info("运行环境检查通过", app_path=app_path, process_name=process_name)
     return True
 
 
@@ -283,8 +258,7 @@ def main():
             print(f"错误: 配置文件不存在: {config_path}")
             sys.exit(1)
         project_config_instance.update_from_toml_file(
-            str(config_path),
-            exe_path=args.exe_path
+            str(config_path), exe_path=args.exe_path
         )
         config_loaded = True
     elif args.exe_path:
@@ -313,7 +287,7 @@ def main():
 
     # 创建并运行API服务
     api_app = TradingAPIApp(operation_queue, automator)
-    app = api_app.create_app()
+    api_app.create_app()
 
     try:
         api_app.run()

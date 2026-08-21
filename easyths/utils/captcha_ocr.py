@@ -1,16 +1,17 @@
 import functools
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import onnx
 import onnxruntime as ort
 import structlog
 from PIL import Image
-from easyths.utils import project_config_instance
+
+from .config import project_config_instance
 from .screen_capture import get_mss_instance
 
 logger = structlog.get_logger(f"{__file__}")
+
 
 class ONNXCaptchaRecognizer:
     """ONNX-based captcha recognizer with self-contained parameters."""
@@ -21,9 +22,9 @@ class ONNXCaptchaRecognizer:
         metadata = {p.key: p.value for p in onnx_model.metadata_props}
 
         # Read parameters from model metadata
-        self.character = metadata.get("character")
-        self.img_h = int(metadata.get("img_h"))
-        self.img_w = int(metadata.get("img_w"))
+        self.character = metadata["character"]
+        self.img_h = int(metadata["img_h"])
+        self.img_w = int(metadata["img_w"])
         self.nc = int(metadata.get("nc", 1))  # Default to grayscale
         self.blank = len(self.character)
 
@@ -34,14 +35,15 @@ class ONNXCaptchaRecognizer:
 
         logger.info(f"------成功加载验证码识别模型: {model_path}---------")
         logger.info(f"图片大小: {self.img_h}x{self.img_w} (channels: {self.nc})")
-        logger.info(f"验证码字符集: {self.character[:20]}... ({len(self.character)} chars)")
+        logger.info(
+            f"验证码字符集: {self.character[:20]}... ({len(self.character)} chars)"
+        )
         logger.info(f"使用推理设备: {provider}")
 
-
     def _get_provider(self, provider_str: str) -> str:
-        if 'cuda' in provider_str.lower() or 'gpu' in provider_str.lower():
-            return 'CUDAExecutionProvider'
-        return 'CPUExecutionProvider'
+        if "cuda" in provider_str.lower() or "gpu" in provider_str.lower():
+            return "CUDAExecutionProvider"
+        return "CPUExecutionProvider"
 
     def recognize(self, image: np.ndarray | Image.Image) -> str:
         """Run inference on image."""
@@ -62,55 +64,63 @@ class ONNXCaptchaRecognizer:
             # Grayscale mode
             if len(image.shape) == 3:
                 # RGB to grayscale
-                img = Image.fromarray(image).convert('L')
+                pil = Image.fromarray(image).convert("L")
             else:
-                img = Image.fromarray(image)
+                pil = Image.fromarray(image)
             # Resize
-            img = img.resize((self.img_w, self.img_h), Image.Resampling.LANCZOS)
+            pil = pil.resize((self.img_w, self.img_h), Image.Resampling.LANCZOS)
             # Convert to numpy array and normalize
-            img = np.array(img, dtype=np.float32) / 255.0
+            arr = np.array(pil, dtype=np.float32) / 255.0
             # Add channel dimension (H, W) -> (1, H, W)
-            img = np.expand_dims(img, axis=0)
+            arr = np.expand_dims(arr, axis=0)
         else:
             # RGB mode
             if len(image.shape) == 3:
-                img = Image.fromarray(image)
+                pil = Image.fromarray(image)
             else:
-                img = Image.fromarray(image).convert('RGB')
+                pil = Image.fromarray(image).convert("RGB")
             # Resize
-            img = img.resize((self.img_w, self.img_h), Image.Resampling.LANCZOS)
+            pil = pil.resize((self.img_w, self.img_h), Image.Resampling.LANCZOS)
             # Convert to numpy array and normalize
-            img = np.array(img, dtype=np.float32) / 255.0
+            arr = np.array(pil, dtype=np.float32) / 255.0
             # HWC -> CHW
-            img = np.transpose(img, (2, 0, 1))
+            arr = np.transpose(arr, (2, 0, 1))
 
         # Add batch dimension
-        img = np.expand_dims(img, axis=0)
-        return img
+        return np.expand_dims(arr, axis=0)
 
     def _ctc_decode(self, pred_indices: list) -> str:
         result = []
         prev = -1
         for idx in pred_indices:
-            if idx != prev and idx != self.blank:
-                if idx < len(self.character):
-                    result.append(self.character[idx])
+            if idx != prev and idx != self.blank and idx < len(self.character):
+                result.append(self.character[idx])
             prev = idx
-        return ''.join(result)
+        return "".join(result)
 
 
 @functools.lru_cache(maxsize=1)
 def _get_ocr_instance() -> ONNXCaptchaRecognizer:
     """获取 ONNXCaptchaRecognizer 实例（全局单例）"""
-    onnx_model_path = Path(__file__).parent.parent / "assets/onnx_model" / "captcha_ocr.onnx"
+    onnx_model_path = (
+        Path(__file__).parent.parent / "assets/onnx_model" / "captcha_ocr.onnx"
+    )
     if project_config_instance.onnx_model_dir is not None:
         if Path(project_config_instance.onnx_model_dir).exists():
-            onnx_model_path = Path(project_config_instance.onnx_model_dir) / "captcha_ocr.onnx"
-            onnx_model_data_path = Path(project_config_instance.onnx_model_dir) / "captcha_ocr.onnx.data"
+            onnx_model_path = (
+                Path(project_config_instance.onnx_model_dir) / "captcha_ocr.onnx"
+            )
+            onnx_model_data_path = (
+                Path(project_config_instance.onnx_model_dir) / "captcha_ocr.onnx.data"
+            )
             if (not onnx_model_path.exists()) or (not onnx_model_data_path.exists()):
-                logger.warn(f"指定的ONNX模型目录：{project_config_instance.onnx_model_dir}中缺少captcha_ocr.onnx或captcha_ocr.onnx.data文件,将使用项目默认模型权重")
+                logger.warn(
+                    f"指定的ONNX模型目录：{project_config_instance.onnx_model_dir}中缺少captcha_ocr.onnx或captcha_ocr.onnx.data文件,将使用项目默认模型权重"
+                )
         else:
-            logger.warn(f"指定的ONNX模型目录：{project_config_instance.onnx_model_dir}不存在,将使用项目默认模型权重")
+            logger.warn(
+                f"指定的ONNX模型目录：{project_config_instance.onnx_model_dir}不存在,将使用项目默认模型权重"
+            )
 
     ocr = ONNXCaptchaRecognizer(str(onnx_model_path.absolute()))
     return ocr
@@ -120,7 +130,7 @@ class CaptchaOCR:
     def __init__(self):
         self.logger = structlog.get_logger(__name__)
 
-    def recognize(self, captcha_control) -> Tuple[str, Image.Image]:
+    def recognize(self, captcha_control) -> tuple[str, Image.Image]:
         """识别验证码
         Args:
             captcha_control : 验证码控件

@@ -3,12 +3,13 @@
 Author: noimank
 Email: noimank@163.com
 """
-from typing import Optional
+
+from typing import Literal, cast
 
 from fastmcp import FastMCP
 from structlog import get_logger
-from easyths.models.operations import Operation
 
+from easyths.models.operations import Operation
 from easyths.utils import project_config_instance
 
 logger = get_logger(__name__)
@@ -46,11 +47,7 @@ def _execute_operation(operation_name: str, params: dict) -> dict:
         }
 
     # 创建操作对象
-    operation = Operation(
-        name=operation_name,
-        params=params,
-        priority=0
-    )
+    operation = Operation(name=operation_name, params=params, priority=0)
 
     # 提交操作到队列
     operation_id = _operation_queue.submit(operation)
@@ -62,18 +59,19 @@ def _execute_operation(operation_name: str, params: dict) -> dict:
         return {
             "success": False,
             "error": "操作超时或未完成",
-            "operation_id": operation_id
+            "operation_id": operation_id,
         }
 
     return {
         "success": result.success,
         "data": result.data,
         "message": result.message,
-        "operation_id": operation_id
+        "operation_id": operation_id,
     }
 
 
 # ============= 交易操作工具 =============
+
 
 @mcp_server.tool
 def buy(stock_code: str, price: float, quantity: int) -> dict:
@@ -87,11 +85,9 @@ def buy(stock_code: str, price: float, quantity: int) -> dict:
     Returns:
         买入结果
     """
-    return _execute_operation("buy", {
-        "stock_code": stock_code,
-        "price": price,
-        "quantity": quantity
-    })
+    return _execute_operation(
+        "buy", {"stock_code": stock_code, "price": price, "quantity": quantity}
+    )
 
 
 @mcp_server.tool
@@ -106,11 +102,9 @@ def sell(stock_code: str, price: float, quantity: int) -> dict:
     Returns:
         卖出结果
     """
-    return _execute_operation("sell", {
-        "stock_code": stock_code,
-        "price": price,
-        "quantity": quantity
-    })
+    return _execute_operation(
+        "sell", {"stock_code": stock_code, "price": price, "quantity": quantity}
+    )
 
 
 @mcp_server.tool
@@ -127,11 +121,14 @@ def market_buy(stock_code: str, quantity: int, execution_strategy: int = 3) -> d
     Returns:
         市价买入结果
     """
-    return _execute_operation("market_buy", {
-        "stock_code": stock_code,
-        "quantity": quantity,
-        "execution_strategy": execution_strategy
-    })
+    return _execute_operation(
+        "market_buy",
+        {
+            "stock_code": stock_code,
+            "quantity": quantity,
+            "execution_strategy": execution_strategy,
+        },
+    )
 
 
 @mcp_server.tool
@@ -148,14 +145,18 @@ def market_sell(stock_code: str, quantity: int, execution_strategy: int = 3) -> 
     Returns:
         市价卖出结果
     """
-    return _execute_operation("market_sell", {
-        "stock_code": stock_code,
-        "quantity": quantity,
-        "execution_strategy": execution_strategy
-    })
+    return _execute_operation(
+        "market_sell",
+        {
+            "stock_code": stock_code,
+            "quantity": quantity,
+            "execution_strategy": execution_strategy,
+        },
+    )
 
 
 # ============= 查询操作工具 =============
+
 
 @mcp_server.tool
 def holding_query(return_type: str = "json") -> dict:
@@ -167,9 +168,7 @@ def holding_query(return_type: str = "json") -> dict:
     Returns:
         持仓信息
     """
-    return _execute_operation("holding_query", {
-        "return_type": return_type
-    })
+    return _execute_operation("holding_query", {"return_type": return_type})
 
 
 @mcp_server.tool
@@ -183,7 +182,7 @@ def funds_query() -> dict:
 
 
 @mcp_server.tool
-def order_query(return_type: str = "json", stock_code: Optional[str] = None) -> dict:
+def order_query(return_type: str = "json", stock_code: str | None = None) -> dict:
     """查询股票委托订单信息
 
     Args:
@@ -201,9 +200,7 @@ def order_query(return_type: str = "json", stock_code: Optional[str] = None) -> 
 
 @mcp_server.tool
 def historical_commission_query(
-    return_type: str,
-    stock_code: Optional[str] = None,
-    time_range: str = "当日"
+    return_type: str, stock_code: str | None = None, time_range: str = "当日"
 ) -> dict:
     """查询股票历史委托订单信息
 
@@ -223,11 +220,9 @@ def historical_commission_query(
 
 # ============= 委托管理工具 =============
 
+
 @mcp_server.tool
-def order_cancel(
-    stock_code: Optional[str] = None,
-    cancel_type: str = "all"
-) -> dict:
+def order_cancel(stock_code: str | None = None, cancel_type: str = "all") -> dict:
     """撤销委托订单
 
     Args:
@@ -245,12 +240,10 @@ def order_cancel(
 
 # ============= 条件单工具 =============
 
+
 @mcp_server.tool
 def condition_buy(
-    stock_code: str,
-    target_price: float,
-    quantity: int,
-    expire_days: int = 30
+    stock_code: str, target_price: float, quantity: int, expire_days: int = 30
 ) -> dict:
     """条件买入股票
 
@@ -265,20 +258,20 @@ def condition_buy(
     Returns:
         条件单创建结果
     """
-    return _execute_operation("condition_buy", {
-        "stock_code": stock_code,
-        "target_price": target_price,
-        "quantity": quantity,
-        "expire_days": expire_days
-    })
+    return _execute_operation(
+        "condition_buy",
+        {
+            "stock_code": stock_code,
+            "target_price": target_price,
+            "quantity": quantity,
+            "expire_days": expire_days,
+        },
+    )
 
 
 @mcp_server.tool
 def condition_sell(
-    stock_code: str,
-    target_price: float,
-    quantity: int,
-    expire_days: int = 30
+    stock_code: str, target_price: float, quantity: int, expire_days: int = 30
 ) -> dict:
     """条件卖出股票
 
@@ -293,12 +286,15 @@ def condition_sell(
     Returns:
         条件单创建结果
     """
-    return _execute_operation("condition_sell", {
-        "stock_code": stock_code,
-        "target_price": target_price,
-        "quantity": quantity,
-        "expire_days": expire_days
-    })
+    return _execute_operation(
+        "condition_sell",
+        {
+            "stock_code": stock_code,
+            "target_price": target_price,
+            "quantity": quantity,
+            "expire_days": expire_days,
+        },
+    )
 
 
 @mcp_server.tool
@@ -311,15 +307,12 @@ def condition_order_query(return_type: str = "json") -> dict:
     Returns:
         条件单信息
     """
-    return _execute_operation("condition_order_query", {
-        "return_type": return_type
-    })
+    return _execute_operation("condition_order_query", {"return_type": return_type})
 
 
 @mcp_server.tool
 def condition_order_cancel(
-    stock_code: Optional[str] = None,
-    order_type: Optional[str] = None
+    stock_code: str | None = None, order_type: str | None = None
 ) -> dict:
     """删除条件单
 
@@ -340,13 +333,14 @@ def condition_order_cancel(
 
 # ============= 止损止盈工具 =============
 
+
 @mcp_server.tool
 def stop_loss_profit(
     stock_code: str,
     stop_loss_percent: float,
     stop_profit_percent: float,
-    quantity: Optional[int] = None,
-    expire_days: int = 30
+    quantity: int | None = None,
+    expire_days: int = 30,
 ) -> dict:
     """设置止损止盈
 
@@ -364,7 +358,7 @@ def stop_loss_profit(
         "stock_code": stock_code,
         "stop_loss_percent": stop_loss_percent,
         "stop_profit_percent": stop_profit_percent,
-        "expire_days": expire_days
+        "expire_days": expire_days,
     }
     if quantity:
         params["quantity"] = quantity
@@ -373,12 +367,9 @@ def stop_loss_profit(
 
 # ============= 国债逆回购工具 =============
 
+
 @mcp_server.tool
-def reverse_repo_buy(
-    market: str,
-    time_range: str,
-    amount: int
-) -> dict:
+def reverse_repo_buy(market: str, time_range: str, amount: int) -> dict:
     """国债逆回购（出借资金）
 
     Args:
@@ -389,11 +380,10 @@ def reverse_repo_buy(
     Returns:
         逆回购结果
     """
-    return _execute_operation("reverse_repo_buy", {
-        "market": market,
-        "time_range": time_range,
-        "amount": amount
-    })
+    return _execute_operation(
+        "reverse_repo_buy",
+        {"market": market, "time_range": time_range, "amount": amount},
+    )
 
 
 @mcp_server.tool
@@ -410,5 +400,10 @@ def reverse_repo_query() -> dict:
 # 从配置文件读取传输类型，支持: http, streamable-http, sse
 # 使用明确的路径 /mcp-server
 _mcp_transport = project_config_instance.api_mcp_server_type
+if _mcp_transport not in ("http", "streamable-http", "sse"):
+    raise ValueError(f"不支持的 MCP 传输类型: {_mcp_transport}")
 logger.info(f"MCP 服务器传输类型: {_mcp_transport}")
-mcp_asgi_app = mcp_server.http_app(path="/mcp-server", transport=_mcp_transport)
+mcp_asgi_app = mcp_server.http_app(
+    path="/mcp-server",
+    transport=cast(Literal["http", "streamable-http", "sse"], _mcp_transport),
+)

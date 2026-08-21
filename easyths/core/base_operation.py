@@ -9,14 +9,13 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
-
-from PIL import Image
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
 
 import pyperclip
 import pywinauto
 import structlog
+from PIL import Image
 
 if TYPE_CHECKING:
     from pywinauto.base_wrapper import BaseWrapper
@@ -25,6 +24,7 @@ from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.models.operations import OperationResult, PluginMetadata
 from easyths.utils import get_captcha_ocr_server
 from easyths.utils.config import project_config_instance
+
 logger = structlog.get_logger(__name__)
 
 
@@ -34,13 +34,13 @@ class BaseOperation(ABC):
     所有业务操作都是同步函数，由队列负责调度执行。
     """
 
-    def __init__(self, automator: TonghuashunAutomator = None):
+    def __init__(self, automator: TonghuashunAutomator | None = None):
         """初始化操作
 
         Args:
             automator: 同花顺自动化器实例
         """
-        self.automator: TonghuashunAutomator = automator
+        self.automator: TonghuashunAutomator | None = automator
         self.metadata = self._get_metadata()
         self.logger = structlog.get_logger(f"{__name__}.{self.__class__.__name__}")
 
@@ -54,7 +54,7 @@ class BaseOperation(ABC):
         pass
 
     @abstractmethod
-    def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: dict[str, Any]) -> bool:
         """验证操作参数
 
         Args:
@@ -66,7 +66,7 @@ class BaseOperation(ABC):
         pass
 
     @abstractmethod
-    def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: dict[str, Any]) -> OperationResult:
         """执行操作 - 同步方法
 
         Args:
@@ -77,7 +77,7 @@ class BaseOperation(ABC):
         """
         pass
 
-    def pre_execute(self, params: Dict[str, Any]) -> bool:
+    def pre_execute(self, params: dict[str, Any]) -> bool:
         """执行前钩子 - 同步方法
 
         Args:
@@ -98,7 +98,9 @@ class BaseOperation(ABC):
 
         return True
 
-    def post_execute(self, params: Dict[str, Any], result: OperationResult) -> OperationResult:
+    def post_execute(
+        self, params: dict[str, Any], result: OperationResult
+    ) -> OperationResult:
         """执行后钩子 - 同步方法
 
         Args:
@@ -110,7 +112,7 @@ class BaseOperation(ABC):
         """
         return result
 
-    def run(self, params: Dict[str, Any]) -> OperationResult:
+    def run(self, params: dict[str, Any]) -> OperationResult:
         """运行操作的完整流程 - 同步方法
 
         Args:
@@ -133,11 +135,15 @@ class BaseOperation(ABC):
                 if not is_param_valid:
                     error_msg = f"{stage}失败：参数验证失败，请检查接口参数"
                     self.logger.error(error_msg, params=params)
-                    return OperationResult(success=False, message=error_msg, timestamp=start_time)
+                    return OperationResult(
+                        success=False, message=error_msg, timestamp=start_time
+                    )
             except Exception as e:
                 error_msg = f"{stage}异常: {str(e)}"
                 self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(success=False, message=error_msg, timestamp=start_time)
+                return OperationResult(
+                    success=False, message=error_msg, timestamp=start_time
+                )
 
             # 阶段2：执行前检查
             stage = "执行前检查"
@@ -146,11 +152,15 @@ class BaseOperation(ABC):
                 if not pre_execute_result:
                     error_msg = f"{stage}失败：同花顺未连接或环境准备失败"
                     self.logger.error(error_msg, params=params)
-                    return OperationResult(success=False, message=error_msg, timestamp=start_time)
+                    return OperationResult(
+                        success=False, message=error_msg, timestamp=start_time
+                    )
             except Exception as e:
                 error_msg = f"{stage}异常: {str(e)}"
                 self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(success=False, message=error_msg, timestamp=start_time)
+                return OperationResult(
+                    success=False, message=error_msg, timestamp=start_time
+                )
 
             # 阶段3：执行核心操作
             stage = "核心操作执行"
@@ -159,7 +169,9 @@ class BaseOperation(ABC):
             except Exception as e:
                 error_msg = f"{stage}异常: {str(e)}"
                 self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(success=False, message=error_msg, timestamp=start_time)
+                return OperationResult(
+                    success=False, message=error_msg, timestamp=start_time
+                )
 
             # 阶段4：执行后处理
             stage = "执行后处理"
@@ -171,7 +183,9 @@ class BaseOperation(ABC):
                 if result.success:
                     self.logger.warning(f"操作成功但{stage}失败: {error_msg}")
                 else:
-                    return OperationResult(success=False, message=error_msg, timestamp=start_time)
+                    return OperationResult(
+                        success=False, message=error_msg, timestamp=start_time
+                    )
 
             # 记录执行结果
             end_time = datetime.now()
@@ -179,7 +193,7 @@ class BaseOperation(ABC):
             self.logger.info(
                 f"操作执行完成: {operation_name}",
                 success=result.success,
-                duration=duration
+                duration=duration,
             )
 
             return result
@@ -187,11 +201,15 @@ class BaseOperation(ABC):
         except Exception as e:
             error_msg = f"操作执行异常（{stage}阶段）: {str(e)}"
             self.logger.exception(error_msg, params=params)
-            return OperationResult(success=False, message=error_msg, timestamp=start_time)
+            return OperationResult(
+                success=False, message=error_msg, timestamp=start_time
+            )
 
     # ============ 辅助方法 ============
 
-    def switch_left_menus(self, main_option: str, sub_option: Optional[str] = None) -> None:
+    def switch_left_menus(
+        self, main_option: str, sub_option: str | None = None
+    ) -> None:
         """切换左侧菜单栏
 
         重写参考easytrader原有的垃圾实现，目前已经做到0.7s，原来需要2.2s
@@ -202,20 +220,28 @@ class BaseOperation(ABC):
         """
         main_window = self.get_main_window(wrapper_obj=True)
         # 获取左侧导航栏
-        main_panel = self.get_control_with_children(main_window, control_type="Pane", auto_id="59648")
-        left_menu_panel = self.get_control_with_children(main_panel,  class_name="AfxWnd140s")
+        main_panel = self.get_control_with_children(
+            main_window, control_type="Pane", auto_id="59648"
+        )
+        left_menu_panel = self.get_control_with_children(
+            main_panel, class_name="AfxWnd140s"
+        )
         # 只有一个元素
         HexinScrollWnd = left_menu_panel.children(title="HexinScrollWnd")[0]
         HexinScrollWnd2 = HexinScrollWnd.children(title="HexinScrollWnd2")[0]
-        tree_view = HexinScrollWnd2.children(control_type="Tree", class_name="SysTreeView32")[0]
+        tree_view = HexinScrollWnd2.children(
+            control_type="Tree", class_name="SysTreeView32"
+        )[0]
 
         # 处理主选择
-        main_option_control = self.get_control_with_children(tree_view, title=main_option)
+        main_option_control = self.get_control_with_children(
+            tree_view, title=main_option
+        )
         if main_option_control is None:
             logger.error(f"未找到主菜单{main_option}")
             raise Exception(f"未找到主菜单{main_option}")
         # 展开主菜单
-        if main_option in ["通用回购","双向委托"]:
+        if main_option in ["通用回购", "双向委托"]:
             main_option_control.select()
             # 没有下级子菜单，也用不了expand()方法
             return
@@ -236,8 +262,7 @@ class BaseOperation(ABC):
                 raise Exception(f"未找到子菜单{sub_option}")
         self.sleep(0.1)
 
-
-    def get_main_window(self, wrapper_obj: bool = False) -> Optional[Any]:
+    def get_main_window(self, wrapper_obj: bool = False) -> Any | None:
         """获取同花顺主窗口控件
 
         Args:
@@ -260,7 +285,6 @@ class BaseOperation(ABC):
             logger.error("获取同花顺主窗口失败: ", ex)
             return None
 
-
     def sleep(self, seconds: float = 0.1) -> None:
         """睡眠指定秒数"""
         time.sleep(seconds)
@@ -276,7 +300,6 @@ class BaseOperation(ABC):
             time.sleep(0.001)
         return False
 
-
     def is_exist_pop_dialog(self) -> bool:
         """是否存在弹窗"""
         main_window = self.get_main_window(wrapper_obj=True)
@@ -288,7 +311,7 @@ class BaseOperation(ABC):
             return True
         return len(childrens) != 0
 
-    def get_pop_dialog_content(self)-> str | None:
+    def get_pop_dialog_content(self) -> str | None:
         """获取弹窗内容"""
         if not self.is_exist_pop_dialog():
             return None
@@ -303,7 +326,7 @@ class BaseOperation(ABC):
             return content
         return None
 
-    def get_pop_dialog(self) -> Tuple[Optional[str], Optional[Any]]:
+    def get_pop_dialog(self) -> tuple[str | None, Any | None]:
         """
         获取弹窗标题和对应弹窗控件，搭配get_control_in_children实现更细化的使用
 
@@ -323,11 +346,11 @@ class BaseOperation(ABC):
             pane_childrens = children.children(control_type="Pane")
             content = "".join([child.window_text() for child in sub_childrens])
             if "您的风险承受能力等级即将过期" in content:
-                return "风险测评提示",children
+                return "风险测评提示", children
             elif "您输入的价格已超出涨跌停限制" in content:
                 return "提示信息", children
             elif "先输入验证码" in content:
-                return "验证码提示框",children
+                return "验证码提示框", children
             elif "委托价格的小数部分应" in content:
                 return "委托价格提示框", children
             elif "不支持历史委托查询" in content:
@@ -346,7 +369,7 @@ class BaseOperation(ABC):
             elif "数据发送错误" in content:
                 return "数据发送错误提示", children
             elif "委托确认" in content:
-                return  "委托确认窗口", children
+                return "委托确认窗口", children
             else:
                 pass
 
@@ -368,7 +391,7 @@ class BaseOperation(ABC):
             main_window.restore()
         main_window.set_focus()
 
-    def get_top_window(self)->"Optional[pywinauto.application.WindowSpecification]":
+    def get_top_window(self) -> "pywinauto.application.WindowSpecification | None":
         """获取最顶层的窗口"""
         return self.automator.app.top_window()
 
@@ -381,54 +404,81 @@ class BaseOperation(ABC):
             return
         count = 0
         while count < 4 and self.is_exist_pop_dialog():
-            count+=1
+            count += 1
             self.sleep(0.15)
             pop_dialog_title, pop_control = self.get_pop_dialog()
             if pop_dialog_title == "风险测评提示":
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="7"
+                ).click()
             elif pop_dialog_title in ["提示信息", "委托价格提示框"]:
-                #点击否
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+                # 点击否
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="7"
+                ).click()
 
             elif pop_dialog_title == "验证码提示框":
-                #点击取消
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="2").click()
-            elif pop_dialog_title == "不支持历史委托查询提示框":
-                #点击确定
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()
-            elif pop_dialog_title == "失败提示":
-                #点击确定
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()
+                # 点击取消
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="2"
+                ).click()
+            elif (
+                pop_dialog_title == "不支持历史委托查询提示框"
+                or pop_dialog_title == "失败提示"
+            ):
+                # 点击确定
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="2", class_name="Button"
+                ).click()
             elif pop_dialog_title == "一键打新提示框":
                 # 点击窗口右上角的 X 触发关闭
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
+                self.get_control_with_children(
+                    pop_control,
+                    control_type="Button",
+                    auto_id="1008",
+                    class_name="Button",
+                ).click()
             elif pop_dialog_title == "通用回购":
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="1008", class_name="Button").click()
+                self.get_control_with_children(
+                    pop_control,
+                    control_type="Button",
+                    auto_id="1008",
+                    class_name="Button",
+                ).click()
             elif pop_dialog_title == "BeginFailed失败提示":
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="2", class_name="Button").click()
-            #条件单触发提醒
-            elif pop_dialog_title == 'CDlgTriggeredConfitionTip':
-                pop_control.close()
-            elif pop_dialog_title == 'TranferAccount':
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="2", class_name="Button"
+                ).click()
+            # 条件单触发提醒
+            elif (
+                pop_dialog_title == "CDlgTriggeredConfitionTip"
+                or pop_dialog_title == "TranferAccount"
+            ):
                 pop_control.close()
             # 条件单窗口
             elif pop_dialog_title == "ConditionToolBar":
                 pop_control.type_keys("{ESC}")
             elif pop_dialog_title == "程序退出确认窗口":
                 # 点击否关闭窗口
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="7"
+                ).click()
             elif pop_dialog_title == "数据发送错误提示":
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="1009").click()
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="1009"
+                ).click()
 
             elif pop_dialog_title == "委托确认窗口":
-                self.get_control_with_children(pop_control, control_type="Button", auto_id="7").click()
+                self.get_control_with_children(
+                    pop_control, control_type="Button", auto_id="7"
+                ).click()
                 # Alt+N 确认（% = Alt，^ = Ctrl，+ = Shift）
                 # pop_control.type_keys("%n")
 
             else:
                 try:
                     pop_control.type_keys("{ESC}")
-                except:
+                except Exception:
                     self.logger.warning("未知的弹窗类型，无法关闭")
 
         self.sleep(0.05)
@@ -443,16 +493,27 @@ class BaseOperation(ABC):
         while self.is_exist_pop_dialog() and count < 5:
             pop_dialog_title, pop_control = self.get_pop_dialog()
             if pop_dialog_title == "验证码提示框":
-                if captcha_image is not None and captcha_code_length != 0 and project_config_instance.save_error_captcha_image:
+                if (
+                    captcha_image is not None
+                    and captcha_code_length != 0
+                    and project_config_instance.save_error_captcha_image
+                ):
                     # 保存错误的图片
-                    captcha_image.save(f"{str(Path("~/easyths/captcha_error").expanduser())}/{uuid4().hex[:12]}.png")
+                    captcha_image.save(
+                        f"{str(Path('~/easyths/captcha_error').expanduser())}/{uuid4().hex[:12]}.png"
+                    )
 
-                code_edit = self.get_control_with_children(pop_control, control_type="Edit", auto_id="2404",
-                                                           class_name="Edit")
+                code_edit = self.get_control_with_children(
+                    pop_control, control_type="Edit", auto_id="2404", class_name="Edit"
+                )
                 # 尝试删除可能存在的旧验证码
-                code_edit.type_keys('{{BACKSPACE {}}}'.format(captcha_code_length))
-                code_image_control = self.get_control_with_children(pop_control, control_type="Image", auto_id="2405",
-                                                                    class_name="Static")
+                code_edit.type_keys(f"{{BACKSPACE {captcha_code_length}}}")
+                code_image_control = self.get_control_with_children(
+                    pop_control,
+                    control_type="Image",
+                    auto_id="2405",
+                    class_name="Static",
+                )
                 if captcha_code_length != 0:
                     code_image_control.click_input()
                     # 等待刷新验证码
@@ -467,9 +528,15 @@ class BaseOperation(ABC):
                 self.sleep(0.2)
             count += 1
 
-    def get_control_with_children(self, parent_control: Any, class_name: Optional[str] = None,
-                                  title: Optional[str] = None, title_re: Optional[str] = None,
-                                  control_type: Optional[str] = None, auto_id: Optional[str] = None) -> Optional["BaseWrapper"]:
+    def get_control_with_children(
+        self,
+        parent_control: Any,
+        class_name: str | None = None,
+        title: str | None = None,
+        title_re: str | None = None,
+        control_type: str | None = None,
+        auto_id: str | None = None,
+    ) -> Optional["BaseWrapper"]:
         """在子控件中查找控件,实现最快的控件查找方法, 比 使用child_window() 快很多倍，项目禁止使用child_window()方法来获取控件
 
         这里的函数返回类型只是辅助编码提示，并不是实际的类型，有些方法没提示不代表不能用，比如click方法
@@ -484,7 +551,9 @@ class BaseOperation(ABC):
         - element_info
         """
         # 1. 先拿到所有亲儿子,先使用支持的筛选参数进行
-        all_children = parent_control.children(control_type=control_type, class_name=class_name,title=title)
+        all_children = parent_control.children(
+            control_type=control_type, class_name=class_name, title=title
+        )
 
         # 2. 手动筛选，处理内置不支持的情况
         for child in all_children:
@@ -493,36 +562,35 @@ class BaseOperation(ABC):
             if auto_id and info.automation_id != auto_id:
                 continue
             # title_re 需要用到 re.match， 包含就是匹配
-            if title_re and not (title_re in info.name):
+            if title_re and title_re not in info.name:
                 continue
             # 匹配成功，立刻返回第一个
             return child
         return None
 
-
-    def ocr_captcha(self, control: Any) -> Tuple[str, Image.Image]:
+    def ocr_captcha(self, control: Any) -> tuple[str, Image.Image]:
         """根据控件获取OCR验证码结果"""
         code, image = get_captcha_ocr_server().recognize(control)
         return code, image
-
 
     def get_clipboard_data(self) -> str:
         """获取剪贴板数据"""
         return pyperclip.paste()
 
-
     def clear_clipboard(self) -> None:
         """清空剪贴板"""
         pyperclip.copy("")
 
+
 # ============ 操作注册表 ============
+
 
 class OperationRegistry:
     """操作注册表 - 管理所有已注册的操作插件"""
 
     def __init__(self):
-        self._operations: Dict[str, type] = {}
-        self._instances: Dict[str, BaseOperation] = {}
+        self._operations: dict[str, type] = {}
+        self._instances: dict[str, BaseOperation] = {}
         self.logger = structlog.get_logger(__name__)
 
     def register(self, operation_class: type) -> None:
@@ -539,9 +607,11 @@ class OperationRegistry:
         operation_name = temp_instance.metadata.operation_name
 
         self._operations[operation_name] = operation_class
-        self.logger.info(f"注册操作: {operation_name}", class_name=operation_class.__name__)
+        self.logger.info(
+            f"注册操作: {operation_name}", class_name=operation_class.__name__
+        )
 
-    def get_operation_class(self, name: str) -> Optional[type]:
+    def get_operation_class(self, name: str) -> type | None:
         """获取操作类
 
         Args:
@@ -552,7 +622,7 @@ class OperationRegistry:
         """
         return self._operations.get(name)
 
-    def get_operation_instance(self, name: str, automator=None) -> Optional[BaseOperation]:
+    def get_operation_instance(self, name: str, automator=None) -> BaseOperation | None:
         """获取操作实例（单例模式）
 
         Args:
@@ -572,7 +642,7 @@ class OperationRegistry:
 
         return self._instances.get(name)
 
-    def list_operations(self) -> Dict[str, PluginMetadata]:
+    def list_operations(self) -> dict[str, PluginMetadata]:
         """列出所有已注册的操作
 
         Returns:
@@ -594,7 +664,9 @@ class OperationRegistry:
         # 使用包内 operations 目录
         plugin_path = Path(__file__).parent.parent / "operations"
         if not plugin_path.exists():
-            structlog.get_logger(__name__).warning("插件目录不存在", plugin_dir=str(plugin_path))
+            structlog.get_logger(__name__).warning(
+                "插件目录不存在", plugin_dir=str(plugin_path)
+            )
             return 0
 
         loaded_count = 0
@@ -606,7 +678,9 @@ class OperationRegistry:
 
             try:
                 # 动态导入模块
-                spec = importlib.util.spec_from_file_location("plugin_module", str(py_file))
+                spec = importlib.util.spec_from_file_location(
+                    "plugin_module", str(py_file)
+                )
                 if not spec or not spec.loader:
                     logger.error("无法创建模块规范", file_path=str(py_file))
                     continue
@@ -617,12 +691,16 @@ class OperationRegistry:
                 # 查找BaseOperation子类并注册
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
-                    if (isinstance(attr, type) and
-                            issubclass(attr, BaseOperation) and
-                            attr != BaseOperation):
+                    if (
+                        isinstance(attr, type)
+                        and issubclass(attr, BaseOperation)
+                        and attr != BaseOperation
+                    ):
                         operation_registry.register(attr)
                         loaded_count += 1
-                        logger.info("成功加载插件", file=py_file.name, class_name=attr_name)
+                        logger.info(
+                            "成功加载插件", file=py_file.name, class_name=attr_name
+                        )
 
             except Exception as e:
                 logger.error("加载插件文件失败", file=str(py_file), error=str(e))

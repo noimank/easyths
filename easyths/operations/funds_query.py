@@ -1,8 +1,8 @@
 import time
-from typing import Dict, Any
+from typing import Any
 
 from easyths.core import BaseOperation
-from easyths.models.operations import PluginMetadata, OperationResult
+from easyths.models.operations import OperationResult, PluginMetadata
 
 
 class FundsQueryOperation(BaseOperation):
@@ -15,21 +15,19 @@ class FundsQueryOperation(BaseOperation):
             description="查询账户资金信息",
             author="noimank",
             operation_name="funds_query",
-            parameters={
-            }
+            parameters={},
         )
 
-    def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: dict[str, Any]) -> bool:
         """验证查询参数"""
         return True
 
-
-    def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: dict[str, Any]) -> OperationResult:
         """执行资金查询操作"""
         start_time = time.time()
 
         try:
-            self.logger.info(f"执行资金查询操作。")
+            self.logger.info("执行资金查询操作。")
             # 切换到资金股票菜单
             # self.switch_left_menus("查询[F4]", "资金股票")  #不采用特定子菜单进行定位 https://github.com/noimank/easyths/issues/4
             # 刷新数据
@@ -43,14 +41,20 @@ class FundsQueryOperation(BaseOperation):
             # 拿到显示面板, 大约会有 34个children
             # main_window = self.get_main_window()
             # main_panel = main_window.child_window(auto_id="59649", control_type="Pane", depth=2).wrapper_object()
-                 # 改进版：不使用child_window从 1.5s降低到1s
-            main_panel = self.get_control_with_children(main_window_wrapper, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
+            # 改进版：不使用child_window从 1.5s降低到1s
+            main_panel = self.get_control_with_children(
+                main_window_wrapper,
+                class_name="AfxMDIFrame140s",
+                control_type="Pane",
+                auto_id="59648",
+            ).children(class_name="AfxMDIFrame140s")[0]
             # 再进一步筛选
-            text_controls = main_panel.children(control_type="Text",class_name="Static")
+            text_controls = main_panel.children(
+                control_type="Text", class_name="Static"
+            )
 
             # 准备返回数据
-            result_data = {
-            }
+            result_data = {}
 
             # 一次遍历完成信息提取
             for control in text_controls:
@@ -70,17 +74,13 @@ class FundsQueryOperation(BaseOperation):
                 elif auto_id == "1027":
                     result_data["持仓盈亏"] = control.window_text()
 
-            self.logger.info(f"资金查询完成，耗时{time.time() - start_time}", **result_data)
-
-            return OperationResult(
-                success=True,
-                data=result_data
+            self.logger.info(
+                f"资金查询完成，耗时{time.time() - start_time}", **result_data
             )
+
+            return OperationResult(success=True, data=result_data)
 
         except Exception as e:
             error_msg = f"资金查询操作异常: {str(e)}"
             self.logger.exception(error_msg)
-            return OperationResult(
-                success=False,
-                message=error_msg
-            )
+            return OperationResult(success=False, message=error_msg)

@@ -1,0 +1,34 @@
+# 提交前自动执行代码质量检查，安装：pre-commit install
+# 见 https://pre-commit.com for more information
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+        exclude: ^mkdocs\.yml$ # mkdocs 使用 pymdownx 的 python/name 标签，非标准 YAML
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: end-of-file-fixer
+        exclude: ^captcha_model/ # 独立训练子项目，不做任何改写
+      - id: trailing-whitespace
+        exclude: ^captcha_model/
+
+  # 版本需与 uv.lock 中的 ruff 版本保持一致，避免格式化行为漂移
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.4
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # mypy 依赖项目虚拟环境中的类型存根，因此用本地 uv 环境运行而非独立镜像
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (easyths)
+        entry: uv run --no-sync mypy
+        language: system
+        files: ^(easyths/.*|pyproject\.toml)
+        pass_filenames: false
+        require_serial: true

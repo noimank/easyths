@@ -108,6 +108,12 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# ruff
+.ruff_cache/
+
+# pre-commit
+.pre-commit-cache/
+
 # Pyre type checker
 .pyre/
 
@@ -148,4 +154,3 @@ AGENTS.md
 captcha_model/data
 captcha_model/outputs
 captcha_model/onnx_model
-

@@ -1,11 +1,13 @@
 """
 日志中间件
 """
+
 import time
-from typing import Callable
+from collections.abc import Callable
+
+import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -23,7 +25,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             method=request.method,
             url=str(request.url),
             headers=dict(request.headers),
-            query_params=dict(request.query_params)
+            query_params=dict(request.query_params),
         )
 
         # 执行请求
@@ -38,7 +40,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             method=request.method,
             url=str(request.url),
             status_code=response.status_code,
-            process_time=round(process_time, 4)
+            process_time=round(process_time, 4),
         )
 
         # 添加响应头

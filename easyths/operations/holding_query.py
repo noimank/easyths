@@ -1,10 +1,10 @@
-import datetime
 import time
-from typing import Dict, Any
+from typing import Any
 
 from easyths.core import BaseOperation
-from easyths.utils import df_format_convert,text2df
-from easyths.models.operations import PluginMetadata, OperationResult
+from easyths.models.operations import OperationResult, PluginMetadata
+from easyths.utils import df_format_convert, text2df
+
 
 class HoldingQueryOperation(BaseOperation):
     """持仓查询操作"""
@@ -22,17 +22,19 @@ class HoldingQueryOperation(BaseOperation):
                     "required": False,
                     "description": "结果返回类型",
                     "enum": ["str", "json", "dict", "df", "markdown"],
-                    "default": "json"
+                    "default": "json",
                 }
-            }
+            },
         )
 
-    def validate(self, params: Dict[str, Any]) -> bool:
+    def validate(self, params: dict[str, Any]) -> bool:
         """验证查询参数"""
         try:
             return_type = params.get("return_type")
             if return_type not in ["str", "json", "dict", "markdown"]:
-                self.logger.error("参数return_type无效，有效值为：str、json、dict、markdown")
+                self.logger.error(
+                    "参数return_type无效，有效值为：str、json、dict、markdown"
+                )
                 return False
             return True
 
@@ -40,12 +42,12 @@ class HoldingQueryOperation(BaseOperation):
             self.logger.exception("参数验证异常", error=str(e))
             return False
 
-    def execute(self, params: Dict[str, Any]) -> OperationResult:
+    def execute(self, params: dict[str, Any]) -> OperationResult:
         """执行持仓查询操作"""
         start_time = time.time()
         return_type = params.get("return_type")
         try:
-            self.logger.info(f"执行持仓查询操作。")
+            self.logger.info("执行持仓查询操作。")
             # 切换到持仓菜单
             self.switch_left_menus("查询[F4]", "资金股票")
             # 刷新数据
@@ -54,14 +56,25 @@ class HoldingQueryOperation(BaseOperation):
             self.clear_clipboard()
             self.sleep(0.3)
             main_window_wrapper = self.get_main_window(wrapper_obj=True)
-            main_panel = self.get_control_with_children(main_window_wrapper, class_name="AfxMDIFrame140s", control_type="Pane", auto_id="59648").children(class_name='AfxMDIFrame140s')[0]
+            main_panel = self.get_control_with_children(
+                main_window_wrapper,
+                class_name="AfxMDIFrame140s",
+                control_type="Pane",
+                auto_id="59648",
+            ).children(class_name="AfxMDIFrame140s")[0]
 
-            HexinScrollWnd = self.get_control_with_children(main_panel, title='HexinScrollWnd', auto_id="1047")
+            HexinScrollWnd = self.get_control_with_children(
+                main_panel, title="HexinScrollWnd", auto_id="1047"
+            )
 
-            HexinScrollWnd2 = self.get_control_with_children(HexinScrollWnd, auto_id="200", class_name="AfxWnd140s")
+            HexinScrollWnd2 = self.get_control_with_children(
+                HexinScrollWnd, auto_id="200", class_name="AfxWnd140s"
+            )
 
             # 获取表格控件
-            table_panel = self.get_control_with_children(HexinScrollWnd2, title="Custom1", class_name="CVirtualGridCtrl")
+            table_panel = self.get_control_with_children(
+                HexinScrollWnd2, title="Custom1", class_name="CVirtualGridCtrl"
+            )
             # 鼠标左键点击
             table_panel.click_input()
 
@@ -78,10 +91,16 @@ class HoldingQueryOperation(BaseOperation):
             table_data = text2df(table_data)
             if not table_data.empty:
                 # 丢弃操作列及所有未命名的多余列（Unnamed）
-                drop_cols = [col for col in table_data.columns if "Unnamed" in str(col) or col == "操作"]
+                drop_cols = [
+                    col
+                    for col in table_data.columns
+                    if "Unnamed" in str(col) or col == "操作"
+                ]
                 table_data = table_data.drop(columns=drop_cols, errors="ignore")
 
-            is_op_success = not self.is_exist_pop_dialog()  #没有弹窗了，说明没有其他意外情况发生
+            is_op_success = (
+                not self.is_exist_pop_dialog()
+            )  # 没有弹窗了，说明没有其他意外情况发生
             if is_op_success:
                 # 获取表格数据
                 table_data = df_format_convert(table_data, return_type)
@@ -93,19 +112,17 @@ class HoldingQueryOperation(BaseOperation):
             #     "success": is_op_success
             # }
 
-            self.logger.info(f"持仓查询完成，耗时{time.time() - start_time}秒",
-                           holding=table_data)
+            self.logger.info(
+                f"持仓查询完成，耗时{time.time() - start_time}秒", holding=table_data
+            )
 
             return OperationResult(
                 message=f"持仓查询完成，耗时{time.time() - start_time}秒",
                 success=is_op_success,
-                data=table_data
+                data=table_data,
             )
 
         except Exception as e:
             error_msg = f"持仓查询操作异常: {str(e)}"
             self.logger.exception(error_msg)
-            return OperationResult(
-                success=False,
-                message=error_msg
-            )
+            return OperationResult(success=False, message=error_msg)

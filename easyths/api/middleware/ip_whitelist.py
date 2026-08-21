@@ -1,11 +1,13 @@
 """
 IP白名单中间件
 """
-from typing import Callable, List
+
+import json
+from collections.abc import Callable
+
+import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-import structlog
-import json
 
 logger = structlog.get_logger(__name__)
 
@@ -16,7 +18,7 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
     只有在白名单中的IP地址才能访问API，默认允许所有IP访问
     """
 
-    def __init__(self, app, allowed_hosts: List[str] | None = None):
+    def __init__(self, app, allowed_hosts: list[str] | None = None):
         """初始化中间件
 
         Args:
@@ -59,12 +61,10 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
         message = {
             "error": "Access denied",
             "message": "Your IP is not in the whitelist",
-            "ip": client_host
+            "ip": client_host,
         }
         return Response(
-            content=json.dumps(message),
-            status_code=403,
-            media_type="application/json"
+            content=json.dumps(message), status_code=403, media_type="application/json"
         )
 
     def _get_client_host(self, request: Request) -> str:

@@ -1,1 +1,1 @@
-from .trade_client import  TradeClient, APIResponse, TradeClientError
+from .trade_client import APIResponse, TradeClient, TradeClientError
