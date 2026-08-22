@@ -31,7 +31,7 @@ key = "your-secret-key"
 
 ---
 
-## 统一响应信封
+## 统一响应信封 {#统一响应信封}
 
 所有 REST 端点（以及 MCP 工具返回、Python SDK 解析结果）共用同一形状：
 
@@ -436,7 +436,7 @@ GET /api/v1/queue/stats
   可转债（11/12 开头）必须是 10 的倍数且不小于 10
 - 限价委托与条件单的单笔委托金额（价格 × 数量）上限为 10,000,000 元
 
-### buy - 买入股票
+### buy - 买入股票 {#buy-买入股票}
 
 ```http
 POST /api/v1/operations/buy
@@ -487,7 +487,7 @@ POST /api/v1/operations/sell
 **响应数据**（`data`，对象）: 同 [buy](#buy-买入股票)，
 `stock_code` / `price` / `quantity`。
 
-### market_buy - 市价买入
+### market_buy - 市价买入 {#market_buy-市价买入}
 
 以市价方式买入股票，无需指定价格，通过成交策略决定成交方式。
 
@@ -566,7 +566,7 @@ POST /api/v1/operations/order_cancel
 | cancel_type | string | 撤单类型：all / buy / sell |
 | cancelled_count | integer | 撤销的委托笔数 |
 
-### condition_buy - 条件买入
+### condition_buy - 条件买入 {#condition_buy-条件买入}
 
 设置条件买入单，当股价达到目标价格时自动触发买入。
 
@@ -782,6 +782,8 @@ POST /api/v1/operations/funds_query
 | available_amount | number \| null | 可用金额 |
 | withdrawable_amount | number \| null | 可取金额 |
 | holding_profit | number \| null | 持仓盈亏 |
+| daily_profit | number \| null | 当日盈亏 |
+| daily_profit_ratio | number \| null | 当日盈亏比（%，如 0.57 表示 0.57%） |
 
 **响应示例**（`GET .../result` 终态）:
 ```json
@@ -797,13 +799,15 @@ POST /api/v1/operations/funds_query
     "total_assets": 100000.0,
     "available_amount": 48950.0,
     "withdrawable_amount": 48950.0,
-    "holding_profit": 123.45
+    "holding_profit": 123.45,
+    "daily_profit": 56.78,
+    "daily_profit_ratio": 0.57
   },
   "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
-### order_query - 委托查询
+### order_query - 委托查询 {#order_query-委托查询}
 
 ```http
 POST /api/v1/operations/order_query
@@ -930,7 +934,7 @@ POST /api/v1/operations/reverse_repo_query
 }
 ```
 
-### account_query - 账户列表查询
+### account_query - 账户列表查询 {#account_query-账户列表查询}
 
 获取客户端所有已登录账户（幂等：首次经 GUI 读取，此后复用缓存）。
 **服务启动时会自动执行一次本操作**，完成账户列表与当前账户的缓存初始化。

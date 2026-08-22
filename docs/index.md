@@ -22,6 +22,8 @@ EasyTHS 是为你量身定制的轻量级解决方案。
 - 🖥️ **GUI 自动化** - 基于 pywinauto 的 Windows GUI 自动化
 - 🌐 **RESTful API** - FastAPI 提供的高性能 HTTP API 接口
 - 🤖 **MCP 支持** - 支持 Model Context Protocol，可被 AI 助手直接调用
+- 🔁 **多账户支持** - 账户列表查询、原子切换与按账户定向执行
+- 🧭 **Web 控制台** - 内嵌零构建控制台，浏览器内直接下单与查询
 - 📊 **数据管理** - 支持交易数据的记录和查询
 
 ### 生产级安全
@@ -205,7 +207,8 @@ easyths/
 ├── core/                        # 核心组件
 │   ├── tonghuashun_automator.py # 同花顺自动化器 (pywinauto)
 │   ├── base_operation.py        # 操作基类与注册表
-│   └── operation_queue.py       # 优先级操作队列
+│   ├── operation_queue.py       # 优先级操作队列
+│   └── account_state.py         # 账户缓存（可用账户列表/当前使用账户）
 ├── operations/                  # 操作插件 (自动发现)
 │   ├── params.py                # 全部操作的参数契约（Pydantic 模型）
 │   ├── results.py               # 全部操作的结果契约（Pydantic 模型）
@@ -224,7 +227,9 @@ easyths/
 │   ├── funds_query.py           # 查资金
 │   ├── historical_commission_query.py  # 查历史委托
 │   ├── reverse_repo_buy.py      # 国债逆回购购买
-│   └── reverse_repo_query.py    # 国债逆回购查询
+│   ├── reverse_repo_query.py    # 国债逆回购查询
+│   ├── account_query.py         # 账户列表查询
+│   └── account_switch.py        # 账户切换
 ├── models/                      # 数据模型
 │   └── operations.py            # 状态/错误码/统一信封/操作与参数基类
 ├── utils/                       # 工具模块
@@ -235,6 +240,9 @@ easyths/
 │   ├── table_text_handler.py    # 表格文本处理
 │   └── logger.py                # 日志配置
 └── assets/                      # 资源文件
+    ├── config_example.toml      # 示例配置文件
+    ├── onnx_model/              # 内置验证码 OCR 模型
+    └── web/                     # 内嵌 Web 控制台（零构建，根路由托管）
 ```
 
 ### 技术栈
@@ -262,42 +270,13 @@ easyths/
 
 ```bash
 # 安装服务端
-pip install easyths[server]
+pip install 'easyths[server]'
 
 # 启动服务
 easyths
 ```
 
-## 命令行参数
-
-EasyTHS 支持以下命令行参数：
-
-| 参数 | 说明 |
-|------|------|
-| `--exe_path <path>` | 指定同花顺交易程序路径（优先级高于配置文件） |
-| `--config <file>` | 指定 TOML 配置文件路径 |
-| `--get_config` | 将示例配置文件复制到当前目录 |
-| `--version, -v` | 显示版本信息 |
-| `--help` | 显示帮助信息 |
-
-### 使用示例
-
-```bash
-# 使用默认配置启动（自动检测同花顺远航版）
-easyths
-
-# 使用自定义配置文件启动
-easyths --config my_config.toml
-
-# 指定交易程序路径启动（免费版或其他版本）
-easyths --exe_path "C:/同花顺/xiadan.exe"
-
-# 生成示例配置文件
-easyths --get_config
-
-# 组合使用
-easyths --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
-```
+命令行选项与配置文件说明见 [基础用法](getting-started/basic-usage.md)。
 
 ## 文档
 

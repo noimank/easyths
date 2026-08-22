@@ -152,7 +152,7 @@ Set-WinUserLanguageList $List -Force
 
 ```powershell
 # 使用 pip 安装服务端
-pip install easyths[server]
+pip install 'easyths[server]'
 
 # 验证安装
 easyths --version

@@ -20,7 +20,7 @@ pip install easyths
 ### 安装完整服务端（Windows）
 
 ```bash
-pip install easyths[server]
+pip install 'easyths[server]'
 ```
 
 ## 使用 uv 安装（推荐）
@@ -36,14 +36,14 @@ uv pip install easyths
 ### 安装完整服务端（Windows）
 
 ```bash
-uv pip install easyths[server]
+uv pip install 'easyths[server]'
 ```
 
 ### 使用 uvx 一键运行服务端
 
 ```bash
 # 直接运行服务端，无需手动安装
-uvx easyths[server]
+uvx 'easyths[server]'
 ```
 
 ## 从源码安装

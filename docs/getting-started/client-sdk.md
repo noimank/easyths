@@ -30,10 +30,10 @@ uv add easyths
 
 ```bash
 # 使用 pip 安装（推荐）
-pip install easyths[server]
+pip install 'easyths[server]'
 
 # 或使用 uv
-uv add easyths[server]
+uv add 'easyths[server]'
 ```
 
 **完整服务端包含**：
@@ -129,7 +129,7 @@ stats = client.get_queue_stats()
 
 ```python
 ops = client.list_operations()
-# 返回: {"success": True, "data": {"operations": {...}, "count": 19}}
+# 返回: {"success": True, "data": {"operations": {...}, "count": 18}}
 # operations 内每个操作含 name / description / parameters / result_schema
 ```
 

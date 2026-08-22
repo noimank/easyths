@@ -23,6 +23,7 @@
 - **执行看门狗**：单操作硬超时熔断（默认 10 秒，可配置），界面卡死自动断连、后续操作快速失败，重连即恢复，队列不阻塞
 - **实时监控**：详细的日志记录和状态监控
 - **RESTful API**：完整的 HTTP 接口，支持各种语言集成
+- **多账户支持**：账户列表查询、原子切换与按账户定向执行，切换与操作在同一队列槽内原子完成
 - **内嵌 Web 控制台**：浏览器打开即用的操作台，操作表单由接口契约自动生成，无需安装任何前端依赖
 - **MCP 支持**：支持 Model Context Protocol，可被 AI 助手（如 Claude Code、Cursor）直接调用
 - **验证码识别**：内置 CRNN 模型，支持自定义微调适配特定验证码样式
@@ -49,16 +50,22 @@
 
 #### 请一定一定要根据项目要求设置下单客户端，否则不保证可用
 
-### 安装
+### 安装并使用
 
 ```bash
 # 使用 uvx 一键运行服务端（推荐）,需要已经打开下单软件并登录进入页面
-uvx easyths[server]
+uvx 'easyths[server]'
 
 # 或使用 pip 安装服务端
-pip install easyths[server]
-easyths
+pip install 'easyths[server]'
+# 获取config.toml配置，按需修改，不然走默认
+easyths --get_config
+# 运行
+easyths --config config.toml
+
 ```
+
+注： 就是找到并打开下单软件（C:/同花顺远航版/transaction/xiadan.exe）即可，不运行同花顺看盘软件（当然初次运行还是需要同花顺的看盘软件来配置相关账号，配置账号之后，之后就只运行xiadan.exe软件即可）
 
 服务默认运行在 `http://127.0.0.1:7648`
 
@@ -146,7 +153,7 @@ with TradeClient(host="127.0.0.1", port=7648, api_key="your-api-key") as client:
 
 ```bash
 # 启动服务
-uvx easyths[server]
+uvx 'easyths[server]'
 
 # 买入股票（参数平铺在请求体；启用 API Key 时需带 Authorization 头）
 curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \
