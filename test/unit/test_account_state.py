@@ -157,8 +157,8 @@ class _FakeWindowsApp:
 class _DropdownSwitchStub(AccountSwitchOperation):
     """记录按键并模拟下拉校验链路的切换替身（不触真实 GUI）。
 
-    dropdown_items 为下拉列表的 (展示文本, 是否选中) 序列，展示文本携带
-    完整账户名（如 "B账户-李四"），校验逻辑按清洗规则截取前缀比对。
+    dropdown_items 为下拉列表的 (展示文本, 是否选中) 序列，展示文本即
+    账户名（如 "B账户-李四"，与缓存中的账户名一致）。
     """
 
     def __init__(self, dropdown_items):
@@ -239,36 +239,36 @@ def test_account_switch_same_account_noop():
 
 
 def test_account_switch_success_sends_alt_index():
-    account_state.update_available_accounts([("A账户", 1), ("B账户", 2)])
-    account_state.set_current_used_account("A账户")
+    account_state.update_available_accounts([("A账户-张三", 1), ("B账户-李四", 2)])
+    account_state.set_current_used_account("A账户-张三")
 
-    # 下拉列表展示完整账户名，选中项即切换目标（清洗前缀后匹配）
+    # 下拉列表展示名即账户名，选中项即切换目标
     op = _DropdownSwitchStub(
         [("A账户-张三", False), ("B账户-李四", True), ("编辑账户", False)]
     )
-    result = op.execute(AccountSwitchParams(account_name="B账户"))
+    result = op.execute(AccountSwitchParams(account_name="B账户-李四"))
     assert result.success
     assert op.sent_keys == ["%2", "{ESC}"]  # Alt + 账户序号，校验后 ESC 关闭下拉
-    assert result.data == {"previous_used_account": "A账户"}
-    assert account_state.current_used_account == "B账户"
-    assert result.current_used_account == "B账户"
+    assert result.data == {"previous_used_account": "A账户-张三"}
+    assert account_state.current_used_account == "B账户-李四"
+    assert result.current_used_account == "B账户-李四"
 
 
 def test_account_switch_verification_failed_keeps_account():
     """下拉校验发现选中项仍是原账户：internal 失败，缓存与信封保持原账户。"""
-    account_state.update_available_accounts([("A账户", 1), ("B账户", 2)])
-    account_state.set_current_used_account("A账户")
+    account_state.update_available_accounts([("A账户-张三", 1), ("B账户-李四", 2)])
+    account_state.set_current_used_account("A账户-张三")
 
     op = _DropdownSwitchStub(
         [("A账户-张三", True), ("B账户-李四", False)]  # 切换未生效：仍选中 A
     )
-    result = op.execute(AccountSwitchParams(account_name="B账户"))
+    result = op.execute(AccountSwitchParams(account_name="B账户-李四"))
     assert result.success is False
     assert result.error_code == ErrorCode.INTERNAL
     assert "账户切换失败" in result.message
     assert op.sent_keys == ["%2", "{ESC}"]
-    assert account_state.current_used_account == "A账户"
-    assert result.current_used_account == "A账户"
+    assert account_state.current_used_account == "A账户-张三"
+    assert result.current_used_account == "A账户-张三"
 
 
 # ============ 看门狗超时结果的 current_used_account ============

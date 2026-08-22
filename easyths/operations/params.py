@@ -174,7 +174,7 @@ class AccountSwitchParams(OperationParams):
         Field(
             min_length=1,
             description=(
-                "目标账户名（客户端展示名的前缀标识，如 平安证券-王*明 取 平安证券，"
+                "目标账户名（客户端下拉列表的完整展示名，如 平安证券-王*明，"
                 "取值见 account_query 返回）"
             ),
         ),

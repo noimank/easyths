@@ -83,7 +83,7 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
     def _check_already_change(self, account_name_unverified: str) -> bool:
         """检查是否真的已经切换到位。
 
-        账户名只取前面的标识（如 "平安证券-王*明" -> "平安证券"），
+        账户名取条目完整展示名（仅去除首尾空白，如 "平安证券-王*明"），
         条目与当前使用账户使用同一清洗规则，保证后者必在可用账户列表中。
         """
         main_window = self.get_main_window(wrapper_obj=True)
@@ -108,8 +108,8 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
             account_name = item.window_text()
             if account_name == "编辑账户":
                 continue
-            # 只取前面的标识 如 "平安证券-王*明" -> "平安证券"
-            clean_account_name = account_name.strip().split("-")[0]
+            # 账户名如 "平安证券-王*明"
+            clean_account_name = account_name.strip()
             if item.is_selected() and clean_account_name == account_name_unverified:
                 main_window.type_keys("{ESC}")
                 return True

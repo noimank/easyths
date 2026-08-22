@@ -141,7 +141,7 @@ class AccountRow(ResultModel):
     """账户行（account_query）：账户名 + 客户端列表序号"""
 
     account_name: Text = Field(
-        description="账户名（客户端展示名的前缀标识，如 平安证券-王*明 取 平安证券）"
+        description="账户名（客户端下拉列表的完整展示名，如 平安证券-王*明）"
     )
     account_index: int = Field(description="账户序号（客户端列表位置）")
 

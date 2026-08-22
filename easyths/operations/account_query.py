@@ -41,7 +41,7 @@ class AccountQueryOperation(BaseOperation[EmptyParams]):
     def _read_accounts(self) -> list[tuple[str, int]]:
         """从客户端读取全部账户条目，并借选中项刷新当前使用账户。
 
-        账户名只取前面的标识（如 "平安证券-王*明" -> "平安证券"），
+        账户名取条目完整展示名（仅去除首尾空白，如 "平安证券-王*明"），
         条目与当前使用账户使用同一清洗规则，保证后者必在可用账户列表中。
         """
         main_window = self.get_main_window(wrapper_obj=True)
@@ -68,8 +68,8 @@ class AccountQueryOperation(BaseOperation[EmptyParams]):
             account_name = item.window_text()
             if account_name == "编辑账户":
                 continue
-            # 只取前面的标识 如 "平安证券-王*明" -> "平安证券"
-            clean_account_name = account_name.strip().split("-")[0]
+            # 账户名如 "平安证券-王*明"
+            clean_account_name = account_name.strip()
             account_items.append((clean_account_name, index + 1))
             if item.is_selected():
                 account_state.set_current_used_account(clean_account_name)

@@ -141,8 +141,8 @@ ops = client.list_operations()
 `account_name` 参数**（默认 `None` 用当前账户；`query_accounts()` 无此参数，
 `switch_account()` 的 `account_name` 是切换目标本身而非指令）。两种用法的语义不同，务必区分：
 
-> `account_name` 的取值为客户端账户展示名的**前缀标识**（`-` 之前的部分，
-> 如「平安证券-王\*明」→「平安证券」），完整列表以 `query_accounts()` 返回为准。
+> `account_name` 的取值为客户端账户下拉列表的**完整展示名**（仅去除首尾
+> 空白，如「平安证券-王\*明」），完整列表以 `query_accounts()` 返回为准。
 
 **显式传入 `account_name`（推荐）——操作必然落在该账户**
 

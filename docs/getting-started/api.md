@@ -221,9 +221,9 @@ POST /api/v1/operations/{operation_name}
 
 客户端登录了多个账户时，有两种方式指定操作落在哪个账户，**语义不同，务必区分**：
 
-> **`account_name` 的取值规则**：为客户端账户展示名的**前缀标识**——取 `-` 之前的
-> 部分，如客户端展示「平安证券-王\*明」则账户名为「平安证券」。完整可用账户名
-> 以 [account_query](#account_query-账户列表查询) 返回为准。
+> **`account_name` 的取值规则**：为客户端账户下拉列表的**完整展示名**（仅去除
+> 首尾空白），如客户端展示「平安证券-王\*明」则账户名即「平安证券-王\*明」。
+> 完整可用账户名以 [account_query](#account_query-账户列表查询) 返回为准。
 
 > **不适用操作**：`account_switch` 与 `account_query` 不接受此指令——前者的
 > `account_name` 是切换目标（业务参数），后者负责初始化账户缓存（指令执行
@@ -953,7 +953,7 @@ POST /api/v1/operations/account_query
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| account_name | string | 账户名，取客户端展示名 `-` 前的前缀标识（如 平安证券-王\*明 → 平安证券）；接口 `account_name` 参数的取值来源 |
+| account_name | string | 账户名，即客户端下拉列表的完整展示名（如 平安证券-王\*明）；接口 `account_name` 参数的取值来源 |
 | account_index | integer | 账户序号（客户端列表位置，切换的定位依据） |
 
 ### account_switch - 账户切换
@@ -972,7 +972,7 @@ POST /api/v1/operations/account_switch
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| account_name | string | 是 | 目标账户名（前缀标识，取值见 [account_query](#account_query-账户列表查询) 返回） |
+| account_name | string | 是 | 目标账户名（完整展示名，取值见 [account_query](#account_query-账户列表查询) 返回） |
 
 **响应数据**（`data`，对象）：
 
