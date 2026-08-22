@@ -14,7 +14,8 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
 
     - 目标账户不在缓存账户列表中（含列表未初始化）→ ``client_rejected`` 失败
     - 目标即当前账户 → 直接成功，不触 GUI
-    - 其余情况：主窗口发送 ``Alt + 账户序号`` 完成切换，成功后刷新缓存
+    - 其余情况：主窗口发送 ``Alt + 账户序号`` 切换，经下拉列表校验实际生效后
+      刷新缓存；校验未通过以 ``internal`` 收尾，缓存保持原账户
     """
 
     operation_name = "account_switch"
@@ -58,14 +59,15 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
         # Alt + 账户序号 切换（% 即 Alt）
         main_window = self.get_main_window(wrapper_obj=True)
         main_window.type_keys(f"%{index}")
-        account_state.set_current_used_account(params.account_name)
         # 给点缓冲，增加稳定性
         self.sleep(0.3)
         if not self._check_already_change(account_name_unverified=params.account_name):
+            # 校验未通过：GUI 实际仍停留在原账户，缓存不动（不提前写目标账户）
             return self._fail(
-                f"账户切换失败，保持当前账户：{params.account_name} 不变",
+                f"账户切换失败，当前账户保持为{previous or '未确认'}",
                 ErrorCode.INTERNAL,
             )
+        account_state.set_current_used_account(params.account_name)
 
         return self._ok(
             data=AccountSwitchResult(
@@ -78,7 +80,7 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
             ),
         )
 
-    def _check_already_change(self, account_name_unverified) -> bool:
+    def _check_already_change(self, account_name_unverified: str) -> bool:
         """检查是否真的已经切换到位。
 
         账户名只取前面的标识（如 "平安证券-王*明" -> "平安证券"），

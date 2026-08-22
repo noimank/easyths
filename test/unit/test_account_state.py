@@ -122,21 +122,81 @@ def test_account_query_cache_hit_skips_gui():
 # ============ account_switch 业务判断（GUI 桩替换） ============
 
 
-class _KeyboardSwitchStub(AccountSwitchOperation):
-    """记录 Alt+序号 按键的切换替身（不触真实 GUI）"""
+class _FakeControl:
+    """pywinauto wrapper 最小桩：automation_id 过滤 + children/window_text/is_selected"""
 
-    def __init__(self):
-        super().__init__(automator=None)
+    def __init__(self, automation_id="", children=None, text="", selected=False):
+        self.element_info = type("Info", (), {"automation_id": automation_id})()
+        self._children = children or []
+        self._text = text
+        self._selected = selected
+
+    def children(self, control_type=None, class_name=None, title=None):
+        return self._children
+
+    def window_text(self) -> str:
+        return self._text
+
+    def is_selected(self) -> bool:
+        return self._selected
+
+    def click(self) -> None:
+        pass
+
+
+class _FakeWindowsApp:
+    """automator.app 桩：windows() 返回预置的下拉列表窗口"""
+
+    def __init__(self, windows):
+        self._windows = windows
+
+    def windows(self, **kwargs):
+        return self._windows
+
+
+class _DropdownSwitchStub(AccountSwitchOperation):
+    """记录按键并模拟下拉校验链路的切换替身（不触真实 GUI）。
+
+    dropdown_items 为下拉列表的 (展示文本, 是否选中) 序列，展示文本携带
+    完整账户名（如 "B账户-李四"），校验逻辑按清洗规则截取前缀比对。
+    """
+
+    def __init__(self, dropdown_items):
+        super().__init__(automator=type("A", (), {})())
         self.sent_keys: list[str] = []
+        self._items = [
+            _FakeControl(text=text, selected=sel) for text, sel in dropdown_items
+        ]
+        list_box = _FakeControl(children=self._items)
+        self.automator.app = _FakeWindowsApp([list_box])  # type: ignore[attr-defined]
+
+    def sleep(self, seconds: float = 0.1) -> None:
+        pass  # GUI 渲染缓冲等待在桩环境中无意义
 
     def get_main_window(self, wrapper_obj: bool = False):
         recorder = self
 
-        class _Window:
+        class _MainWindow(_FakeControl):
+            def __init__(self):
+                super().__init__(
+                    automation_id="",
+                    children=[
+                        _FakeControl(
+                            automation_id="59392",  # 工具栏
+                            children=[
+                                _FakeControl(
+                                    automation_id="2322",  # 账户下拉框
+                                    children=[_FakeControl(automation_id="DropDown")],
+                                )
+                            ],
+                        )
+                    ],
+                )
+
             def type_keys(self, keys: str) -> None:
                 recorder.sent_keys.append(keys)
 
-        return _Window()
+        return _MainWindow()
 
 
 class _NoGuiSwitch(AccountSwitchOperation):
@@ -182,13 +242,33 @@ def test_account_switch_success_sends_alt_index():
     account_state.update_available_accounts([("A账户", 1), ("B账户", 2)])
     account_state.set_current_used_account("A账户")
 
-    op = _KeyboardSwitchStub()
+    # 下拉列表展示完整账户名，选中项即切换目标（清洗前缀后匹配）
+    op = _DropdownSwitchStub(
+        [("A账户-张三", False), ("B账户-李四", True), ("编辑账户", False)]
+    )
     result = op.execute(AccountSwitchParams(account_name="B账户"))
     assert result.success
-    assert op.sent_keys == ["%2"]  # Alt + 账户序号
+    assert op.sent_keys == ["%2", "{ESC}"]  # Alt + 账户序号，校验后 ESC 关闭下拉
     assert result.data == {"previous_used_account": "A账户"}
     assert account_state.current_used_account == "B账户"
     assert result.current_used_account == "B账户"
+
+
+def test_account_switch_verification_failed_keeps_account():
+    """下拉校验发现选中项仍是原账户：internal 失败，缓存与信封保持原账户。"""
+    account_state.update_available_accounts([("A账户", 1), ("B账户", 2)])
+    account_state.set_current_used_account("A账户")
+
+    op = _DropdownSwitchStub(
+        [("A账户-张三", True), ("B账户-李四", False)]  # 切换未生效：仍选中 A
+    )
+    result = op.execute(AccountSwitchParams(account_name="B账户"))
+    assert result.success is False
+    assert result.error_code == ErrorCode.INTERNAL
+    assert "账户切换失败" in result.message
+    assert op.sent_keys == ["%2", "{ESC}"]
+    assert account_state.current_used_account == "A账户"
+    assert result.current_used_account == "A账户"
 
 
 # ============ 看门狗超时结果的 current_used_account ============
