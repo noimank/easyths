@@ -15,7 +15,7 @@
 - 使用 Ruff 进行代码检查和格式化（`ruff check` / `ruff format`）
 - 使用 mypy 进行类型检查
 - 安装 pre-commit 钩子，提交前自动执行检查（`uv run pre-commit install`）
-- 编写单元测试（集成测试需标记 `@pytest.mark.integration`）
+- 单元测试放入 `test/unit/`（默认随 `pytest` 运行）；集成测试放入 `test/integration/`（会触发真实交易，仅显式指定路径时运行）
 - 更新相关文档
 
 ## 报告问题

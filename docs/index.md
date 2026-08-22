@@ -87,15 +87,17 @@ EasyTHS 采用分层架构设计，将系统职责清晰分离，确保代码的
                                ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                       操作插件层                          │
-│  buy.py | sell.py | order_cancel.py | order_query.py    │
-│  holding_query.py | funds_query.py | historical_...py   │
+│  buy.py | sell.py | market_buy.py | market_sell.py       │
+│  condition_*.py | stop_loss_profit.py | order_*.py       │
+│  holding_query.py | funds_query.py | reverse_repo_*.py   │
+│  params.py（参数契约）| results.py（结果契约）           │
 └──────────────────────────────────────────────────────────────┘
                                │
                                ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                       工具层                             │
 │  config.py | captcha_ocr.py | screen_capture.py         │
-│  table_text_handel.py | logger.py                       │
+│  table_text_handler.py | execution_strategy.py          │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -113,36 +115,33 @@ EasyTHS 采用分层架构设计，将系统职责清晰分离，确保代码的
 
 #### 2. 插件化操作系统
 
-- **BaseOperation**：定义统一的操作接口（validate、execute、pre_execute、post_execute）
+- **BaseOperation**：操作契约全部为类属性 —— `operation_name`（注册名）、`description`（文档描述）、`Params`（参数模型）、`Result`（结果模型），外加核心方法 `execute(params)`
+- **Params / Result 模型即契约**：REST 提交校验（非法/未知参数直接 422）、接口文档（OpenAPI 与 `/operations/` 列表）由模型自动生成
 - **OperationRegistry**：自动扫描并注册 `operations/` 目录下的所有操作插件
-- **生命周期管理**：完整的参数验证 → 前置检查 → 核心执行 → 后置处理流程
 
 ```python
-class BaseOperation(ABC):
-    @abstractmethod
-    def validate(self, params) -> bool:      # 参数验证
-        pass
+class BuyOperation(LimitOrderOperation):
+    operation_name = "buy"          # 注册名（对外 API 路径）
+    description = "买入股票"         # 文档描述
+    Params = LimitOrderParams       # 参数模型（校验+文档唯一来源）
+    Result = LimitOrderResult       # 结果模型（构造+文档唯一来源）
 
-    @abstractmethod
-    def execute(self, params) -> OperationResult:  # 核心操作
-        pass
+    def execute(self, params: LimitOrderParams) -> OperationResult: ...
 
-    def run(self, params) -> OperationResult:  # 完整流程
-        # 1. validate()
-        # 2. pre_execute()
-        # 3. execute()
-        # 4. post_execute()
+# run() 完整流程：参数校验（pydantic）→ pre_execute（连接检查/清弹窗）→ execute
 ```
 
 #### 3. 优先级队列调度
 
 - **PriorityQueue**：基于优先级的任务调度（数字越大优先级越高）
 - **串行执行**：单一后台线程保证 GUI 操作的线程安全
-- **状态追踪**：QUEUED → RUNNING → COMPLETED/FAILED
+- **状态追踪**：QUEUED → RUNNING → COMPLETED / FAILED / CANCELLED
 
 ```python
-# 提交操作
-operation_id = client.buy("600000", 10.50, 100, priority=5)
+# 提交操作（需要自定义优先级时使用通用方法）
+operation_id = client.execute_operation(
+    "buy", {"stock_code": "600000", "price": 10.50, "quantity": 100}, priority=5
+)
 
 # 查询状态
 status = client.get_operation_status(operation_id)
@@ -190,6 +189,7 @@ easyths/
 ├── trade_client.py              # 远程调用客户端 (TradeClient SDK)
 ├── api/                         # FastAPI 服务端
 │   ├── app.py                   # FastAPI 应用配置
+│   ├── responses.py             # 统一信封响应工具
 │   ├── routes/                  # API 路由
 │   │   ├── system.py           # 系统管理接口
 │   │   ├── operations.py       # 操作执行接口
@@ -207,9 +207,14 @@ easyths/
 │   ├── base_operation.py        # 操作基类与注册表
 │   └── operation_queue.py       # 优先级操作队列
 ├── operations/                  # 操作插件 (自动发现)
+│   ├── params.py                # 全部操作的参数契约（Pydantic 模型）
+│   ├── results.py               # 全部操作的结果契约（Pydantic 模型）
 │   ├── buy.py                   # 买入股票
 │   ├── sell.py                  # 卖出股票
+│   ├── market_buy.py            # 市价买入
+│   ├── market_sell.py           # 市价卖出
 │   ├── condition_buy.py         # 条件买入
+│   ├── condition_sell.py        # 条件卖出
 │   ├── stop_loss_profit.py      # 止盈止损
 │   ├── condition_order_query.py # 条件单查询
 │   ├── condition_order_cancel.py # 条件单删除
@@ -217,16 +222,17 @@ easyths/
 │   ├── order_query.py           # 查委托
 │   ├── holding_query.py         # 查持仓
 │   ├── funds_query.py           # 查资金
-│   ├── historical_commission_query.py  # 查历史成交
+│   ├── historical_commission_query.py  # 查历史委托
 │   ├── reverse_repo_buy.py      # 国债逆回购购买
 │   └── reverse_repo_query.py    # 国债逆回购查询
 ├── models/                      # 数据模型
-│   └── operations.py            # 操作数据模型 (Pydantic)
+│   └── operations.py            # 状态/错误码/统一信封/操作与参数基类
 ├── utils/                       # 工具模块
 │   ├── config.py                # 配置管理
 │   ├── captcha_ocr.py           # 验证码 OCR
 │   ├── screen_capture.py        # 屏幕截图
-│   ├── table_text_handel.py     # 表格文本处理
+│   ├── execution_strategy.py    # 市价成交策略匹配
+│   ├── table_text_handler.py    # 表格文本处理
 │   └── logger.py                # 日志配置
 └── assets/                      # 资源文件
 ```

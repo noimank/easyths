@@ -91,8 +91,6 @@ uvx easyths[server] --config my_config.toml --exe_path "C:/同花顺/xiadan.exe"
 ### [app] 应用程序配置
 ```toml
 [app]
-name = "同花顺交易自动化"
-version = "1.0.0"
 # 自定义验证码识别模型目录（留空使用内置模型）
 # 目录下必须包含 captcha_ocr.onnx 和 captcha_ocr.onnx.data 两个文件
 onnx_model_dir = ""
@@ -110,8 +108,7 @@ app_path = "C:/同花顺远航版/transaction/xiadan.exe"
 ```toml
 [queue]
 max_size = 1000           # 队列最大容量
-priority_levels = 5       # 优先级级别数
-batch_size = 10          # 批量处理大小
+operation_timeout = 10.0  # 单操作执行硬超时（秒），超时自动断连并需重连
 ```
 
 ### [api] API 服务配置
@@ -120,7 +117,7 @@ batch_size = 10          # 批量处理大小
 host = "0.0.0.0"           # 服务器地址
 port = 7648                # 服务器端口
 mcp_server_type = "streamable-http"  # MCP 传输类型: http, streamable-http, sse
-rate_limit = 10            # 速率限制（请求/分钟）
+rate_limit = 100           # 速率限制（请求/秒）
 cors_origins = "*"         # CORS 允许的源
 key = ""                   # API 密钥（留空表示不启用）
 ip_whitelist = ""          # IP 白名单（留空表示允许所有）
@@ -147,8 +144,6 @@ file = ""
 # ============================================
 
 [app]
-name = "同花顺交易自动化"
-version = "1.0.0"
 # 自定义验证码识别模型目录（留空使用内置模型）
 # 目录下必须包含 captcha_ocr.onnx 和 captcha_ocr.onnx.data 两个文件
 onnx_model_dir = ""
@@ -166,8 +161,9 @@ app_path = "C:/同花顺远航版/transaction/xiadan.exe"
 # ============================================
 [queue]
 max_size = 1000           # 队列最大容量
-priority_levels = 5       # 优先级级别数
-batch_size = 10          # 批量处理大小
+# 单操作执行硬超时（秒）：超时后操作以 timeout 失败收尾并自动断开同花顺连接，
+# 后续操作将快速失败，需恢复客户端后调用 /api/v1/system/reconnect 重连
+operation_timeout = 10.0
 
 # ============================================
 # API 服务配置
@@ -176,7 +172,7 @@ batch_size = 10          # 批量处理大小
 host = "0.0.0.0"           # 服务器地址
 port = 7648                # 服务器端口
 mcp_server_type = "streamable-http"  # MCP 传输类型: http, streamable-http, sse
-rate_limit = 10            # 速率限制（请求/分钟）
+rate_limit = 100           # 速率限制（请求/秒）
 cors_origins = "*"         # CORS 允许的源
 key = ""                   # API 密钥（留空表示不启用）
 ip_whitelist = ""          # IP 白名单（留空表示允许所有）
@@ -197,8 +193,7 @@ file = ""
 
 1. 命令行参数（如 `--exe_path`）
 2. 配置文件（如 `config.toml`）
-3. 环境变量
-4. 默认值
+3. 默认值
 
 ### 生成示例配置
 

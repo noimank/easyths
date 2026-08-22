@@ -18,10 +18,11 @@ pip install easyths
 uv add easyths
 ```
 
-**客户端模式仅依赖**：
+**客户端模式仅依赖少量跨平台库**：
 
 - `httpx` - HTTP 客户端
 - `pydantic` - 数据验证
+- `numpy` / `tzdata` 等基础依赖
 
 ### 安装完整服务端（包含客户端）
 
@@ -108,11 +109,13 @@ status = client.get_system_status()
 # 返回: {"success": True, "data": {"automator": {...}, "plugins": {...}}}
 ```
 
-### 获取系统信息
+### 重连同花顺
+
+同花顺客户端重启后，无需重启服务即可恢复连接：
 
 ```python
-info = client.get_system_info()
-# 返回: {"success": True, "data": {"name": "...", "version": "..."}}
+res = client.reconnect()
+# 返回: {"success": True, "message": "同花顺重连成功"}
 ```
 
 ### 获取队列统计
@@ -126,7 +129,8 @@ stats = client.get_queue_stats()
 
 ```python
 ops = client.list_operations()
-# 返回: {"success": True, "data": {"operations": {...}, "count": 7}}
+# 返回: {"success": True, "data": {"operations": {...}, "count": 16}}
+# operations 内每个操作含 name / description / parameters / result_schema
 ```
 
 ---
@@ -145,10 +149,10 @@ result = client.buy(
 # 检查结果
 if result["success"]:
     data = result["data"]
-    print(f"买入成功: {data['message']}")
+    print(f"买入成功: {result['message']}")
+    print(f"委托: {data['stock_code']} {data['quantity']}股 @ {data['price']}")
 else:
-    error = result["message"]
-    print(f"买入失败: {error}")
+    print(f"买入失败: {result['message']}（错误码: {result['error_code']}）")
 ```
 
 ### 卖出股票
@@ -243,10 +247,10 @@ result = client.condition_buy(
 
 if result["success"]:
     data = result["data"]
-    print(f"条件买入设置成功: {data['message']}")
+    print(f"条件买入设置成功: {result['message']}")
+    print(f"触发价: {data['target_price']}，有效期: {data['expire_days']}天")
 else:
-    error = result["message"]
-    print(f"条件买入设置失败: {error}")
+    print(f"条件买入设置失败: {result['message']}")
 ```
 
 ### 条件卖出
@@ -263,10 +267,10 @@ result = client.condition_sell(
 
 if result["success"]:
     data = result["data"]
-    print(f"条件卖出设置成功: {data['message']}")
+    print(f"条件卖出设置成功: {result['message']}")
+    print(f"触发价: {data['target_price']}，有效期: {data['expire_days']}天")
 else:
-    error = result["message"]
-    print(f"条件卖出设置失败: {error}")
+    print(f"条件卖出设置失败: {result['message']}")
 ```
 
 ### 止盈止损
@@ -284,10 +288,10 @@ result = client.stop_loss_profit(
 
 if result["success"]:
     data = result["data"]
-    print(f"止盈止损设置成功: {data['message']}")
+    print(f"止盈止损设置成功: {result['message']}")
+    print(f"止损{data['stop_loss_percent']}% / 止盈{data['stop_profit_percent']}%")
 else:
-    error = result["message"]
-    print(f"止盈止损设置失败: {error}")
+    print(f"止盈止损设置失败: {result['message']}")
 ```
 
 > **注意**：止盈百分比必须大于止损百分比。quantity 参数建议指定，因为受 T+1 限制，当天买入的股票如果不指定数量无法设置止盈止损。
@@ -303,8 +307,8 @@ result = client.reverse_repo_buy(
 )
 
 if result["success"]:
-    message = result["data"]["message"]
-    print(f"购买成功: {message}")
+    rate = result["data"]["annual_rate"]  # 成交年化利率（百分数值，如 2.5 表示 2.5%）
+    print(f"购买成功，年化利率: {rate}%")
 else:
     error = result["message"]
     print(f"购买失败: {error}")
@@ -332,8 +336,8 @@ result = client.cancel_condition_orders(
 )
 
 if result["success"]:
-    message = result["data"]["message"]
-    print(f"删除成功: {message}")
+    count = result["data"]["deleted_count"]
+    print(f"删除成功，共删除 {count} 条")
 ```
 
 ---
@@ -343,14 +347,12 @@ if result["success"]:
 ### 查询持仓
 
 ```python
-result = client.query_holdings(
-    return_type="json"  # str/json/dict/markdown
-)
+result = client.query_holdings()
 
 if result["success"]:
-    holdings = result["data"]["holdings"]
+    holdings = result["data"]  # JSON 记录列表
     for position in holdings:
-        print(f"{position['股票代码']}: {position['持仓数量']}股")
+        print(f"{position['stock_code']}: {position['quantity']}股")
 ```
 
 ### 查询资金
@@ -360,35 +362,33 @@ result = client.query_funds()
 
 if result["success"]:
     funds = result["data"]
-    print(f"总资产: {funds['总资产']}")
-    print(f"可用金额: {funds['可用金额']}")
+    print(f"总资产: {funds['total_assets']}")
+    print(f"可用金额: {funds['available_amount']}")
 ```
 
 ### 查询委托单
 
 ```python
 # 查询所有委托
-result = client.query_orders(return_type="json")
+result = client.query_orders()
 
 # 查询指定股票的委托
-result = client.query_orders(
-    stock_code="600000",
-    return_type="json"
-)
+result = client.query_orders(stock_code="600000")
 
 if result["success"]:
-    orders = result["data"]["orders"]
+    orders = result["data"]  # 记录列表
     for order in orders:
-        print(f"{order['股票代码']}: {order['委托数量']}股 @ {order['委托价格']}")
+        print(f"{order['stock_code']}: {order['quantity']}股 @ {order['price']}")
 ```
 
-### 查询历史成交
+### 查询历史委托
 
 ```python
-result = client.query_historical_commission(return_type="json")
+# time_range 可选: "当日"(默认)/"近一周"/"近一月"/"近三月"/"近一年"
+result = client.query_historical_commission(time_range="近一月")
 
 if result["success"]:
-    commissions = result["data"]
+    commissions = result["data"]  # JSON 记录列表，字段同 query_orders 另加 order_date
     print(commissions)
 ```
 
@@ -400,9 +400,9 @@ if result["success"]:
 result = client.query_reverse_repo()
 
 if result["success"]:
-    rates = result["data"]["reverse_repo_interest"]
+    rates = result["data"]  # JSON 记录列表
     for item in rates:
-        print(f"{item['市场类型']} - {item['时间类型']}: {item['年化利率']}")
+        print(f"{item['market']} - {item['term']}: {item['annual_rate']}%")
 ```
 
 ### 查询条件单
@@ -410,12 +410,10 @@ if result["success"]:
 查询未触发的条件单信息。
 
 ```python
-result = client.query_condition_orders(
-    return_type="json"  # str/json/dict/markdown
-)
+result = client.query_condition_orders()
 
 if result["success"]:
-    orders = result["data"]["condition_orders"]
+    orders = result["data"]  # JSON 记录列表
     print(orders)
 ```
 
@@ -445,7 +443,8 @@ print(f"操作ID: {operation_id}")
 ```python
 status = client.get_operation_status(operation_id)
 print(status)
-# 返回状态: queued/running/success/failed
+# 状态: queued/running/completed/failed/cancelled
+# 未到终态时 success 为 None
 ```
 
 ### 获取操作结果
@@ -492,7 +491,9 @@ except TradeClientError as e:
 
 - 连接失败：无法连接到服务端
 - 401：认证失败（API Key 错误）
-- 408：操作超时
+- 404：操作不存在或结果已被淘汰（超过 3 小时）
+- 408：等待结果超时（操作仍在执行，**勿重复提交**，稍后重查）
+- 422：参数校验失败（非法取值或未知字段）
 - 500：服务端内部错误
 
 ---
@@ -520,7 +521,7 @@ def simple_trade():
         # 查询资金
         funds = client.query_funds()
         if funds["success"]:
-            available = funds["data"]["可用金额"]
+            available = funds["data"]["available_amount"]
             print(f"可用资金: {available}")
 
         # 买入股票
@@ -568,8 +569,7 @@ def async_trade_example():
         # 处理结果
         for result in results:
             if result["success"]:
-                data = result["data"]
-                print(f"操作成功: {data.get('message', 'N/A')}")
+                print(f"操作成功: {result['message']}")
             else:
                 print(f"操作失败: {result['message']}")
 ```
@@ -594,7 +594,7 @@ class TradeClient:
     # 系统管理
     def health_check(self) -> dict: ...
     def get_system_status(self) -> dict: ...
-    def get_system_info(self) -> dict: ...
+    def reconnect(self) -> dict: ...
     def get_queue_stats(self) -> dict: ...
     def list_operations(self) -> dict: ...
 
@@ -613,15 +613,15 @@ class TradeClient:
     def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None) -> dict: ...
     def condition_sell(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None) -> dict: ...
     def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = None) -> dict: ...
-    def query_condition_orders(self, return_type: str = "json", timeout: float = None) -> dict: ...
+    def query_condition_orders(self, timeout: float = None) -> dict: ...
     def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = None) -> dict: ...
     def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = None) -> dict: ...
 
     # 查询操作
-    def query_holdings(self, return_type: str = "json", timeout: float = None) -> dict: ...
+    def query_holdings(self, timeout: float = None) -> dict: ...
     def query_funds(self, timeout: float = None) -> dict: ...
-    def query_orders(self, stock_code: str = None, return_type: str = "json", timeout: float = None) -> dict: ...
-    def query_historical_commission(self, return_type: str = "json", timeout: float = None) -> dict: ...
+    def query_orders(self, stock_code: str = None, timeout: float = None) -> dict: ...
+    def query_historical_commission(self, stock_code: str = None, time_range: str = "当日", timeout: float = None) -> dict: ...
     def query_reverse_repo(self, timeout: float = None) -> dict: ...
 
     # 连接管理
@@ -630,48 +630,35 @@ class TradeClient:
     def __exit__(self, exc_type, exc_val, exc_tb): ...
 ```
 
-### 交易操作返回格式
+### 统一返回格式
 
-所有交易操作（`buy`, `sell`, `condition_buy` 等）返回 `OperationResult` 格式：
+所有方法（交易、查询、系统管理）返回与服务端 REST / MCP 一致的统一信封：
 
 ```python
 {
-    "success": bool,        # 业务操作是否成功
-    "data": {...},          # 业务数据
-    "message": str | None,  # 错误信息或成功消息
-    "timestamp": str        # 操作时间（ISO 8601 格式）
+    "success": bool | None,  # 业务结果；操作未到终态时为 None
+    "status": str | None,    # queued/running/completed/failed/cancelled
+    "message": str,          # 错误信息或成功消息
+    "error_code": str | None,# 失败分类，可编程处理
+    "data": Any,             # 业务数据（查询类为记录列表）
+    "timestamp": str         # 北京时间，格式 "2026-08-22 06:46:56"
 }
 ```
+
+`data` 的字段由每个操作的 Result 模型确定（交易类为单个对象，查询类为记录列表），
+完整字段定义见 [API 文档 - 可用操作](api.md#available-operations)。
 
 **示例**：
 ```python
 result = client.buy("600000", 10.50, 100)
 # {
 #     "success": True,
-#     "data": {
-#         "stock_code": "600000",
-#         "price": "10.50",
-#         "quantity": 100,
-#         "operation": "buy",
-#         "success": True,
-#         "message": "成功提交600000的买入委托"
-#     },
-#     "message": None,
-#     "timestamp": "2025-12-26T10:30:00.123456"
+#     "status": "completed",
+#     "message": "成功提交600000的买入委托，耗时2.31秒",
+#     "error_code": None,
+#     "data": {"stock_code": "600000", "price": 10.5, "quantity": 100},
+#     "timestamp": "2026-08-22 06:46:56"
 # }
-```
-
-### 系统接口返回格式
-
-系统管理接口（`health_check`, `get_system_status` 等）返回 `APIResponse` 格式：
-
-```python
-{
-    "success": bool,      # 操作是否成功
-    "message": str,       # 响应消息
-    "data": Any,          # 响应数据
-    "timestamp": str      # 响应时间戳（ISO 8601 格式）
-}
 ```
 
 ### TradeClientError 异常类
@@ -716,7 +703,9 @@ except TradeClientError as e:
 |------|-------------|------|
 | 连接失败 | None | 无法连接到服务端，请检查服务端是否启动 |
 | 认证失败 | 401 | API Key 错误或未提供 |
-| 操作超时 | 408 | 操作执行时间超过设定的超时时间 |
+| 参数校验失败 | 422 | 参数非法或包含未知字段，修正后重提 |
+| 操作不存在 | 404 | 操作 ID 错误或结果已被淘汰（超过 3 小时） |
+| 操作超时 | 408 | 等待结果超时，操作仍在执行，勿重复提交 |
 | 服务端错误 | 500 | 服务端内部错误 |
 | HTTP 错误 | 其他 | HTTP 请求失败，对应相应的 HTTP 状态码 |
 

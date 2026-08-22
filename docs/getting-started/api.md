@@ -18,20 +18,6 @@ Authorization: Bearer your-api-key
 
 ### 配置 API Key
 
-可以通过以下两种方式配置 API Key：
-
-**方式一：环境变量**
-
-```bash
-# Windows
-set API_KEY=your-secret-key
-
-# Linux/macOS
-export API_KEY=your-secret-key
-```
-
-**方式二：配置文件**
-
 在 `config.toml` 中设置：
 
 详细的配置文件参考：[基础用法](basic-usage.md)
@@ -45,11 +31,45 @@ key = "your-secret-key"
 
 ---
 
+## 统一响应信封
+
+所有 REST 端点（以及 MCP 工具返回、Python SDK 解析结果）共用同一形状：
+
+```json
+{
+  "success": true,          // 业务结果；操作未到终态（排队/执行中）时为 null
+  "status": "completed",    // queued / running / completed / failed / cancelled
+  "message": "...",         // 人读信息（成功消息或失败原因）
+  "error_code": null,       // 失败原因分类，可编程处理
+  "data": {},               // 业务数据（查询类为记录列表）
+  "timestamp": "2026-08-22 06:46:56"   // 北京时间，秒级
+}
+```
+
+`data` 的字段由每个操作的 Result 模型唯一确定，下文[可用操作](#available-operations)
+中每个操作都附有完整的返回字段表；数值字段为客户端文本自动转换的结果
+（千分位逗号、百分号已剥离），无该项业务时为 `null`。
+
+### 错误码
+
+| error_code | 含义 | 调用方建议 |
+|------------|------|-----------|
+| invalid_params | 参数校验未过（提交时即 422） | 修正参数后重提 |
+| not_connected | 同花顺未连接/进程退出 | 先 `/system/reconnect` |
+| client_rejected | 同花顺拒绝：涨跌停/资金不足/标的不支持等 | 不可原样重试 |
+| ui_error | 控件定位失败等界面异常 | 可重试一次，持续失败需人工检查客户端 |
+| cancelled | 排队中被取消 | 如需继续请重新提交 |
+| timeout | 等待结果超时（408，操作仍在执行）；或执行超过硬超时被看门狗收尾（failed 终态，已自动断连） | 408 **勿重复提交**、稍后重查；终态 timeout 先恢复客户端再 `/system/reconnect` |
+| not_found | 操作 ID 不存在或结果已淘汰（404） | 检查 ID |
+| internal | 内部错误 | 查看服务端日志 |
+
+---
+
 ## 系统接口
 
 ### 健康检查
 
-检查系统运行状态和各组件健康度。
+真实探活：检查连接标志 **和** 同花顺交易进程是否存活（进程崩溃会如实返回不健康）。
 
 ```http
 GET /api/v1/system/health
@@ -59,24 +79,21 @@ GET /api/v1/system/health
 ```json
 {
   "success": true,
+  "status": null,
   "message": "系统运行正常",
+  "error_code": null,
   "data": {
     "status": "healthy",
-    "timestamp": "2025-12-26T10:30:00",
-    "components": {
-      "automator": "connected",
-      "logged_in": true,
-      "plugins": {
-        "loaded": 7
-      }
-    }
-  }
+    "automator": "connected",
+    "plugins": {"loaded": 16}
+  },
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
 ### 获取系统状态
 
-获取系统详细状态信息。
+获取系统详细状态（含版本、自动化器真实探活与全部插件清单/参数 schema）。
 
 ```http
 GET /api/v1/system/status
@@ -86,54 +103,49 @@ GET /api/v1/system/status
 ```json
 {
   "success": true,
+  "status": null,
   "message": "查询成功",
+  "error_code": null,
   "data": {
-    "timestamp": "2025-12-26T10:30:00",
+    "name": "同花顺交易自动化系统",
+    "version": "2.0.0",
+    "description": "基于pywinauto的同花顺交易软件自动化系统",
     "automator": {
       "connected": true,
-      "logged_in": true,
+      "process_alive": true,
       "app_path": "C:/同花顺远航版/transaction/xiadan.exe",
-      "backend": "win32"
+      "backend": "uia"
     },
     "plugins": {
-      "loaded_plugins": ["buy", "sell", "holding_query", "funds_query", "order_query", "order_cancel"],
-      "plugin_count": 6
+      "loaded_plugins": ["buy", "sell", "..."],
+      "plugin_count": 16,
+      "plugin_details": {}
     }
-  }
+  },
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
-### 获取系统信息
+### 重连同花顺
 
-获取系统基本信息。
+同花顺客户端重启后，无需重启服务，调用此接口恢复连接。
 
 ```http
-GET /api/v1/system/info
+POST /api/v1/system/reconnect
 ```
 
 **响应示例**:
 ```json
-{
-  "success": true,
-  "message": "查询成功",
-  "data": {
-    "name": "同花顺交易自动化系统",
-    "version": "1.0.0",
-    "description": "基于pywinauto的同花顺交易软件自动化系统",
-    "features": [
-      "操作串行化",
-      "优先级队列",
-      "插件化架构",
-      "RESTful API",
-      "实时监控"
-    ]
-  }
-}
+{"success": true, "status": "completed", "message": "同花顺重连成功", "error_code": null, "data": null, "timestamp": "2026-08-22 06:46:56"}
 ```
+
+失败时返回 503 与 `not_connected` 错误码，请检查客户端是否已启动。
 
 ---
 
 ## 操作接口
+
+所有交易与查询操作共用同一套生命周期接口：**提交 → 排队 → 执行 → 查询结果**。
 
 ### 执行操作
 
@@ -147,80 +159,86 @@ POST /api/v1/operations/{operation_name}
 
 - `operation_name`: 操作名称，见下文[可用操作](#available-operations)
 
-**请求体**:
+**请求体**: 该操作的参数字段**平铺**在请求体顶层（具体字段见各操作说明），
+可附带可选的 `priority` 字段：
+
 ```json
 {
-  "params": {
-    // 操作参数，根据不同操作而变化
-  },
+  "stock_code": "600000",
+  "price": 10.50,
+  "quantity": 100,
   "priority": 0
 }
 ```
 
-**参数说明**:
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| *业务参数 | - | - | 平铺在请求体顶层，见各操作说明 |
+| priority | integer | 否 | 优先级（0-10），数值越大优先级越高，默认 0 |
 
-- `params`: 操作参数对象，具体参数见[可用操作](#available-operations)
+> **参数在提交时校验**：非法取值或未知字段直接返回 422（`error_code: invalid_params`），
+> 不会进入队列排队执行。每个操作的完整字段约束见各操作的 OpenAPI 文档（`/docs`）。
 
-- `priority`: 优先级 (0-10)，数值越大优先级越高，默认 0
-
-**响应示例**:
+**响应示例**（仅受理，未到终态，`success` 为 `null`）:
 ```json
 {
-  "success": true,
+  "success": null,
+  "status": "queued",
   "message": "操作已添加到队列",
+  "error_code": null,
   "data": {
     "operation_id": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "queued",
     "queue_position": 0
-  }
+  },
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
+**受理响应 `data` 字段**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| operation_id | string | 操作 ID，用于查询状态/结果/取消 |
+| queue_position | integer | 当前排队数（不含本操作） |
+
 ### 获取操作状态
 
-查询操作执行状态。
+查询操作执行状态（非阻塞快照）。
 
 ```http
 GET /api/v1/operations/{operation_id}/status
 ```
 
-**响应示例**:
+**响应示例**（统一信封，未到终态时 `success` 为 `null`、`data` 为 `null`）:
 ```json
 {
-  "success": true,
-  "message": "查询成功",
-  "data": {
-    "operation_id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "buy",
-    "status": "success",
-    "result": {
-      "success": true,
-      "data": {
-        "stock_code": "600000",
-        "price": "10.50",
-        "quantity": 100,
-        "operation": "buy"
-      }
-    },
-    "error": null,
-    "timestamp": "2025-12-26T10:30:00"
-  }
+  "success": null,
+  "status": "running",
+  "message": "",
+  "error_code": null,
+  "data": null,
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
 **状态值**:
 
 - `queued`: 排队中
-
 - `running`: 执行中
-
-- `success`: 成功
-
+- `completed`: 成功
 - `failed`: 失败
+- `cancelled`: 已取消（排队中被取消，未执行）
+
+> **注意**：操作完成记录在内存中保留 3 小时，超时后查询将返回 404。
+
+> **执行硬超时**：单个操作执行超过 `queue.operation_timeout`（默认 10 秒，见
+> 配置模板）时，以 `failed` + `timeout` 终态收尾并**自动断开同花顺连接**
+> （界面卡死保护，队列不阻塞），后续操作将快速失败；恢复交易客户端后调用
+> `/api/v1/system/reconnect` 重连即可恢复服务。
 
 ### 获取操作结果
 
-阻塞等待并获取操作结果。
+阻塞等待并获取操作终态结果，响应即统一信封（业务数据直接在 `data`，无双层嵌套）。
 
 ```http
 GET /api/v1/operations/{operation_id}/result
@@ -229,35 +247,33 @@ GET /api/v1/operations/{operation_id}/result
 **查询参数**:
 - `timeout`: 超时时间（秒），可选，不传则阻塞等待
 
+**状态码语义**:
+
+- `200`: 操作已到终态，响应体为统一信封
+- `404`: 操作不存在（ID 错误或结果已超过 3 小时被淘汰），`error_code: not_found`
+- `408`: 等待超时但操作仍在排队/执行中（**请勿重复提交**），响应体带当前 `status`
+
 **响应示例**:
 ```json
 {
   "success": true,
+  "status": "completed",
+  "message": "成功提交600000的买入委托，耗时2.31秒",
+  "error_code": null,
   "data": {
     "stock_code": "600000",
-    "price": "10.50",
-    "quantity": 100,
-    "operation": "buy",
-    "success": true,
-    "message": "成功提交600000的买入委托"
+    "price": 10.5,
+    "quantity": 100
   },
-  "message": null,
-  "timestamp": "2025-12-26T10:30:00.123456"
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
-**响应字段说明**:
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| success | bool | 操作是否成功 |
-| data | object \| null | 业务数据 |
-| message | string \| null | 错误信息或成功消息 |
-| timestamp | string | 操作时间（ISO 8601 格式） |
+失败时 `success` 为 `false` 且 `error_code` 标明原因（见[错误码](#统一响应信封)）。
 
 ### 取消操作
 
-取消排队中的操作。
+取消排队中的操作（已开始执行的操作无法取消）。
 
 ```http
 DELETE /api/v1/operations/{operation_id}
@@ -267,13 +283,17 @@ DELETE /api/v1/operations/{operation_id}
 ```json
 {
   "success": true,
-  "message": "操作已取消"
+  "status": "cancelled",
+  "message": "操作已取消",
+  "error_code": null,
+  "data": null,
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
 ### 获取可用操作列表
 
-获取所有已加载的操作。
+获取所有已加载的操作（含参数与结果 schema）。
 
 ```http
 GET /api/v1/operations/
@@ -283,24 +303,29 @@ GET /api/v1/operations/
 ```json
 {
   "success": true,
+  "status": null,
   "message": "查询成功",
+  "error_code": null,
   "data": {
     "operations": {
       "buy": {
-        "name": "BuyOperation",
-        "version": "1.0.0",
-        "description": "买入股票操作",
+        "name": "buy",
+        "description": "买入股票",
         "parameters": {
-          "stock_code": {
-            "type": "string",
-            "required": true,
-            "description": "股票代码（6位数字）"
-          }
-        }
+          "properties": {
+            "stock_code": {"pattern": "^\\d{6}$", "type": "string"},
+            "price": {"maximum": 10000.0, "exclusiveMinimum": 0.0, "type": "number"},
+            "quantity": {"exclusiveMinimum": 0.0, "type": "integer"}
+          },
+          "required": ["stock_code", "price", "quantity"],
+          "type": "object"
+        },
+        "result_schema": {"properties": {"stock_code": {"type": "string"}, "...": {}}, "type": "object"}
       }
     },
-    "count": 7
-  }
+    "count": 16
+  },
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
@@ -320,19 +345,36 @@ GET /api/v1/queue/stats
 ```json
 {
   "success": true,
+  "status": null,
   "message": "查询成功",
+  "error_code": null,
   "data": {
     "queued_count": 0,
     "running_count": 0,
-    "success_count": 10,
-    "failed_count": 0
-  }
+    "completed_count": 10,
+    "total_success": 10,
+    "total_failed": 0
+  },
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
 ---
 
 ## 可用操作 {#available-operations}
+
+共 16 个操作，分为交易类与查询类。每个操作的小节包含：
+
+- **请求参数**：平铺在 `POST` 请求体中（`priority` 为所有操作共用的可选字段，不再重复列出）
+- **响应数据**：终态（`GET .../result` 返回 200）时 `data` 的字段定义；
+  交易类为单个对象，查询类为记录列表（每行一个对象）
+
+通用参数约束：
+
+- `stock_code`：6 位数字字符串（正则 `^\d{6}$`）
+- 手数规则：股票（非可转债）数量必须是 100 的倍数且不小于 100；
+  可转债（11/12 开头）必须是 10 的倍数且不小于 10
+- 限价委托与条件单的单笔委托金额（价格 × 数量）上限为 10,000,000 元
 
 ### buy - 买入股票
 
@@ -341,24 +383,32 @@ POST /api/v1/operations/buy
 ```
 
 **请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "price": 10.50,
-    "quantity": 100
-  },
-  "priority": 5
-}
-```
-
-**参数说明**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
-| price | number | 是 | 买入价格 |
-| quantity | integer | 是 | 买入数量（股票必须是100的倍数，可转债必须是10的倍数） |
+| price | number | 是 | 委托价格（元），大于 0 且不超过 10000 |
+| quantity | integer | 是 | 买入数量（股），遵循手数规则 |
+
+**响应数据**（`data`，对象）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| stock_code | string | 股票代码 |
+| price | number | 委托价格（元） |
+| quantity | integer | 委托数量（股） |
+
+**响应示例**（`GET .../result` 终态）:
+```json
+{
+  "success": true,
+  "status": "completed",
+  "message": "成功提交600000的买入委托，耗时2.31秒",
+  "error_code": null,
+  "data": {"stock_code": "600000", "price": 10.5, "quantity": 100},
+  "timestamp": "2026-08-22 06:46:56"
+}
+```
 
 ### sell - 卖出股票
 
@@ -367,23 +417,15 @@ POST /api/v1/operations/sell
 ```
 
 **请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "price": 10.50,
-    "quantity": 100
-  }
-}
-```
-
-**参数说明**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
-| price | number | 是 | 卖出价格 |
-| quantity | integer | 是 | 卖出数量（股票必须是100的倍数，可转债必须是10的倍数） |
+| price | number | 是 | 委托价格（元），大于 0 且不超过 10000 |
+| quantity | integer | 是 | 卖出数量（股），遵循手数规则 |
+
+**响应数据**（`data`，对象）: 同 [buy](#buy-买入股票)，
+`stock_code` / `price` / `quantity`。
 
 ### market_buy - 市价买入
 
@@ -394,22 +436,11 @@ POST /api/v1/operations/market_buy
 ```
 
 **请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "quantity": 100,
-    "execution_strategy": 3
-  }
-}
-```
-
-**参数说明**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
-| quantity | integer | 是 | 买入数量（股票必须是100的倍数，可转债必须是10的倍数） |
+| quantity | integer | 是 | 买入数量（股），遵循手数规则 |
 | execution_strategy | integer | 否 | 成交策略（见下表），默认 3 |
 
 **成交策略**:
@@ -423,7 +454,15 @@ POST /api/v1/operations/market_buy
 | 5 | 全额成交或撤 | 全部成交或不成交 |
 | 6 | 五档即成剩转限 | 逐档成交，剩余转限价单 |
 
-> **注意**：并不是所有类型的标的都支持市价交易。且支持市价交易的标的，可用的成交策略也不总是有以上 6 种。如果设置了该标的不支持的成交策略，系统会自动使用默认策略「五档即成剩撤」进行提交。
+**响应数据**（`data`，对象）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| stock_code | string | 股票代码 |
+| quantity | integer | 委托数量（股） |
+| strategy | string | 实际使用的成交策略名称（请求策略不支持时为兜底策略「五档即成剩撤」） |
+
+> **注意**：并不是所有类型的标的都支持市价交易。且支持市价交易的标的，可用的成交策略也不总是有以上 6 种。如果设置了该标的不支持的成交策略，系统会自动使用默认策略「五档即成剩撤」进行提交，实际使用的策略以 `strategy` 字段返回为准。
 
 ### market_sell - 市价卖出
 
@@ -434,84 +473,17 @@ POST /api/v1/operations/market_sell
 ```
 
 **请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "quantity": 100,
-    "execution_strategy": 3
-  }
-}
-```
-
-**参数说明**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
-| quantity | integer | 是 | 卖出数量（股票必须是100的倍数，可转债必须是10的倍数） |
-| execution_strategy | integer | 否 | 成交策略（同 market_buy），默认 3 |
+| quantity | integer | 是 | 卖出数量（股），遵循手数规则 |
+| execution_strategy | integer | 否 | 成交策略（同 [market_buy](#market_buy-市价买入)），默认 3 |
 
-> **注意**：同 market_buy，并不是所有类型的标的都支持市价交易，且可用成交策略数量因标的而异。如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
+**响应数据**（`data`，对象）: 同 [market_buy](#market_buy-市价买入)，
+`stock_code` / `quantity` / `strategy`。
 
-### holding_query - 持仓查询
-
-```http
-POST /api/v1/operations/holding_query
-```
-
-**请求参数**:
-```json
-{
-  "params": {
-    "return_type": "json"
-  }
-}
-```
-
-**参数说明**:
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| return_type | string | 否 | 返回类型：str/json/dict/markdown，默认 json |
-
-### funds_query - 资金查询
-
-```http
-POST /api/v1/operations/funds_query
-```
-
-**请求参数**:
-```json
-{
-  "params": {}
-}
-```
-
-**响应数据包含**: 资金余额、冻结金额、可用金额、可取金额、股票市值、总资产、持仓盈亏
-
-### order_query - 委托查询
-
-```http
-POST /api/v1/operations/order_query
-```
-
-**请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "return_type": "json"
-  }
-}
-```
-
-**参数说明**:
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| stock_code | string | 否 | 股票代码，不指定则查询全部 |
-| return_type | string | 是 | 返回类型：str/json/dict/markdown |
+> **注意**：同 market_buy，并不是所有类型的标的都支持市价交易，且可用成交策略数量因标的而异。如果设置了不支持的策略，系统会自动使用「五档即成剩撤」提交。
 
 ### order_cancel - 撤单
 
@@ -520,140 +492,19 @@ POST /api/v1/operations/order_cancel
 ```
 
 **请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "cancel_type": "all"
-  }
-}
-```
-
-**参数说明**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| stock_code | string | 否 | 股票代码，不指定则撤销所有 |
+| stock_code | string | 否 | 股票代码（6位数字），不指定则针对全部委托 |
 | cancel_type | string | 否 | 撤单类型：all(全部)/buy(买入)/sell(卖出)，默认 all |
 
-### historical_commission_query - 历史成交查询
+**响应数据**（`data`，对象）:
 
-```http
-POST /api/v1/operations/historical_commission_query
-```
-
-**请求参数**:
-```json
-{
-  "params": {
-    "return_type": "json",
-    "stock_code": "600000",
-    "time_range": "当日"
-  }
-}
-```
-
-**参数说明**:
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| return_type | string | 否 | 返回类型：str/json/dict/markdown，默认 json |
-| stock_code | string | 否 | 股票代码（6位数字），不指定则查询所有股票 |
-| time_range | string | 否 | 时间范围：当日/近一周/近一月/近三月/近一年，默认当日 |
-
-### reverse_repo_buy - 国债逆回购购买
-
-```http
-POST /api/v1/operations/reverse_repo_buy
-```
-
-**请求参数**:
-```json
-{
-  "params": {
-    "market": "上海",
-    "time_range": "1天期",
-    "amount": 10000
-  }
-}
-```
-
-**参数说明**:
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| market | string | 是 | 交易市场：上海/深圳 |
-| time_range | string | 是 | 回购期限：1天期/2天期/3天期/4天期/7天期 |
-| amount | integer | 是 | 出借金额（必须是1000的倍数） |
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "message": "操作成功",
-  "data": {
-    "operation_id": "...",
-    "result": {
-      "success": true,
-      "data": {
-        "market": "上海",
-        "time_range": "1天期",
-        "amount": 10000,
-        "success": true,
-        "message": "国债逆回购操作成功， 成功出借:10000 元， 年化利率为：2.50%"
-      },
-      "message": null,
-      "timestamp": "2025-12-26T10:30:00.123456"
-    }
-  }
-}
-```
-
-### reverse_repo_query - 国债逆回购查询
-
-```http
-POST /api/v1/operations/reverse_repo_query
-```
-
-**请求参数**:
-```json
-{
-  "params": {}
-}
-```
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "message": "查询成功",
-  "data": {
-    "operation_id": "...",
-    "result": {
-      "success": true,
-      "data": {
-        "reverse_repo_interest": [
-          {
-            "市场类型": "上海市场",
-            "时间类型": "1天期",
-            "年化利率": "2.50%"
-          },
-          {
-            "市场类型": "深圳市场",
-            "时间类型": "1天期",
-            "年化利率": "2.45%"
-          }
-        ],
-        "timestamp": "2025-12-27T10:30:00",
-        "success": true,
-        "message": "查询国债逆回购年化利率成功"
-      },
-      "message": null,
-      "timestamp": "2025-12-27T10:30:00.123456"
-    }
-  }
-}
-```
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| stock_code | string \| null | 目标股票代码，`null` 表示全部委托 |
+| cancel_type | string | 撤单类型：all / buy / sell |
+| cancelled_count | integer | 撤销的委托笔数 |
 
 ### condition_buy - 条件买入
 
@@ -664,47 +515,32 @@ POST /api/v1/operations/condition_buy
 ```
 
 **请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "target_price": 10.50,
-    "quantity": 100,
-    "expire_days": 30
-  }
-}
-```
-
-**参数说明**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | stock_code | string | 是 | 股票代码（6位数字） |
-| target_price | number | 是 | 目标价格（触发价格） |
-| quantity | integer | 是 | 买入数量（股票必须是100的倍数，可转债必须是10的倍数） |
-| expire_days | integer | 否 | 有效期（自然日），可选1/3/5/10/20/30，默认30 |
+| target_price | number | 是 | 触发价格（元），大于 0 且不超过 10000 |
+| quantity | integer | 是 | 买入数量（股），遵循手数规则 |
+| expire_days | integer | 否 | 策略有效期（自然日），可选 1/3/5/10/20/30，默认 30 |
 
-**响应示例**:
+**响应数据**（`data`，对象）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| stock_code | string | 股票代码 |
+| target_price | number | 触发价格（元） |
+| quantity | integer | 委托数量（股） |
+| expire_days | integer | 策略有效期（自然日） |
+
+**响应示例**（`GET .../result` 终态）:
 ```json
 {
   "success": true,
-  "message": "操作成功",
-  "data": {
-    "operation_id": "...",
-    "result": {
-      "success": true,
-      "data": {
-        "stock_code": "600000",
-        "target_price": 10.50,
-        "quantity": 100,
-        "operation": "condition_buy",
-        "success": true,
-        "message": "执行600000的条件单成功"
-      },
-      "message": null,
-      "timestamp": "2025-12-26T10:30:00.123456"
-    }
-  }
+  "status": "completed",
+  "message": "执行600000的条件买入成功，耗时2.05秒",
+  "error_code": null,
+  "data": {"stock_code": "600000", "target_price": 10.5, "quantity": 100, "expire_days": 30},
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
@@ -716,48 +552,42 @@ POST /api/v1/operations/condition_buy
 POST /api/v1/operations/condition_sell
 ```
 
-**请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "target_price": 15.00,
-    "quantity": 100,
-    "expire_days": 30
-  }
-}
+**请求参数**: 同 [condition_buy](#condition_buy-条件买入)（`target_price` 为卖出触发价格）。
+
+**响应数据**（`data`，对象）: 同 [condition_buy](#condition_buy-条件买入)。
+
+### condition_order_cancel - 条件单删除
+
+删除指定的条件单。
+
+```http
+POST /api/v1/operations/condition_order_cancel
 ```
 
-**参数说明**:
+**请求参数**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| stock_code | string | 是 | 股票代码（6位数字） |
-| target_price | number | 是 | 目标价格（触发价格） |
-| quantity | integer | 是 | 卖出数量（股票必须是100的倍数，可转债必须是10的倍数） |
-| expire_days | integer | 否 | 有效期（自然日），可选1/3/5/10/20/30，默认30 |
+| stock_code | string | 否 | 股票代码（6位数字），不指定则删除全部条件单 |
+| order_type | string | 否 | 订单类型：买入/卖出，不指定则不限 |
 
-**响应示例**:
+**响应数据**（`data`，对象）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| stock_code | string \| null | 目标股票代码，`null` 表示全部条件单 |
+| order_type | string \| null | 订单类型（买入/卖出），`null` 表示不限 |
+| deleted_count | integer | 删除的条件单数量 |
+
+**响应示例**（`GET .../result` 终态）:
 ```json
 {
   "success": true,
-  "message": "操作成功",
-  "data": {
-    "operation_id": "...",
-    "result": {
-      "success": true,
-      "data": {
-        "stock_code": "600000",
-        "target_price": 15.00,
-        "quantity": 100,
-        "operation": "condition_sell",
-        "success": true,
-        "message": "执行600000的条件卖出成功"
-      },
-      "message": null,
-      "timestamp": "2025-12-26T10:30:00.123456"
-    }
-  }
+  "status": "completed",
+  "message": "条件单删除成功，删除1条记录，耗时1.54秒",
+  "error_code": null,
+  "data": {"stock_code": "600000", "order_type": "买入", "deleted_count": 1},
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
@@ -770,53 +600,193 @@ POST /api/v1/operations/stop_loss_profit
 ```
 
 **请求参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 是 | 股票代码（6位数字） |
+| stop_loss_percent | number | 是 | 止损百分比（如 3 表示 3%），大于 0 且不超过 100 |
+| stop_profit_percent | number | 是 | 止盈百分比（如 5 表示 5%），大于 0 且不超过 100 |
+| quantity | integer | 否 | 卖出数量（股），遵循手数规则；不指定则使用全部可卖持仓 |
+| expire_days | integer | 否 | 策略有效期（自然日），可选 1/3/5/10/20/30，默认 30 |
+
+**响应数据**（`data`，对象）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| stock_code | string | 股票代码 |
+| stop_loss_percent | number | 止损百分比（如 3 表示 3%） |
+| stop_profit_percent | number | 止盈百分比（如 5 表示 5%） |
+| quantity | integer | 委托数量（股）；请求未指定时为解析到的全部可卖数量 |
+| expire_days | integer | 策略有效期（自然日） |
+
+> **注意**：止盈百分比必须大于止损百分比。quantity 参数建议指定，因为受 T+1 限制，当天买入的股票如果不指定数量无法设置止盈止损。
+
+**响应示例**（`GET .../result` 终态）:
 ```json
 {
-  "params": {
+  "success": true,
+  "status": "completed",
+  "message": "执行600000的止盈止损单成功，耗时2.30秒",
+  "error_code": null,
+  "data": {
     "stock_code": "600000",
     "stop_loss_percent": 3.0,
     "stop_profit_percent": 5.0,
     "quantity": 100,
     "expire_days": 30
-  }
+  },
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
-**参数说明**:
+### reverse_repo_buy - 国债逆回购购买
+
+```http
+POST /api/v1/operations/reverse_repo_buy
+```
+
+**请求参数**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| stock_code | string | 是 | 股票代码（6位数字） |
-| stop_loss_percent | number | 是 | 止损百分比（如3表示3%） |
-| stop_profit_percent | number | 是 | 止盈百分比（如5表示5%） |
-| quantity | integer | 否 | 卖出数量（股票必须是100的倍数，可转债必须是10的倍数），可选，不指定则使用全部可用持仓 |
-| expire_days | integer | 否 | 有效期（自然日），可选1/3/5/10/20/30，默认30 |
+| market | string | 是 | 交易市场：上海/深圳 |
+| time_range | string | 是 | 回购期限：1天期/2天期/3天期/4天期/7天期 |
+| amount | integer | 是 | 出借金额（元），必须是 1000 的倍数 |
 
-> **注意**：止盈百分比必须大于止损百分比。quantity 参数建议指定，因为受 T+1 限制，当天买入的股票如果不指定数量无法设置止盈止损。
+**响应数据**（`data`，对象）:
 
-**响应示例**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| market | string | 交易市场 |
+| time_range | string | 回购期限 |
+| amount | integer | 出借金额（元） |
+| annual_rate | number | 成交年化利率（百分数值，如 2.5 表示 2.5%） |
+
+**响应示例**（`GET .../result` 终态）:
 ```json
 {
   "success": true,
-  "message": "操作成功",
-  "data": {
-    "operation_id": "...",
-    "result": {
-      "success": true,
-      "data": {
-        "stock_code": "600000",
-        "stop_loss_percent": 3.0,
-        "stop_profit_percent": 5.0,
-        "operation": "stop_loss_profit",
-        "success": true,
-        "message": "执行600000的止盈止损单成功"
-      },
-      "message": null,
-      "timestamp": "2025-12-26T10:30:00.123456"
-    }
-  }
+  "status": "completed",
+  "message": "国债逆回购操作成功，成功出借:10000 元，年化利率为：2.50%，耗时1.23秒",
+  "error_code": null,
+  "data": {"market": "上海", "time_range": "1天期", "amount": 10000, "annual_rate": 2.5},
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
+
+### holding_query - 持仓查询
+
+```http
+POST /api/v1/operations/holding_query
+```
+
+**请求参数**: 无。
+
+**响应数据**（`data`，记录列表，每行字段如下；数值型字段无该项业务时为 `null`）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| stock_code | string | 证券代码 |
+| stock_name | string | 证券名称 |
+| quantity | integer \| null | 持仓数量（股） |
+| available_quantity | integer \| null | 可用数量（股） |
+| frozen_quantity | integer \| null | 冻结数量（股） |
+| cost_price | number \| null | 参考成本价（元） |
+| current_price | number \| null | 当前价（元） |
+| floating_profit | number \| null | 浮动盈亏（元） |
+| profit_ratio | number \| null | 盈亏比例（%，如 1.76 表示 1.76%） |
+| daily_profit | number \| null | 当日盈亏（元） |
+| daily_profit_ratio | number \| null | 当日盈亏比（%） |
+| market_value | number \| null | 最新市值（元） |
+| position_ratio | number \| null | 仓位占比（%） |
+| daily_bought | integer \| null | 当日买入（股） |
+| daily_sold | integer \| null | 当日卖出（股） |
+| market | string | 交易市场 |
+
+### funds_query - 资金查询
+
+```http
+POST /api/v1/operations/funds_query
+```
+
+**请求参数**: 无。
+
+**响应数据**（`data`，对象；单位元，数值型，无该项业务时为 `null`）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| balance | number \| null | 资金余额 |
+| frozen_amount | number \| null | 冻结金额 |
+| market_value | number \| null | 股票市值 |
+| total_assets | number \| null | 总资产 |
+| available_amount | number \| null | 可用金额 |
+| withdrawable_amount | number \| null | 可取金额 |
+| holding_profit | number \| null | 持仓盈亏 |
+
+**响应示例**（`GET .../result` 终态）:
+```json
+{
+  "success": true,
+  "status": "completed",
+  "message": "资金查询完成，耗时1.05秒",
+  "error_code": null,
+  "data": {
+    "balance": 50000.0,
+    "frozen_amount": 1050.0,
+    "market_value": 48940.0,
+    "total_assets": 100000.0,
+    "available_amount": 48950.0,
+    "withdrawable_amount": 48950.0,
+    "holding_profit": 123.45
+  },
+  "timestamp": "2026-08-22 06:46:56"
+}
+```
+
+### order_query - 委托查询
+
+```http
+POST /api/v1/operations/order_query
+```
+
+**请求参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 否 | 股票代码（6位数字），不指定则查询全部 |
+
+**响应数据**（`data`，记录列表，每行字段如下；数值型字段无该项业务时为 `null`）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| order_time | string | 委托时间 |
+| stock_code | string | 证券代码 |
+| stock_name | string | 证券名称 |
+| operation | string | 委托方向（买入/卖出） |
+| remark | string | 备注 |
+| quantity | integer \| null | 委托数量（股） |
+| filled_quantity | integer \| null | 成交数量（股） |
+| price | number \| null | 委托价格（元） |
+| avg_fill_price | number \| null | 成交均价（元） |
+| cancelled_quantity | integer \| null | 撤销数量（股） |
+| contract_no | string | 合同编号 |
+| market | string | 交易市场 |
+
+### historical_commission_query - 历史委托查询
+
+```http
+POST /api/v1/operations/historical_commission_query
+```
+
+**请求参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| stock_code | string | 否 | 股票代码（6位数字），不指定则查询全部 |
+| time_range | string | 否 | 查询时间范围：当日/近一周/近一月/近三月/近一年，默认当日 |
+
+**响应数据**（`data`，记录列表）: 字段同 [order_query](#order_query-委托查询)，
+每行另加 `order_date`（string，委托日期）。
 
 ### condition_order_query - 条件单查询
 
@@ -826,89 +796,76 @@ POST /api/v1/operations/stop_loss_profit
 POST /api/v1/operations/condition_order_query
 ```
 
-**请求参数**:
-```json
-{
-  "params": {
-    "return_type": "json"
-  }
-}
-```
+**请求参数**: 无。
 
-**参数说明**:
+**响应数据**（`data`，记录列表，每行字段如下；数值型字段无该项业务时为 `null`）:
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| return_type | string | 否 | 返回类型：str/json/dict/markdown，默认 json |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| status | string | 状态 |
+| condition_type | string | 条件类型 |
+| direction | string | 方向（买入/卖出） |
+| target | string | 监控标的 |
+| trigger_condition | string | 触发条件 |
+| latest_price | number \| null | 最新价（元） |
+| change_ratio | number \| null | 涨幅（%，如 1.23 表示 1.23%） |
+| order_detail | string | 委托单 |
+| created_at | string | 创建时间 |
+| monitor_cycle | string | 监控周期 |
 
-**响应示例**:
+**响应示例**（`GET .../result` 终态）:
 ```json
 {
   "success": true,
-  "message": "操作成功",
-  "data": {
-    "operation_id": "...",
-    "result": {
-      "success": true,
-      "data": {
-        "condition_orders": [...],
-        "message": "条件单查询成功，共获取到2条数据",
-        "timestamp": "2025-12-27T10:30:00",
-        "success": true
-      },
-      "message": null,
-      "timestamp": "2025-12-27T10:30:00.123456"
+  "status": "completed",
+  "message": "条件单查询成功，共获取到2条数据，耗时1.89秒",
+  "error_code": null,
+  "data": [
+    {
+      "status": "未触发",
+      "condition_type": "价格条件",
+      "direction": "买入",
+      "target": "浦发银行(600000)",
+      "trigger_condition": "最新价小于等于10.50元",
+      "latest_price": 10.62,
+      "change_ratio": -0.56,
+      "order_detail": "买入100股，限价10.50元",
+      "created_at": "2026-08-21 09:31:00",
+      "monitor_cycle": "30天"
     }
-  }
+  ],
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
-### condition_order_cancel - 条件单删除
-
-删除指定的条件单。
+### reverse_repo_query - 国债逆回购查询
 
 ```http
-POST /api/v1/operations/condition_order_cancel
+POST /api/v1/operations/reverse_repo_query
 ```
 
-**请求参数**:
-```json
-{
-  "params": {
-    "stock_code": "600000",
-    "order_type": "买入"
-  }
-}
-```
+**请求参数**: 无。
 
-**参数说明**:
+**响应数据**（`data`，记录列表，每行字段如下）:
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| stock_code | string | 否 | 股票代码（6位数字），不指定则删除所有条件单 |
-| order_type | string | 否 | 订单类型：买入/卖出 |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| market | string | 交易市场（上海/深圳） |
+| term | string | 期限（如 1天期） |
+| annual_rate | number \| null | 年化利率（百分数值，如 2.5 表示 2.5%） |
 
-**响应示例**:
+**响应示例**（`GET .../result` 终态）:
 ```json
 {
   "success": true,
-  "message": "操作成功",
-  "data": {
-    "operation_id": "...",
-    "result": {
-      "success": true,
-      "data": {
-        "stock_code": "600000",
-        "order_type": "买入",
-        "deleted_count": 1,
-        "message": "条件单删除成功",
-        "timestamp": "2025-12-27T10:30:00",
-        "success": true
-      },
-      "message": null,
-      "timestamp": "2025-12-27T10:30:00.123456"
-    }
-  }
+  "status": "completed",
+  "message": "查询国债逆回购年化利率成功，耗时1.01秒",
+  "error_code": null,
+  "data": [
+    {"market": "上海", "term": "1天期", "annual_rate": 2.5},
+    {"market": "深圳", "term": "1天期", "annual_rate": 2.45}
+  ],
+  "timestamp": "2026-08-22 06:46:56"
 }
 ```
 
@@ -925,7 +882,7 @@ base_url = "http://127.0.0.1:7648"
 api_key = "your-api-key"  # 如果配置了 API Key
 
 headers = {
-    "Authorization": f"Bearer {api_key}"  # 如果配置了 API Key
+  "Authorization": f"Bearer {api_key}"  # 如果配置了 API Key
 }
 
 # 买入股票
@@ -933,30 +890,29 @@ response = requests.post(
     f"{base_url}/api/v1/operations/buy",
     headers=headers,  # 如果配置了 API Key
     json={
-        "params": {
-            "stock_code": "600000",
-            "price": 10.50,
-            "quantity": 100
-        },
+        "stock_code": "600000",
+        "price": 10.50,
+        "quantity": 100,
         "priority": 5
     }
 )
 operation_id = response.json()["data"]["operation_id"]
 
-# 查询操作状态
-status = requests.get(
-    f"{base_url}/api/v1/operations/{operation_id}/status",
-    headers=headers  # 如果配置了 API Key
-)
-print(status.json())
+# 阻塞等待终态结果（业务数据直接在 data）
+result = requests.get(
+    f"{base_url}/api/v1/operations/{operation_id}/result",
+    headers=headers,  # 如果配置了 API Key
+    params={"timeout": 30}
+).json()
+if result["success"]:
+    print(result["data"]["stock_code"], result["data"]["quantity"])
 
 # 查询持仓
 response = requests.post(
     f"{base_url}/api/v1/operations/holding_query",
     headers=headers,  # 如果配置了 API Key
-    json={"params": {"return_type": "json"}}
+    json={}
 )
-print(response.json())
 ```
 
 ### cURL 示例
@@ -970,25 +926,24 @@ curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "params": {
-      "stock_code": "600000",
-      "price": 10.50,
-      "quantity": 100
-    }
+  "stock_code": "600000",
+  "price": 10.50,
+  "quantity": 100
   }'
 
 # 查询持仓（带认证）
 curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"params": {"return_type": "json"}}'
+  -d '{}'
 ```
 
 ---
 
 ## 交互式文档
 
-启动服务后，访问以下地址查看完整的交互式 API 文档：
+启动服务后，访问以下地址查看完整的交互式 API 文档（每个操作的请求参数与
+Result 模型均由 Pydantic 自动生成契约）：
 
 - **Swagger UI**: `http://127.0.0.1:7648/docs`
 - **ReDoc**: `http://127.0.0.1:7648/redoc`

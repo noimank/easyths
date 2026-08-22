@@ -64,25 +64,26 @@ pip install -e ".[server]"
 
 系统会根据安装方式自动安装以下依赖：
 
-**客户端安装 (`easyths`) 仅包含：**
+**客户端安装 (`easyths`) 仅包含少量跨平台依赖：**
 
 - httpx - HTTP 客户端
 - pydantic - 数据验证
+- numpy / tzdata 等基础依赖
 
-**服务端完整安装 (`easyths[server]`) 包含：**
+**服务端完整安装 (`easyths[server]`) 额外包含：**
 
 - FastAPI - Web 服务框架
 - Uvicorn - ASGI 服务器
+- fastmcp - MCP 协议支持
 - pywinauto - Windows GUI 自动化
 - pywin32 - Windows API
-- Pydantic - 数据验证
 - 更多依赖请查看 [pyproject.toml](https://github.com/noimank/easyths/blob/main/pyproject.toml)
 
 ## 验证安装
 
 ```bash
 $ easyths --version
-EasyTHS v1.3.0
+EasyTHS v2.0.0
 ```
 
 ## 下一步

@@ -24,7 +24,7 @@ EasyTHS MCP 服务支持三种传输协议：
 
 ## 配置 MCP 服务
 
-### 1. 修改配置文件
+### 修改配置文件
 
 在 `config.toml` 中配置 MCP 传输类型：
 
@@ -39,15 +39,6 @@ key = "your-api-key-here"
 # 其他配置...
 host = "0.0.0.0"
 port = 7648
-```
-
-### 2. 环境变量配置
-
-也可以通过环境变量配置：
-
-```bash
-export API_MCP_SERVER_TYPE="streamable-http"
-export API_KEY="your-api-key-here"
 ```
 
 ## 服务端点
@@ -112,7 +103,14 @@ asyncio.run(main())
 
 ### Claude Desktop 配置
 
-在 Claude Desktop 的配置文件中添加：
+> **先区分两个产品**：Claude Desktop（桌面应用）≠ Claude Code（CLI 命令行工具）。
+> Claude Code **原生支持远程 HTTP MCP 直连并携带认证头**，无需任何桥接，配置见下一节；
+> 以下限制仅针对**桌面应用**。
+
+Claude Desktop 的配置文件不支持远程 HTTP 服务器的自定义认证头（官方已知限制，
+[claude-ai-mcp#120](https://github.com/anthropics/claude-ai-mcp/issues/120)）。
+启用 API Key 时需借助 [`mcp-remote`](https://github.com/geelen/mcp-remote) 桥接
+（依赖 Node.js，`npx` 首次运行自动下载）。
 
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
@@ -122,21 +120,48 @@ asyncio.run(main())
 {
   "mcpServers": {
     "easyths": {
-      "transport": {
-        "type": "http",
-        "url": "http://localhost:7648/api/mcp-server/",
-        "headers": {
-          "Authorization": "Bearer your-api-key-here"  // Bearer 和 key 之间只有一个空格
-        }
-      }
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "http://localhost:7648/api/mcp-server/",
+        "--header",
+        "Authorization: Bearer your-api-key-here"
+      ]
     }
   }
 }
 ```
 
 > **注意**：
-> - `Authorization` header 格式为 `Bearer <api-key>`，**`Bearer` 和 API key 之间有且仅有一个空格**
-> - 如果未启用 API Key 认证，可以省略 `headers` 部分
+> - `Bearer` 和 API key 之间有且仅有一个空格
+> - 未启用 API Key 认证时，去掉 `"--header"` 与其后的 `"Authorization: ..."` 两行即可
+> - API Key 以明文存放在配置文件中，注意文件权限
+
+### 其他支持 HTTP MCP 的客户端
+
+原生支持自定义请求头的客户端无需桥接、直连即可：
+
+**Cursor**（`.cursor/mcp.json`）：
+
+```json
+{
+  "mcpServers": {
+    "easyths": {
+      "url": "http://localhost:7648/api/mcp-server/",
+      "headers": {
+        "Authorization": "Bearer your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Claude Code**：
+
+```bash
+claude mcp add --transport http easyths http://localhost:7648/api/mcp-server/ \
+  --header "Authorization: Bearer your-api-key-here"
+```
 
 ## 可用工具
 
@@ -187,6 +212,31 @@ MCP 服务提供以下交易工具：
 |--------|------|
 | `reverse_repo_buy` | 国债逆回购（出借资金） |
 | `reverse_repo_query` | 查询国债逆回购利率 |
+
+## 工具参数与返回格式
+
+每个工具的入参与同名 REST 操作的请求参数一致，完整参数约束与
+`data` 返回字段见 [API 文档 - 可用操作](api.md#available-operations)。
+
+工具内部会提交操作并**同步等待终态结果**（最长 30 秒），返回统一信封并附带
+`operation_id`：
+
+```json
+{
+  "status": "completed",
+  "success": true,
+  "data": {"stock_code": "600000", "price": 10.5, "quantity": 100},
+  "message": "成功提交600000的买入委托，耗时2.31秒",
+  "error_code": null,
+  "timestamp": "2026-08-22 06:46:56",
+  "operation_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+等待超时时返回 `success: false` 且 `error_code: "timeout"`，`message` 会明确区分：
+
+- **操作仍在排队/执行中**：`status` 为当前状态，提示稍后重查，**请勿重复提交**（避免重复下单）
+- **操作记录已失效**：`status` 为 null，可凭 `operation_id` 排查服务端日志
 
 ## 认证说明
 
@@ -261,7 +311,7 @@ AI: [调用 condition_buy 工具]
 
 1. 确认同花顺客户端正在运行
 2. 检查交易程序路径配置：`[trading] app_path`
-3. 查看日志：`logs/trading.log`
+3. 查看服务日志：默认 `C:/Users/你的用户名/easyths/log.txt`（可在 `[logging] file` 中自定义路径）
 
 ## 更多内容
 

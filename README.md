@@ -20,10 +20,10 @@
 
 - **操作串行化**：所有 GUI 操作串行执行，避免并发冲突
 - **队列管理**：支持优先级的任务队列，确保操作顺序
-- **错误恢复**：完整的错误处理和恢复机制
+- **执行看门狗**：单操作硬超时熔断（默认 10 秒，可配置），界面卡死自动断连、后续操作快速失败，重连即恢复，队列不阻塞
 - **实时监控**：详细的日志记录和状态监控
 - **RESTful API**：完整的 HTTP 接口，支持各种语言集成
-- **MCP 支持**：支持 Model Context Protocol，可被 AI 助手（如 Claude Desktop）直接调用
+- **MCP 支持**：支持 Model Context Protocol，可被 AI 助手（如 Claude Code、Cursor）直接调用
 - **验证码识别**：内置 CRNN 模型，支持自定义微调适配特定验证码样式
 
 ## 文档
@@ -107,7 +107,7 @@ with TradeClient(host="127.0.0.1", port=7648, api_key="your-api-key") as client:
 
     # 查询持仓
     result = client.query_holdings()
-    holdings = result["data"]["holdings"]
+    holdings = result["data"]  # JSON 记录列表
     print(f"持仓数: {len(holdings)}")
 ```
 
@@ -119,10 +119,15 @@ with TradeClient(host="127.0.0.1", port=7648, api_key="your-api-key") as client:
 # 启动服务
 uvx easyths[server]
 
-# 买入股票
+# 买入股票（参数平铺在请求体；启用 API Key 时需带 Authorization 头）
 curl -X POST http://127.0.0.1:7648/api/v1/operations/buy \
   -H "Content-Type: application/json" \
-  -d '{"params": {"stock_code": "000001", "price": 10.50, "quantity": 100}}'
+  -H "Authorization: Bearer your-api-key" \
+  -d '{"stock_code": "000001", "price": 10.50, "quantity": 100}'
+# → 提交受理：{"success": null, "status": "queued", "data": {"operation_id": "...", ...}}
+
+# 阻塞等待操作终态结果（拿到上一步的 operation_id）
+curl http://127.0.0.1:7648/api/v1/operations/<operation_id>/result
 
 # 查询持仓
 curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
@@ -134,29 +139,27 @@ curl -X POST http://127.0.0.1:7648/api/v1/operations/holding_query \
 
 ### 使用 MCP（AI 助手集成）
 
-EasyTHS 支持 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/)，可以让 Claude Desktop 等 AI 助手直接调用交易功能。
+EasyTHS 支持 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/)，可以让 Claude Code 等 AI 助手直接调用交易功能。
 
-**Claude Desktop 配置示例**：
+**Claude Code 连接示例**（原生支持远程 HTTP MCP，一条命令完成）：
 
-```json
-{
-  "mcpServers": {
-    "easyths": {
-      "transport": {
-        "type": "http",
-        "url": "http://localhost:7648/api/mcp-server/"
-      }
-    }
-  }
-}
+```bash
+claude mcp add --transport http easyths http://localhost:7648/api/mcp-server/ \
+  --header "Authorization: Bearer your-api-key"
 ```
 
-配置后，你可以在 Claude Desktop 中直接对话：
+> 未启用 API Key 认证时，省略 `--header` 参数即可。
+
+Cursor 等其他原生支持 HTTP MCP 的客户端同理：直连
+`http://localhost:7648/api/mcp-server/`，在请求头携带
+`Authorization: Bearer <key>`。Claude Desktop（桌面应用）配置文件不支持自定义
+认证头，需 [mcp-remote](https://github.com/geelen/mcp-remote) 桥接，详见
+[MCP 服务文档](https://noimank.github.io/easyths/getting-started/mcp-service/)。
+
+配置后，你可以直接对话：
 - "查询我的账户资金"
 - "买入 100 股平安银行，价格 10.5 元"
 - "当贵州茅台低于 1500 元时买入 100 股"
-
-详细的 MCP 配置和使用说明请参考 [MCP 服务文档](https://noimank.github.io/easyths/getting-started/mcp-service/)。
 
 ## 系统要求
 

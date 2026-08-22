@@ -7,18 +7,19 @@
 **可能原因与解决方案**:
 
 1. **同花顺客户端未启动**
-   - 确保同花顺交易客户端已正常启动并登录
+   - 确保同花顺交易客户端（`xiadan.exe`）已正常启动并登录
 
-2. **地址配置错误**
-   - 检查 `ths_client_url` 配置是否正确
-   - 默认地址为 `http://127.0.0.1:8888`
+2. **交易程序路径配置错误**
+   - 检查配置项 `[trading] app_path` 是否指向同花顺交易程序的实际路径
+   - 默认路径为 `C:/同花顺远航版/transaction/xiadan.exe`，其他版本可用
+     `--exe_path` 参数指定
 
-3. **版本不兼容**
-   - 确保同花顺版本为 **11.4 或更高版本**
-   - 旧版本可能不支持 API 接口
+3. **客户端重启后服务未恢复**
+   - 同花顺客户端重启后无需重启 EasyTHS，调用
+     `POST /api/v1/system/reconnect` 或 `client.reconnect()` 即可恢复连接
 
-4. **API Key 配置问题**
-   - 检查 `ths_api_key` 是否与同花顺客户端中设置的一致
+4. **API Key / IP 白名单拦截**
+   - 如配置了 `[api] key`，请求需携带 `Authorization: Bearer <key>`
    - 如设置了 IP 白名单，请确认当前 IP 在白名单中
 
 5. **权限不足**
@@ -107,9 +108,8 @@ onnxruntime 依赖 Microsoft Visual C++ 运行时库，新安装的 Windows 系�
    - 示例：
      ```markdown
      1. 启动 EasyTHS 服务
-     2. 调用 get_quotes() 接口
-     3. 传入参数: code='600000'
-     4. 观察到返回错误信息
+     2. 调用 funds_query 接口（POST /api/v1/operations/funds_query）
+     3. 观察到返回错误信息
      ```
 
 4. **错误信息**
