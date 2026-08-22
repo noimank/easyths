@@ -67,6 +67,12 @@ key = "your-secret-key"
 | timeout | 等待结果超时（408，操作仍在执行）；或执行超过硬超时被看门狗收尾（failed 终态，已自动断连） | 408 **勿重复提交**、稍后重查；终态 timeout 先恢复客户端再 `/system/reconnect` |
 | not_found | 操作 ID 不存在或结果已淘汰（404） | 检查 ID |
 | internal | 内部错误 | 查看服务端日志 |
+| unauthorized | 认证失败：缺少或错误的 API Key（401） | 检查 API Key |
+| forbidden | IP 不在白名单（403） | 更换来源机器或调整 `api.ip_whitelist` 配置 |
+| rate_limited | 触发限流（429） | 降低请求频率，稍后重试 |
+
+认证（401）、IP 白名单（403）、限流（429）等中间件层的拒绝响应同样以统一信封返回，
+调用方无需按状态码特判响应体形状。
 
 ---
 
@@ -134,6 +140,9 @@ GET /api/v1/system/status
 ### 重连同花顺
 
 同花顺客户端重启后，无需重启服务，调用此接口恢复连接。
+
+> 重连成功会**清空账户缓存**（账户集合/顺序与当前账户不可信）：此后带 `account_name`
+> 的操作与 `account_switch` 会快速失败，需显式执行一次 `account_query` 重新初始化。
 
 ```http
 POST /api/v1/system/reconnect
@@ -215,6 +224,10 @@ POST /api/v1/operations/{operation_name}
 > **`account_name` 的取值规则**：为客户端账户展示名的**前缀标识**——取 `-` 之前的
 > 部分，如客户端展示「平安证券-王\*明」则账户名为「平安证券」。完整可用账户名
 > 以 [account_query](#account_query-账户列表查询) 返回为准。
+
+> **不适用操作**：`account_switch` 与 `account_query` 不接受此指令——前者的
+> `account_name` 是切换目标（业务参数），后者负责初始化账户缓存（指令执行
+> 依赖该缓存，重连后携带指令会因缓存为空而失败）。
 
 **方式一：显式传入 `account_name`（推荐，操作必然落在该账户）**
 
@@ -370,6 +383,9 @@ GET /api/v1/operations/
   "timestamp": "2026-08-22 06:46:56"
 }
 ```
+
+> OpenAPI/Swagger 中结果端点的 `data` 是无类型的（异步结果端点无法按操作类型化）。
+> 各操作结果的机器可读契约以本端点返回的 `result_schema` 为准，人工可读版见下文各操作小节。
 
 ---
 
@@ -925,12 +941,13 @@ POST /api/v1/operations/account_query
 
 **请求参数**: 无。
 
-**响应数据**（`data`，对象）:
+**响应数据**（`data`，对象）：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | available_accounts | object[] | 客户端全部可用账户记录，每行字段见下表 |
-| current_used_account | string \| null | 当前使用账户（读取时借下拉选中项识别） |
+
+> 当前使用账户在信封 `current_used_account`（见[统一响应信封](#统一响应信封)），不在 `data` 中。
 
 `available_accounts` 每行字段：
 
@@ -957,12 +974,13 @@ POST /api/v1/operations/account_switch
 |------|------|------|------|
 | account_name | string | 是 | 目标账户名（前缀标识，取值见 [account_query](#account_query-账户列表查询) 返回） |
 
-**响应数据**（`data`，对象）:
+**响应数据**（`data`，对象）：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | previous_used_account | string \| null | 切换前使用的账户（此前未确认过为 `null`） |
-| current_used_account | string | 切换后使用的账户 |
+
+> 切换后使用的账户在信封 `current_used_account`。
 
 > 注意 `account_switch` 的 `account_name` 是**业务参数**（切换目标），该操作
 > 不接受 `account_name` 执行指令。切换后想让后续操作稳定落在该账户，请直接

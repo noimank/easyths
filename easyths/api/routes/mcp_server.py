@@ -52,7 +52,16 @@ def _execute_operation(
     operation = Operation(
         name=operation_name, params=params, priority=0, account_name=account_name
     )
-    operation_id = _operation_queue.submit(operation)
+    try:
+        operation_id = _operation_queue.submit(operation)
+    except ValueError as e:
+        # 队列满等提交失败与 REST 端语义一致：internal 信封而非裸异常
+        return {
+            "success": False,
+            "status": None,
+            "error_code": "internal",
+            "message": str(e),
+        }
 
     result = _operation_queue.get_result(operation_id, timeout=_OPERATION_TIMEOUT)
     if result is None:
@@ -191,17 +200,14 @@ def market_sell(
 
 
 @mcp_server.tool
-def account_query(account_name: str | None = None) -> dict:
+def account_query() -> dict:
     """获取客户端所有已登录账户
-
-    Args:
-        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         账户列表信息：available_accounts 可用账户记录列表（account_name 账户名 /
-        account_index 账户序号）, current_used_account 当前使用账户（未确认过为 null）
+        account_index 账户序号）；当前使用账户在信封 current_used_account（未确认过为 null）
     """
-    return _execute_operation("account_query", {}, account_name=account_name)
+    return _execute_operation("account_query", {})
 
 
 @mcp_server.tool
@@ -212,8 +218,8 @@ def account_switch(account_name: str) -> dict:
         account_name: 目标账户名（客户端展示的账户标识）
 
     Returns:
-        切换结果：previous_used_account 切换前使用的账户（未确认过为 null）,
-        current_used_account 切换后使用的账户
+        切换结果：previous_used_account 切换前使用的账户（未确认过为 null）；
+        切换后使用的账户在信封 current_used_account
     """
     return _execute_operation("account_switch", {"account_name": account_name})
 
@@ -232,7 +238,7 @@ def holding_query(account_name: str | None = None) -> dict:
         持仓记录列表，字段：stock_code, stock_name, quantity, available_quantity,
         frozen_quantity, cost_price, current_price, floating_profit, profit_ratio,
         daily_profit, daily_profit_ratio, market_value, position_ratio,
-        daily_bought, daily_sold, market（数值型，无该项业务时为 null）
+        daily_bought, daily_sold, market 交易市场（文本，如 上海/深圳）
     """
     return _execute_operation("holding_query", {}, account_name=account_name)
 
@@ -263,7 +269,7 @@ def order_query(stock_code: str | None = None, account_name: str | None = None) 
     Returns:
         委托记录列表，字段：order_time, stock_code, stock_name, operation(买入/卖出),
         remark, quantity, filled_quantity, price, avg_fill_price, cancelled_quantity,
-        contract_no, market（数值型，无该项业务时为 null）
+        contract_no 合同编号, market 交易市场（文本，如 上海/深圳）
     """
     params = {}
     if stock_code:
@@ -400,8 +406,8 @@ def condition_order_query(account_name: str | None = None) -> dict:
 
     Returns:
         条件单记录列表，字段：status, condition_type, direction(买入/卖出), target,
-        latest_price, change_ratio, order_detail, created_at,
-        monitor_cycle（数值型，无该项业务时为 null）
+        trigger_condition 触发条件, latest_price, change_ratio, order_detail,
+        created_at, monitor_cycle 监控周期（文本）
     """
     return _execute_operation("condition_order_query", {}, account_name=account_name)
 

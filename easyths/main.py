@@ -14,6 +14,7 @@ import argparse
 import platform
 import shutil
 import sys
+import tomllib
 from pathlib import Path
 
 import structlog
@@ -208,7 +209,8 @@ def check_running_env():
 def initialize_account_state(operation_queue: OperationQueue) -> None:
     """启动即执行一次 account_query，完成账户列表与当前账户的缓存初始化。
 
-    失败不影响启动（客户端弹窗等干扰），后续账户操作会惰性重查；
+    失败不影响启动（客户端弹窗等干扰），此后带账户指令的操作与
+    account_switch 会直接拒绝，需显式调用 account_query 重新初始化；
     看门狗保证 get_result 有界返回。
     """
     op_id = operation_queue.submit(Operation(name="account_query", params={}))
@@ -222,7 +224,7 @@ def initialize_account_state(operation_queue: OperationQueue) -> None:
         )
     else:
         logger.warning(
-            "账户信息初始化失败，将由首次账户操作惰性重查",
+            "账户信息初始化失败，请显式调用 account_query 重新初始化",
             message=result.message,
         )
 
@@ -279,7 +281,11 @@ def main():
         if not config_path.exists():
             print(f"错误: 配置文件不存在: {config_path}")
             sys.exit(1)
-        project_config_instance.load_toml_file(config_path)
+        try:
+            project_config_instance.load_toml_file(config_path)
+        except (ValueError, tomllib.TOMLDecodeError) as e:
+            print(f"错误: 配置文件加载失败: {e}")
+            sys.exit(1)
 
     # 命令行指定的交易程序路径优先级最高
     if args.exe_path:

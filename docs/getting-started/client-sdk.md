@@ -137,8 +137,9 @@ ops = client.list_operations()
 
 ## 多账户支持
 
-客户端登录了多个账户时，**所有交易/查询/账户方法都接受可选的
-`account_name` 参数**（默认 `None` 用当前账户）。两种用法的语义不同，务必区分：
+客户端登录了多个账户时，**交易/查询方法均接受可选的
+`account_name` 参数**（默认 `None` 用当前账户；`query_accounts()` 无此参数，
+`switch_account()` 的 `account_name` 是切换目标本身而非指令）。两种用法的语义不同，务必区分：
 
 > `account_name` 的取值为客户端账户展示名的**前缀标识**（`-` 之前的部分，
 > 如「平安证券-王\*明」→「平安证券」），完整列表以 `query_accounts()` 返回为准。
@@ -174,9 +175,9 @@ assert result["current_used_account"] == "实盘账户"
 result = client.query_accounts()
 
 if result["success"]:
-    data = result["data"]
-    print(f"当前使用账户: {data['current_used_account']}")  # 未确认过为 None
-    for account in data["available_accounts"]:
+    # 当前使用账户在信封（未确认过为 None），不在 data 中
+    print(f"当前使用账户: {result['current_used_account']}")
+    for account in result["data"]["available_accounts"]:
         print(f"- {account['account_name']}（序号 {account['account_index']}）")
 ```
 
@@ -189,7 +190,8 @@ result = client.switch_account("模拟账户")
 
 if result["success"]:
     data = result["data"]
-    print(f"已从 {data['previous_used_account']} 切换至 {data['current_used_account']}")
+    # 切换前账户在 data，切换后账户在信封
+    print(f"已从 {data['previous_used_account']} 切换至 {result['current_used_account']}")
 ```
 
 > `switch_account` 的 `account_name` 是切换目标（业务参数）。切换后想让后续
@@ -554,10 +556,12 @@ except TradeClientError as e:
 **常见错误状态码**：
 
 - 连接失败：无法连接到服务端
-- 401：认证失败（API Key 错误）
+- 401：认证失败（API Key 错误或未提供）
+- 403：IP 不在服务端白名单
 - 404：操作不存在或结果已被淘汰（超过 3 小时）
 - 408：等待结果超时（操作仍在执行，**勿重复提交**，稍后重查）
 - 422：参数校验失败（非法取值或未知字段）
+- 429：触发限流，降低请求频率后重试
 - 500：服务端内部错误
 
 ---
@@ -669,7 +673,7 @@ class TradeClient:
     def cancel_operation(self, operation_id: str) -> bool: ...
 
     # 账户操作
-    def query_accounts(self, timeout: float = None, account_name: str = None) -> dict: ...
+    def query_accounts(self, timeout: float = None) -> dict: ...
     def switch_account(self, account_name: str, timeout: float = None) -> dict: ...
 
     # 交易操作（均支持可选 account_name 参数，见多账户支持）
@@ -773,9 +777,11 @@ except TradeClientError as e:
 |------|-------------|------|
 | 连接失败 | None | 无法连接到服务端，请检查服务端是否启动 |
 | 认证失败 | 401 | API Key 错误或未提供 |
+| IP 被拒 | 403 | 来源 IP 不在服务端白名单 |
 | 参数校验失败 | 422 | 参数非法或包含未知字段，修正后重提 |
 | 操作不存在 | 404 | 操作 ID 错误或结果已被淘汰（超过 3 小时） |
 | 操作超时 | 408 | 等待结果超时，操作仍在执行，勿重复提交 |
+| 触发限流 | 429 | 请求过于频繁，降低频率后重试 |
 | 服务端错误 | 500 | 服务端内部错误 |
 | HTTP 错误 | 其他 | HTTP 请求失败，对应相应的 HTTP 状态码 |
 

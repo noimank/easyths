@@ -10,7 +10,8 @@ easyths 客户端模块
         "status": str | None,       # queued / running / completed / failed / cancelled
         "message": str,             # 错误信息或成功消息
         "error_code": str | None,   # invalid_params / not_connected / client_rejected /
-                                    # ui_error / cancelled / timeout / not_found / internal
+                                    # ui_error / cancelled / timeout / not_found / internal /
+                                    # unauthorized / forbidden / rate_limited
         "current_used_account": str | None,  # 操作执行时的当前使用账户（未确认过为 None）
         "data": Any,                # 业务数据（查询类为记录列表）
         "timestamp": str            # 北京时间，格式 "2026-08-22 06:46:56"
@@ -42,6 +43,7 @@ class APIResponse(TypedDict):
     status: str | None
     message: str
     error_code: str | None
+    current_used_account: str | None
     data: Any
     timestamp: str
 
@@ -155,27 +157,23 @@ class TradeClient:
 
     # ==================== 账户操作便捷方法 ====================
 
-    def query_accounts(
-        self, timeout: float | None = None, account_name: str | None = None
-    ) -> APIResponse:
+    def query_accounts(self, timeout: float | None = None) -> APIResponse:
         """查询客户端所有已登录账户，数据在 result["data"]
 
         字段：available_accounts 可用账户记录列表（每行 account_name 账户名 /
-        account_index 账户序号）, current_used_account 当前使用账户（未确认过为 None）
+        account_index 账户序号）；当前使用账户在信封 current_used_account（未确认过为 None）
 
         Args:
             timeout: 等待操作结果的超时时间（秒）
-            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
-        operation_id = self.execute_operation(
-            "account_query", {}, account_name=account_name
-        )
+        operation_id = self.execute_operation("account_query", {})
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def switch_account(
         self, account_name: str, timeout: float | None = None
     ) -> APIResponse:
-        """切换当前交易账户
+        """切换当前交易账户，切换前账户在 data["previous_used_account"]，
+        切换后账户在信封 current_used_account
 
         Args:
             account_name: 目标账户名（客户端展示的账户标识）

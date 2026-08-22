@@ -134,3 +134,30 @@ def test_invalid_mcp_server_type_rejected(tmp_path):
     config = ProjectConfig()
     with pytest.raises(ValueError, match="mcp_server_type"):
         config.load_toml_file(config_file)
+
+
+def test_invalid_values_rejected(tmp_path):
+    """非法数值/日志级别在加载时即拒绝，并指明配置项名"""
+    cases = [
+        ("[queue]\nmax_size = 0\n", "queue.max_size"),
+        ("[queue]\noperation_timeout = 0\n", "queue.operation_timeout"),
+        ("[api]\nport = 70000\n", "api.port"),
+        ("[api]\nrate_limit = -1\n", "api.rate_limit"),
+        ('[logging]\nlevel = "VERBOSE"\n', "logging.level"),
+    ]
+    for content, config_key in cases:
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(content, encoding="utf-8")
+        config = ProjectConfig()
+        with pytest.raises(ValueError, match=config_key):
+            config.load_toml_file(config_file)
+
+
+def test_log_level_case_insensitive(tmp_path):
+    """日志级别大小写不敏感：小写合法值正常加载"""
+    config_file = tmp_path / "config.toml"
+    config_file.write_text('[logging]\nlevel = "debug"\n', encoding="utf-8")
+
+    config = ProjectConfig()
+    config.load_toml_file(config_file)
+    assert config.logging_level == "debug"

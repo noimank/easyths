@@ -2,12 +2,14 @@
 IP白名单中间件
 """
 
-import json
 from collections.abc import Callable
 
 import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from easyths.api.responses import error_response
+from easyths.models.operations import ErrorCode
 
 logger = structlog.get_logger(__name__)
 
@@ -58,13 +60,8 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
 
         # IP不在白名单中，记录并返回403
         logger.error("IP访问被拒绝", client_ip=client_host, path=request.url.path)
-        message = {
-            "error": "Access denied",
-            "message": "Your IP is not in the whitelist",
-            "ip": client_host,
-        }
-        return Response(
-            content=json.dumps(message), status_code=403, media_type="application/json"
+        return error_response(
+            403, f"IP {client_host} 不在白名单中", ErrorCode.FORBIDDEN
         )
 
     def _get_client_host(self, request: Request) -> str:

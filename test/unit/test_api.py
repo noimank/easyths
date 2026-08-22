@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from easyths.api.app import TradingAPIApp
 from easyths.api.dependencies import common
+from easyths.core.account_state import account_state
 from easyths.core.base_operation import operation_registry
 from easyths.models.operations import (
     ErrorCode,
@@ -185,6 +186,43 @@ def test_account_switch_business_param_not_stripped(client):
     assert op.account_name is None
 
 
+def test_account_query_rejects_account_directive(client):
+    """account_query 不接受 account_name 指令：提交时即 422（未知参数）。
+
+    指令执行依赖 account_query 初始化的账户缓存，携带指令会构成死循环
+    （重连后缓存为空时必失败），因此该操作显式关闭指令注入。
+    """
+    c, _ = client
+    r = c.post("/api/v1/operations/account_query", json={"account_name": "B账户"})
+    assert r.status_code == 422
+    assert r.json()["error_code"] == "invalid_params"
+
+
+def test_reconnect_clears_account_state(client, monkeypatch):
+    """重连成功清空账户缓存（客户端可能已重启，序号/当前账户不可信）；失败保留。"""
+
+    class FailAutomator:
+        def reconnect(self) -> bool:
+            return False
+
+    class OkAutomator:
+        def reconnect(self) -> bool:
+            return True
+
+    c, _ = client
+    account_state.update_available_accounts([("A账户", 1)])
+    account_state.set_current_used_account("A账户")
+
+    monkeypatch.setattr(common, "_automator", FailAutomator())
+    assert c.post("/api/v1/system/reconnect").status_code == 503
+    assert account_state.available_accounts == [("A账户", 1)]
+
+    monkeypatch.setattr(common, "_automator", OkAutomator())
+    assert c.post("/api/v1/system/reconnect").status_code == 200
+    assert account_state.available_accounts == []
+    assert account_state.current_used_account is None
+
+
 def test_result_endpoint_unknown_id_404(client):
     """不存在的操作 ID 返回 404（而非 408），信封含 not_found。"""
     c, _ = client
@@ -282,7 +320,7 @@ def test_envelope_timestamp_format(client):
 
 
 def test_rate_limit_returns_429():
-    """限流触发返回 429（而非 500），且过期 IP 记录被清理。"""
+    """限流触发返回 429 统一信封（rate_limited），且过期 IP 记录被清理。"""
     from easyths.api.middleware import RateLimitMiddleware
 
     app = FastAPI()
@@ -297,6 +335,9 @@ def test_rate_limit_returns_429():
     assert c.get("/ping").status_code == 200
     r = c.get("/ping")
     assert r.status_code == 429
+    body = r.json()
+    assert body["success"] is False
+    assert body["error_code"] == "rate_limited"
     # 客户端记录被清理后不会无限累积
     mw = app.middleware_stack.app  # 最外层即限流中间件
     assert isinstance(mw, RateLimitMiddleware)
@@ -304,7 +345,7 @@ def test_rate_limit_returns_429():
 
 
 def test_ip_whitelist_ignores_forwarded_headers():
-    """伪造 X-Forwarded-For / X-Real-IP 不能绕过白名单。"""
+    """伪造 X-Forwarded-For / X-Real-IP 不能绕过白名单，403 统一信封（forbidden）。"""
     from easyths.api.middleware import IPWhitelistMiddleware
 
     app = FastAPI()
@@ -317,6 +358,52 @@ def test_ip_whitelist_ignores_forwarded_headers():
     c = TestClient(app, client=("192.168.1.50", 22222))
     r = c.get("/ping", headers={"X-Forwarded-For": "10.0.0.1", "X-Real-IP": "10.0.0.1"})
     assert r.status_code == 403
+    body = r.json()
+    assert body["success"] is False
+    assert body["error_code"] == "forbidden"
+    assert "192.168.1.50" in body["message"]
+
+
+def test_api_key_auth_returns_unified_envelope(monkeypatch):
+    """认证失败（缺凭据/错密钥）返回 401 统一信封（unauthorized），保留 WWW-Authenticate 头。"""
+    from easyths.api.middleware import APIKeyAuthMiddleware
+    from easyths.utils import project_config_instance
+
+    app = FastAPI()
+
+    @app.get("/ping")
+    async def ping():
+        return {"ok": True}
+
+    monkeypatch.setattr(project_config_instance, "api_key", "secret-key")
+    app.add_middleware(APIKeyAuthMiddleware)
+    c = TestClient(app)
+
+    r = c.get("/ping")  # 缺少凭据
+    assert r.status_code == 401
+    body = r.json()
+    assert body["success"] is False
+    assert body["error_code"] == "unauthorized"
+    assert r.headers["WWW-Authenticate"] == "Bearer"
+
+    r = c.get("/ping", headers={"Authorization": "Bearer wrong"})  # 错误密钥
+    assert r.status_code == 401
+    assert r.json()["error_code"] == "unauthorized"
+
+
+def test_mcp_execute_operation_queue_full_returns_envelope(monkeypatch):
+    """MCP 工具在队列满（submit 抛 ValueError）时返回 internal 信封而非裸异常。"""
+    import easyths.api.routes.mcp_server as mcp_module
+
+    class FullQueue:
+        def submit(self, operation):
+            raise ValueError("队列已满，无法添加操作")
+
+    monkeypatch.setattr(mcp_module, "_operation_queue", FullQueue())
+    envelope = mcp_module._execute_operation("buy", {})
+    assert envelope["success"] is False
+    assert envelope["error_code"] == "internal"
+    assert "队列已满" in envelope["message"]
 
 
 def test_logging_middleware_redacts_sensitive_headers():

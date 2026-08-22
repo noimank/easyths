@@ -86,9 +86,10 @@ easyths
 | **账户列表查询 (account_query)**                     | 获取所有已登录账户（含当前账户） | -         |
 | **账户切换 (account_switch)**                        | 切换当前交易账户（幂等，含有效性校验） | -  |
 
-**多账户**：所有交易/查询接口均支持可选 `account_name` 参数——显式传入时，
+**多账户**：交易/查询接口均支持可选 `account_name` 参数——显式传入时，
 服务端先切换到该账户再执行操作（两步原子完成），**操作必然落在该账户上**；
-不传则默认使用当前账户。两种方式的语义区别详见
+不传则默认使用当前账户（`account_query`/`account_switch` 不适用此参数）。
+两种方式的语义区别详见
 [API 文档 - 多账户支持](https://noimank.github.io/easyths/getting-started/api/#多账户支持)。
 
 ```python

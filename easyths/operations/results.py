@@ -147,21 +147,17 @@ class AccountRow(ResultModel):
 
 
 class AccountsResult(ResultModel):
-    """账户列表结果（account_query）"""
+    """账户列表结果（account_query）；当前使用账户在信封 current_used_account"""
 
     available_accounts: list[AccountRow] = Field(description="客户端全部可用账户记录")
-    current_used_account: Text | None = Field(
-        description="当前使用账户（读取时借下拉选中项识别，未确认过为 null）"
-    )
 
 
 class AccountSwitchResult(ResultModel):
-    """账户切换结果（account_switch）"""
+    """账户切换结果（account_switch）；切换后账户在信封 current_used_account"""
 
     previous_used_account: Text | None = Field(
         description="切换前使用的账户（此前未确认过为 null）"
     )
-    current_used_account: Text = Field(description="切换后使用的账户")
 
 
 # ============ 查询类结果 ============

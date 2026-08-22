@@ -35,8 +35,14 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
             None,
         )
         if index is None:
+            names = [name for name, _ in account_state.available_accounts]
+            hint = (
+                f"当前可用账户为：{names}"
+                if names
+                else "账户列表未初始化（如刚重连），请先执行 account_query"
+            )
             return self._fail(
-                f"账户（{params.account_name}）不存在,当前可用账户为：{[name for name, index in account_state.available_accounts]} ",
+                f"账户（{params.account_name}）不存在，{hint}",
                 ErrorCode.CLIENT_REJECTED,
             )
 
@@ -45,7 +51,6 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
             return self._ok(
                 data=AccountSwitchResult(
                     previous_used_account=previous,
-                    current_used_account=params.account_name,
                 ).model_dump(),
                 message=f"当前已使用账户{params.account_name}，无需切换",
             )
@@ -60,7 +65,6 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
         return self._ok(
             data=AccountSwitchResult(
                 previous_used_account=previous,
-                current_used_account=params.account_name,
             ).model_dump(),
             message=(
                 f"已切换至账户{params.account_name}"

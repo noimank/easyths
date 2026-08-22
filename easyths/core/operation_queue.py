@@ -354,13 +354,8 @@ class OperationQueue:
         switch_instance = operation_registry.get_operation_instance(
             "account_switch", self.automator
         )
-        if switch_instance is None:
-            return OperationResult(
-                status=OperationStatus.FAILED,
-                success=False,
-                message="未找到操作: account_switch",
-                error_code=ErrorCode.INTERNAL,
-            )
+        if not switch_instance:
+            raise ValueError("未找到操作: account_switch")
 
         result = switch_instance.run({"account_name": account_name})
         if result.success:

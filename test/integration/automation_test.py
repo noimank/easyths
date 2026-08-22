@@ -166,7 +166,7 @@ def test_holding_query_op():
         params = {}
 
         result = op.run(params)
-        print(f"操作结果: {result.success}, data: {result.data}")
+        print(f"操作结果: {result}")
 
     finally:
         # 断开连接

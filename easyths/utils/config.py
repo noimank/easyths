@@ -6,6 +6,9 @@ from pathlib import Path
 # MCP 服务器传输类型可选值
 VALID_MCP_SERVER_TYPES = ("http", "streamable-http", "sse")
 
+# 日志级别可选值（logging 模块标准级别）
+VALID_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+
 # 日志文件默认路径（用户主目录下）
 DEFAULT_LOG_FILE = str(Path("~/easyths/log.txt").expanduser())
 
@@ -66,16 +69,32 @@ class ProjectConfig:
 
         # 处理 [queue] 部分
         queue = config.get("queue", {})
-        self.queue_max_size = queue.get("max_size", self.queue_max_size)
-        self.queue_operation_timeout = queue.get(
-            "operation_timeout", self.queue_operation_timeout
-        )
+        max_size = queue.get("max_size", self.queue_max_size)
+        if not isinstance(max_size, int) or max_size < 1:
+            raise ValueError(
+                f"无效的 queue.max_size: {max_size!r}，必须为不小于1的整数"
+            )
+        self.queue_max_size = max_size
+        operation_timeout = queue.get("operation_timeout", self.queue_operation_timeout)
+        if not isinstance(operation_timeout, (int, float)) or operation_timeout <= 0:
+            raise ValueError(
+                f"无效的 queue.operation_timeout: {operation_timeout!r}，必须为正数（秒）"
+            )
+        self.queue_operation_timeout = operation_timeout
 
         # 处理 [api] 部分
         api = config.get("api", {})
         self.api_host = api.get("host", self.api_host)
-        self.api_port = api.get("port", self.api_port)
-        self.api_rate_limit = api.get("rate_limit", self.api_rate_limit)
+        port = api.get("port", self.api_port)
+        if not isinstance(port, int) or not 1 <= port <= 65535:
+            raise ValueError(f"无效的 api.port: {port!r}，必须为1~65535的整数")
+        self.api_port = port
+        rate_limit = api.get("rate_limit", self.api_rate_limit)
+        if not isinstance(rate_limit, int) or rate_limit < 0:
+            raise ValueError(
+                f"无效的 api.rate_limit: {rate_limit!r}，必须为不小于0的整数（0表示关闭限流）"
+            )
+        self.api_rate_limit = rate_limit
         self.api_cors_origins = api.get("cors_origins", self.api_cors_origins)
         self.api_key = api.get("key") or None
         self.api_ip_whitelist = api.get("ip_whitelist") or None
@@ -88,7 +107,12 @@ class ProjectConfig:
 
         # 处理 [logging] 部分
         logging_config = config.get("logging", {})
-        self.logging_level = logging_config.get("level", self.logging_level)
+        level = logging_config.get("level", self.logging_level)
+        if level.upper() not in VALID_LOG_LEVELS:
+            raise ValueError(
+                f"无效的 logging.level: {level!r}，可选值: {', '.join(VALID_LOG_LEVELS)}"
+            )
+        self.logging_level = level
         self.logging_file = logging_config.get("file") or DEFAULT_LOG_FILE
 
     @property

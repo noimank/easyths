@@ -26,10 +26,10 @@ from easyths.operations.results import ResultModel
 
 @pytest.fixture(autouse=True)
 def _reset_account_state():
-    """全局账户缓存在测试间互不泄漏（空列表刷新即复位）"""
-    account_state.update_available_accounts([])
+    """全局账户缓存在测试间互不泄漏"""
+    account_state.clear()
     yield
-    account_state.update_available_accounts([])
+    account_state.clear()
 
 
 # ============ 缓存语义 ============
@@ -40,19 +40,16 @@ def test_fresh_state_accounts_empty():
     assert AccountState().available_accounts == []
 
 
-def test_update_accounts_replaces_and_drops_stale_current():
+def test_update_accounts_replaces_list_only():
+    """刷新只替换可用账户列表，不动当前使用账户（同源读取保证二者一致）。"""
     state = AccountState()
     state.update_available_accounts([("A", 0), ("B", 1)])
     assert state.available_accounts == [("A", 0), ("B", 1)]
-    assert state.current_used_account is None
 
     state.set_current_used_account("A")
-    # 当前使用账户仍在列表中：保留
     state.update_available_accounts([("A", 0), ("B", 1), ("C", 2)])
+    assert state.available_accounts == [("A", 0), ("B", 1), ("C", 2)]
     assert state.current_used_account == "A"
-    # 当前使用账户不在新列表中（含空列表）：置空待重新确认
-    state.update_available_accounts([("B", 1), ("C", 2)])
-    assert state.current_used_account is None
 
 
 def test_accounts_property_returns_copy():
@@ -99,14 +96,14 @@ class _NoGuiAccountQuery(AccountQueryOperation):
 def test_account_query_wiring_refreshes_cache():
     result = _StubAccountQuery(automator=None).execute(EmptyParams())
     assert result.success
+    # 当前使用账户只在信封，data 仅账户列表
     assert result.data == {
         "available_accounts": [
             {"account_name": "A账户", "account_index": 0},
             {"account_name": "B账户", "account_index": 1},
         ],
-        "current_used_account": "A账户",
     }
-    # 选中账户与列表条目同一清洗来源，刷新列表后不会被置空
+    assert result.current_used_account == "A账户"
     assert account_state.available_accounts == [("A账户", 0), ("B账户", 1)]
     assert account_state.current_used_account == "A账户"
 
@@ -162,10 +159,11 @@ def test_account_switch_unknown_account_rejected():
 
 
 def test_account_switch_empty_cache_rejected():
-    """可用账户未初始化时同样拒绝并提示先 account_query。"""
+    """可用账户未初始化时同样拒绝并提示先 account_query（如重连后缓存已清空）。"""
     result = _NoGuiSwitch().execute(AccountSwitchParams(account_name="A账户"))
     assert result.success is False
     assert result.error_code == ErrorCode.CLIENT_REJECTED
+    assert "account_query" in result.message
 
 
 def test_account_switch_same_account_noop():
@@ -176,10 +174,7 @@ def test_account_switch_same_account_noop():
     result = _NoGuiSwitch().execute(AccountSwitchParams(account_name="A账户"))
     assert result.success
     assert "无需切换" in result.message
-    assert result.data == {
-        "previous_used_account": "A账户",
-        "current_used_account": "A账户",
-    }
+    assert result.data == {"previous_used_account": "A账户"}
     assert account_state.current_used_account == "A账户"
 
 
@@ -191,10 +186,7 @@ def test_account_switch_success_sends_alt_index():
     result = op.execute(AccountSwitchParams(account_name="B账户"))
     assert result.success
     assert op.sent_keys == ["%2"]  # Alt + 账户序号
-    assert result.data == {
-        "previous_used_account": "A账户",
-        "current_used_account": "B账户",
-    }
+    assert result.data == {"previous_used_account": "A账户"}
     assert account_state.current_used_account == "B账户"
     assert result.current_used_account == "B账户"
 

@@ -34,7 +34,6 @@ class AccountQueryOperation(BaseOperation[EmptyParams]):
                     AccountRow(account_name=name, account_index=index)
                     for name, index in accounts
                 ],
-                current_used_account=account_state.current_used_account,
             ).model_dump(),
             message=f"共{len(accounts)}个账户，耗时{time.time() - start_time:.2f}秒",
         )

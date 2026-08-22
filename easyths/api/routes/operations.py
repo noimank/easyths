@@ -5,8 +5,7 @@ POST /api/v1/operations/{name} 的请求体即该操作的参数模型字段
 即返回 422，而不是排队执行后才失败。
 
 account_name 为执行前指令：队列在执行目标操作前先切换到该账户
-（不指定则用当前账户）。account_switch 自身的 account_name 是业务参数，
-该端点不注入此指令字段。
+（不指定则用当前账户）。豁免名单内的操作不注入此指令字段。
 """
 
 import asyncio
@@ -27,6 +26,12 @@ from easyths.models.operations import (
 )
 from easyths.operations.results import SubmitResult
 
+#: 不注入 account_name 执行指令的操作名
+#: - account_switch：account_name 是其业务参数（切换目标），不是指令
+#: - account_query：自身负责初始化账户缓存，指令执行依赖该缓存，
+#:   重连后携带指令会因缓存为空而失败（死循环）
+NO_ACCOUNT_DIRECTIVE_OPS = frozenset({"account_switch", "account_query"})
+
 
 def _build_execute_route(router: APIRouter, name: str) -> None:
     """为单个操作生成类型化的 POST 端点（继承参数模型 + priority + account_name）"""
@@ -37,8 +42,7 @@ def _build_execute_route(router: APIRouter, name: str) -> None:
             Field(default=0, ge=0, le=10, description="优先级，越大越先执行"),
         ),
     }
-    # account_switch 的 account_name 是业务参数，不注入执行指令字段
-    inject_account = "account_name" not in operation_class.Params.model_fields
+    inject_account = name not in NO_ACCOUNT_DIRECTIVE_OPS
     if inject_account:
         fields["account_name"] = (
             str | None,

@@ -8,7 +8,9 @@ from collections.abc import Callable
 import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+
+from easyths.api.responses import error_response
+from easyths.models.operations import ErrorCode
 
 logger = structlog.get_logger(__name__)
 
@@ -58,8 +60,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
             # 注意：BaseHTTPMiddleware 中 raise HTTPException 会变成 500，
             # 必须直接返回响应
-            return JSONResponse(
-                status_code=429, content={"detail": "Too many requests"}
+            return error_response(
+                429,
+                f"请求过于频繁，超过每{self.period}秒{self.calls}次的限制",
+                ErrorCode.RATE_LIMITED,
             )
 
         # 记录当前请求

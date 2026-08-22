@@ -7,10 +7,6 @@
 账户切换的序号解析。操作队列串行执行保证无并发写，无需加锁。
 """
 
-import structlog
-
-logger = structlog.get_logger(__name__)
-
 #: 账户条目：（账户名，客户端列表序号）
 AccountEntry = tuple[str, int]
 
@@ -38,22 +34,17 @@ class AccountState:
         return self._current_used_account
 
     def update_available_accounts(self, accounts: list[AccountEntry]) -> None:
-        """刷新可用账户缓存；当前使用账户不在新列表中时置空待重新确认"""
+        """刷新可用账户缓存（唯一调用方 account_query 保证当前使用账户来自同源读取）"""
         self._available_accounts = list(accounts)
-        if (
-            self._current_used_account is not None
-            and self._current_used_account
-            not in {name for name, _ in self._available_accounts}
-        ):
-            logger.info(
-                "当前使用账户不在新可用账户列表中，已置空待重新确认",
-                previous=self._current_used_account,
-            )
-            self._current_used_account = None
 
     def set_current_used_account(self, name: str) -> None:
         """刷新当前使用账户（account_query 选中项识别 / account_switch 成功后调用）"""
         self._current_used_account = name
+
+    def clear(self) -> None:
+        """清空缓存（重连成功后调用：客户端可能已重启，账户集合/顺序与当前账户不可信）"""
+        self._available_accounts = []
+        self._current_used_account = None
 
 
 #: 全局账户状态缓存（服务进程内单例，同花顺客户端只有一个）

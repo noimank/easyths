@@ -224,8 +224,8 @@ MCP 服务提供以下交易工具：
 
 每个工具的入参与同名 REST 操作的请求参数一致，完整参数约束与
 `data` 返回字段见 [API 文档 - 可用操作](api.md#available-operations)。
-此外，除 `account_switch` 外的所有工具都接受可选的 `account_name` 参数
-（执行前先切换到该账户再执行操作，语义见
+此外，除 `account_switch` 与 `account_query` 外的所有工具都接受可选的
+`account_name` 参数（执行前先切换到该账户再执行操作，语义见
 [API 文档 - 多账户支持](api.md#多账户支持)）：让 AI 助手在多账户场景下
 明确指定目标账户，操作必然落在该账户上。
 

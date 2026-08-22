@@ -67,6 +67,9 @@ class ErrorCode(StrEnum):
     TIMEOUT = "timeout"  # 等待结果超时（操作仍在执行）
     NOT_FOUND = "not_found"  # 操作 ID 不存在或已淘汰
     INTERNAL = "internal"  # 内部错误
+    UNAUTHORIZED = "unauthorized"  # 认证失败：缺少或错误的 API Key（401）
+    FORBIDDEN = "forbidden"  # IP 不在白名单（403）
+    RATE_LIMITED = "rate_limited"  # 触发限流（429）
 
 
 class OperationResult(BaseModel):
