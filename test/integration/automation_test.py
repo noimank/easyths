@@ -9,6 +9,8 @@ Email: noimank@163.com
 import pytest
 
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
+from easyths.operations.account_query import AccountQueryOperation
+from easyths.operations.account_switch import AccountSwitchOperation
 from easyths.operations.buy import BuyOperation
 from easyths.operations.condition_buy import ConditionBuyOperation
 from easyths.operations.condition_order_cancel import ConditionOrderCancelOperation
@@ -436,6 +438,51 @@ def test_market_sell_op():
         print(
             f"操作结果: {result.success}, data: {result.data}， message： {result.message}"
         )
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+
+def test_account_query():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 创建操作
+        op = AccountQueryOperation(automator)
+
+        # 执行操作（同步）
+        params = {}
+
+        result = op.run(params)
+        print(f"操作结果: {result}")
+    finally:
+        # 断开连接
+        automator.disconnect()
+
+
+def test_account_switch():
+    # 创建自动化器
+    automator = TonghuashunAutomator()
+
+    # 连接
+    automator.connect()
+
+    try:
+        # 先完成账户信息初始化
+        AccountQueryOperation(automator).run({})
+
+        # 创建操作
+        op = AccountSwitchOperation(automator)
+
+        # 执行操作（同步）
+        params = {"account_name": "模拟炒股"}
+
+        result = op.run(params)
+        print(f"操作结果: {result}")
     finally:
         # 断开连接
         automator.disconnect()

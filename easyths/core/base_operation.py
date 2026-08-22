@@ -22,6 +22,7 @@ from pydantic import ValidationError
 if TYPE_CHECKING:
     from pywinauto.base_wrapper import BaseWrapper
 
+from easyths.core.account_state import account_state
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.models.operations import (
     ErrorCode,
@@ -71,9 +72,13 @@ class BaseOperation[Ps: OperationParams](ABC):
     # ============ 结果构造 ============
 
     def _ok(self, data: Any = None, message: str = "") -> OperationResult:
-        """构造成功结果"""
+        """构造成功结果（自动附带 account_state 缓存的当前使用账户）"""
         return OperationResult(
-            status=OperationStatus.COMPLETED, success=True, data=data, message=message
+            status=OperationStatus.COMPLETED,
+            success=True,
+            data=data,
+            message=message,
+            current_used_account=account_state.current_used_account,
         )
 
     def _fail(
@@ -82,9 +87,13 @@ class BaseOperation[Ps: OperationParams](ABC):
         error_code: ErrorCode = ErrorCode.UI_ERROR,
         status: OperationStatus = OperationStatus.FAILED,
     ) -> OperationResult:
-        """构造失败结果"""
+        """构造失败结果（自动附带 account_state 缓存的当前使用账户）"""
         return OperationResult(
-            status=status, success=False, message=message, error_code=error_code
+            status=status,
+            success=False,
+            message=message,
+            error_code=error_code,
+            current_used_account=account_state.current_used_account,
         )
 
     # ============ 执行流水线 ============
@@ -527,6 +536,7 @@ class OperationRegistry:
     def __init__(self):
         self._operations: dict[str, type[BaseOperation]] = {}
         self._instances: dict[str, BaseOperation] = {}
+        self._plugins_loaded = False
         self.logger = structlog.get_logger(__name__)
 
     def register(self, operation_class: type[BaseOperation]) -> None:
@@ -578,13 +588,16 @@ class OperationRegistry:
             for cls in self._operations.values()
         }
 
-    @staticmethod
-    def load_plugins() -> int:
-        """自动扫描并加载 operations 包下的所有插件
+    def load_plugins(self) -> int:
+        """自动扫描并加载 operations 包下的所有插件（幂等，仅首次调用实际加载）。
 
         Returns:
-            int: 成功加载的插件数量
+            int: 本次成功加载的插件数量（已加载过时为 0）
         """
+        if self._plugins_loaded:
+            return 0
+        self._plugins_loaded = True
+
         import easyths.operations as operations_package
 
         loaded_count = 0
@@ -606,7 +619,7 @@ class OperationRegistry:
                         and attr is not BaseOperation
                         and attr.__module__ == module_name
                     ):
-                        operation_registry.register(attr)
+                        self.register(attr)
                         loaded_count += 1
                         logger.info(
                             "成功加载插件", file=module_info.name, class_name=attr_name

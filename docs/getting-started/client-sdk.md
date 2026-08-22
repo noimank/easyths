@@ -129,9 +129,72 @@ stats = client.get_queue_stats()
 
 ```python
 ops = client.list_operations()
-# 返回: {"success": True, "data": {"operations": {...}, "count": 16}}
+# 返回: {"success": True, "data": {"operations": {...}, "count": 19}}
 # operations 内每个操作含 name / description / parameters / result_schema
 ```
+
+---
+
+## 多账户支持
+
+客户端登录了多个账户时，**所有交易/查询/账户方法都接受可选的
+`account_name` 参数**（默认 `None` 用当前账户）。两种用法的语义不同，务必区分：
+
+> `account_name` 的取值为客户端账户展示名的**前缀标识**（`-` 之前的部分，
+> 如「平安证券-王\*明」→「平安证券」），完整列表以 `query_accounts()` 返回为准。
+
+**显式传入 `account_name`（推荐）——操作必然落在该账户**
+
+服务端在执行操作前先切换到目标账户，切换与操作在同一个队列槽内**原子完成**，
+其他调用方的操作不会插入其间。因此操作必然落在指定账户上；切换失败时
+操作以 `failed` + `执行前账户切换失败: ...` 收尾，不会落到其他账户执行。
+
+```python
+# 必然落在「模拟账户」上
+result = client.buy("600000", 10.50, 100, account_name="模拟账户")
+result = client.query_funds(account_name="实盘账户")
+
+# 终态结果携带 current_used_account，可核对实际落在的账户
+assert result["current_used_account"] == "实盘账户"
+```
+
+**先 `switch_account()` 再调用不指定 `account_name` 的方法——默认当前账户**
+
+切换与后续操作是两个独立队列项，期间任何调用方都可能把当前账户切走。
+不指定 `account_name` 的操作落在**执行时刻的当前账户**，不一定是先前切换
+的账户。仅适合确认同一时刻只有单一调用方使用的场景。
+
+> 单账户使用可完全忽略：不传 `account_name` 即可，行为与之前版本一致。
+
+## 账户操作
+
+### 查询账户列表
+
+```python
+result = client.query_accounts()
+
+if result["success"]:
+    data = result["data"]
+    print(f"当前使用账户: {data['current_used_account']}")  # 未确认过为 None
+    for account in data["available_accounts"]:
+        print(f"- {account['account_name']}（序号 {account['account_index']}）")
+```
+
+### 切换账户
+
+幂等操作：已处于目标账户时重复切换无副作用。
+
+```python
+result = client.switch_account("模拟账户")
+
+if result["success"]:
+    data = result["data"]
+    print(f"已从 {data['previous_used_account']} 切换至 {data['current_used_account']}")
+```
+
+> `switch_account` 的 `account_name` 是切换目标（业务参数）。切换后想让后续
+> 操作稳定落在该账户，请给后续操作显式传 `account_name`，而不是依赖
+> 「先切换再调用」。
 
 ---
 
@@ -433,7 +496,8 @@ operation_id = client.execute_operation(
         "price": 10.50,
         "quantity": 100
     },
-    priority=5  # 优先级 0-10，数字越大优先级越高
+    priority=5,                    # 优先级 0-10，数字越大优先级越高
+    account_name="模拟账户"         # 执行前切换到该账户（可选，见多账户支持）
 )
 print(f"操作ID: {operation_id}")
 ```
@@ -599,30 +663,34 @@ class TradeClient:
     def list_operations(self) -> dict: ...
 
     # 通用操作
-    def execute_operation(self, operation_name: str, params: dict, priority: int = 0) -> str: ...
+    def execute_operation(self, operation_name: str, params: dict, priority: int = 0, account_name: str = None) -> str: ...
     def get_operation_status(self, operation_id: str) -> dict: ...
     def get_operation_result(self, operation_id: str, timeout: float = None) -> dict: ...
     def cancel_operation(self, operation_id: str) -> bool: ...
 
-    # 交易操作
-    def buy(self, stock_code: str, price: float, quantity: int, timeout: float = None) -> dict: ...
-    def sell(self, stock_code: str, price: float, quantity: int, timeout: float = None) -> dict: ...
-    def market_buy(self, stock_code: str, quantity: int, execution_strategy: int = 3, timeout: float = None) -> dict: ...
-    def market_sell(self, stock_code: str, quantity: int, execution_strategy: int = 3, timeout: float = None) -> dict: ...
-    def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = None) -> dict: ...
-    def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None) -> dict: ...
-    def condition_sell(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None) -> dict: ...
-    def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = None) -> dict: ...
-    def query_condition_orders(self, timeout: float = None) -> dict: ...
-    def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = None) -> dict: ...
-    def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = None) -> dict: ...
+    # 账户操作
+    def query_accounts(self, timeout: float = None, account_name: str = None) -> dict: ...
+    def switch_account(self, account_name: str, timeout: float = None) -> dict: ...
 
-    # 查询操作
-    def query_holdings(self, timeout: float = None) -> dict: ...
-    def query_funds(self, timeout: float = None) -> dict: ...
-    def query_orders(self, stock_code: str = None, timeout: float = None) -> dict: ...
-    def query_historical_commission(self, stock_code: str = None, time_range: str = "当日", timeout: float = None) -> dict: ...
-    def query_reverse_repo(self, timeout: float = None) -> dict: ...
+    # 交易操作（均支持可选 account_name 参数，见多账户支持）
+    def buy(self, stock_code: str, price: float, quantity: int, timeout: float = None, account_name: str = None) -> dict: ...
+    def sell(self, stock_code: str, price: float, quantity: int, timeout: float = None, account_name: str = None) -> dict: ...
+    def market_buy(self, stock_code: str, quantity: int, execution_strategy: int = 3, timeout: float = None, account_name: str = None) -> dict: ...
+    def market_sell(self, stock_code: str, quantity: int, execution_strategy: int = 3, timeout: float = None, account_name: str = None) -> dict: ...
+    def cancel_order(self, stock_code: str = None, cancel_type: str = "all", timeout: float = None, account_name: str = None) -> dict: ...
+    def condition_buy(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None, account_name: str = None) -> dict: ...
+    def condition_sell(self, stock_code: str, target_price: float, quantity: int, expire_days: int = 30, timeout: float = None, account_name: str = None) -> dict: ...
+    def stop_loss_profit(self, stock_code: str, stop_loss_percent: float, stop_profit_percent: float, quantity: int = None, expire_days: int = 30, timeout: float = None, account_name: str = None) -> dict: ...
+    def query_condition_orders(self, timeout: float = None, account_name: str = None) -> dict: ...
+    def cancel_condition_orders(self, stock_code: str = None, order_type: str = None, timeout: float = None, account_name: str = None) -> dict: ...
+    def reverse_repo_buy(self, market: str, time_range: str, amount: int, timeout: float = None, account_name: str = None) -> dict: ...
+
+    # 查询操作（均支持可选 account_name 参数，见多账户支持）
+    def query_holdings(self, timeout: float = None, account_name: str = None) -> dict: ...
+    def query_funds(self, timeout: float = None, account_name: str = None) -> dict: ...
+    def query_orders(self, stock_code: str = None, timeout: float = None, account_name: str = None) -> dict: ...
+    def query_historical_commission(self, stock_code: str = None, time_range: str = "当日", timeout: float = None, account_name: str = None) -> dict: ...
+    def query_reverse_repo(self, timeout: float = None, account_name: str = None) -> dict: ...
 
     # 连接管理
     def close(self): ...
@@ -640,6 +708,7 @@ class TradeClient:
     "status": str | None,    # queued/running/completed/failed/cancelled
     "message": str,          # 错误信息或成功消息
     "error_code": str | None,# 失败分类，可编程处理
+    "current_used_account": str | None,  # 操作实际执行时的当前使用账户（未确认过为 None）
     "data": Any,             # 业务数据（查询类为记录列表）
     "timestamp": str         # 北京时间，格式 "2026-08-22 06:46:56"
 }
@@ -656,6 +725,7 @@ result = client.buy("600000", 10.50, 100)
 #     "status": "completed",
 #     "message": "成功提交600000的买入委托，耗时2.31秒",
 #     "error_code": None,
+#     "current_used_account": None,
 #     "data": {"stock_code": "600000", "price": 10.5, "quantity": 100},
 #     "timestamp": "2026-08-22 06:46:56"
 # }

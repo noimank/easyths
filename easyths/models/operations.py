@@ -7,6 +7,7 @@
         "status": "queued|running|completed|failed|cancelled" | null,
         "message": str,
         "error_code": ErrorCode | null,
+        "current_used_account": str | null,  # 操作执行时的当前使用账户（未确认过为 null）
         "data": Any,
         "timestamp": "2026-08-22 06:46:56"   # 北京时间，秒级
     }
@@ -76,6 +77,8 @@ class OperationResult(BaseModel):
     data: Any = None
     message: str | None = None
     error_code: ErrorCode | None = None
+    #: 操作执行时的当前使用账户（account_state 缓存值，未确认过为 None）
+    current_used_account: str | None = None
     timestamp: datetime = Field(default_factory=now_beijing)
 
     @field_serializer("timestamp")
@@ -90,6 +93,8 @@ class Operation(BaseModel):
     name: str
     params: dict[str, Any] = Field(default_factory=dict)
     priority: int = Field(default=0, ge=0, le=10)
+    #: 执行前指令：先切换到该账户（account_switch 幂等）；None 用当前账户
+    account_name: str | None = None
     status: OperationStatus = OperationStatus.QUEUED
     result: OperationResult | None = None
     created_at: datetime = Field(default_factory=now_beijing)
@@ -113,6 +118,7 @@ class APIResponse[DataT](BaseModel):
     status: OperationStatus | None = None
     message: str = ""
     error_code: ErrorCode | None = None
+    current_used_account: str | None = None
     data: DataT | None = None
     timestamp: datetime = Field(default_factory=now_beijing)
 
@@ -128,6 +134,7 @@ class APIResponse[DataT](BaseModel):
             status=result.status,
             message=result.message or "",
             error_code=result.error_code,
+            current_used_account=result.current_used_account,
             data=result.data,
             timestamp=result.timestamp,
         )

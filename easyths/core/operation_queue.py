@@ -14,6 +14,7 @@ from typing import Any
 
 import structlog
 
+from easyths.core.account_state import account_state
 from easyths.core.base_operation import operation_registry
 from easyths.models.operations import (
     TERMINAL_STATUSES,
@@ -304,6 +305,8 @@ class OperationQueue:
                     "已断开同花顺连接，请恢复客户端后调用重连接口"
                 ),
                 error_code=ErrorCode.TIMEOUT,
+                # 操作已实际执行，附带执行时当前使用账户（排队期取消/停机收尾不带）
+                current_used_account=account_state.current_used_account,
             )
 
         if "error" in outcome:
@@ -318,6 +321,13 @@ class OperationQueue:
             operation_name=operation.name,
             params=operation.params,
         )
+
+        # 执行前账户指令：在同一执行线程内先切换，与目标操作同槽原子执行，
+        # 其他操作不会插入其间；account_switch 幂等，已处于目标账户时无害
+        if operation.account_name is not None and (
+            switch_failure := self._switch_account_before(operation.account_name)
+        ):
+            return switch_failure
 
         operation_instance = operation_registry.get_operation_instance(
             operation.name, self.automator
@@ -338,6 +348,37 @@ class OperationQueue:
             self.logger.warning("检测到同花顺进程已退出，已断开连接")
 
         return result
+
+    def _switch_account_before(self, account_name: str) -> OperationResult | None:
+        """执行前切换账户，就绪返回 None，失败返回终态结果（目标操作不再执行）"""
+        switch_instance = operation_registry.get_operation_instance(
+            "account_switch", self.automator
+        )
+        if switch_instance is None:
+            return OperationResult(
+                status=OperationStatus.FAILED,
+                success=False,
+                message="未找到操作: account_switch",
+                error_code=ErrorCode.INTERNAL,
+            )
+
+        result = switch_instance.run({"account_name": account_name})
+        if result.success:
+            return None
+
+        self.logger.warning(
+            "执行前账户切换失败",
+            account_name=account_name,
+            error_code=result.error_code,
+            message=result.message,
+        )
+        return OperationResult(
+            status=OperationStatus.FAILED,
+            success=False,
+            message=f"执行前账户切换失败: {result.message}",
+            error_code=result.error_code,
+            current_used_account=result.current_used_account,
+        )
 
     def _settle(self, operation: Operation, result: OperationResult) -> None:
         """写入终态结果、转入完成列表并唤醒等待方。

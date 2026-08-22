@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from easyths.operations.params import (
+    AccountSwitchParams,
     ConditionOrderParams,
     HistoricalQueryParams,
     LimitOrderParams,
@@ -103,6 +104,16 @@ def test_historical_time_range_literal():
     HistoricalQueryParams(time_range="近一周")
     with pytest.raises(ValidationError):
         HistoricalQueryParams(time_range="近半年")
+
+
+def test_account_switch_params():
+    AccountSwitchParams(account_name="模拟账户")
+    with pytest.raises(ValidationError):
+        AccountSwitchParams()  # 缺失
+    with pytest.raises(ValidationError):
+        AccountSwitchParams(account_name="")  # 空串
+    with pytest.raises(ValidationError):
+        AccountSwitchParams(account_name="模拟账户", typo=1)  # 未知字段
 
 
 def test_reverse_repo_amount_unit():

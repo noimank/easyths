@@ -109,6 +109,82 @@ def test_execute_operation_accepts_priority(client):
     assert "operation_id" in body["data"]
 
 
+def test_account_switch_validates_account_name_at_submit(client):
+    """account_switch 缺少 account_name 提交时即 422。"""
+    c, _ = client
+    r = c.post("/api/v1/operations/account_switch", json={})
+    assert r.status_code == 422
+    assert r.json()["error_code"] == "invalid_params"
+
+    r = c.post(
+        "/api/v1/operations/account_switch",
+        json={"account_name": "模拟账户", "typo": 1},
+    )
+    assert r.status_code == 422
+
+
+def test_account_operations_submit(client):
+    """账户操作按参数模型受理提交（仅受理，success 为 null）。"""
+    c, _ = client
+    for name, payload in [
+        ("account_query", {}),
+        ("account_switch", {"account_name": "模拟账户"}),
+    ]:
+        r = c.post(f"/api/v1/operations/{name}", json=payload)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["success"] is None
+        assert body["status"] == "queued"
+        assert "operation_id" in body["data"]
+
+
+def test_submit_with_account_directive(client):
+    """请求体可附带 account_name 执行指令（与业务参数分离），默认 None。"""
+    c, stub = client
+    r = c.post(
+        "/api/v1/operations/buy",
+        json={
+            "stock_code": "600000",
+            "price": 10,
+            "quantity": 100,
+            "account_name": "B账户",
+        },
+    )
+    assert r.status_code == 200
+    op = stub._ops[r.json()["data"]["operation_id"]]
+    assert op.account_name == "B账户"
+    assert "account_name" not in op.params
+
+    r = c.post("/api/v1/operations/funds_query", json={})
+    assert stub._ops[r.json()["data"]["operation_id"]].account_name is None
+
+
+def test_account_directive_blank_name_422(client):
+    """account_name 指令为空串时提交即 422。"""
+    c, _ = client
+    r = c.post(
+        "/api/v1/operations/buy",
+        json={
+            "stock_code": "600000",
+            "price": 10,
+            "quantity": 100,
+            "account_name": "",
+        },
+    )
+    assert r.status_code == 422
+    assert r.json()["error_code"] == "invalid_params"
+
+
+def test_account_switch_business_param_not_stripped(client):
+    """account_switch 的 account_name 是业务参数：留在 params 且不注入指令。"""
+    c, stub = client
+    r = c.post("/api/v1/operations/account_switch", json={"account_name": "B账户"})
+    assert r.status_code == 200
+    op = stub._ops[r.json()["data"]["operation_id"]]
+    assert op.params == {"account_name": "B账户"}
+    assert op.account_name is None
+
+
 def test_result_endpoint_unknown_id_404(client):
     """不存在的操作 ID 返回 404（而非 408），信封含 not_found。"""
     c, _ = client
@@ -145,6 +221,18 @@ def test_result_endpoint_returns_unified_envelope(client):
     assert body["status"] == "completed"
     assert body["data"] == {"stock_code": "600000"}
     assert body["message"] == "成功提交600000的买入委托"
+    assert body["current_used_account"] is None
+
+
+def test_result_endpoint_carries_current_used_account(client):
+    """终态结果的 current_used_account 随信封透出（多账户场景）。"""
+    c, stub = client
+    result = OperationResult(
+        status=OperationStatus.COMPLETED, success=True, current_used_account="模拟账户"
+    )
+    op = stub._make(status=OperationStatus.COMPLETED, result=result)
+    body = c.get(f"/api/v1/operations/{op.id}/result").json()
+    assert body["current_used_account"] == "模拟账户"
 
 
 def test_status_endpoint_snapshot(client):
@@ -177,6 +265,13 @@ def test_list_operations_contains_schemas(client):
     assert "parameters" in buy
     assert "result_schema" in buy
     assert "price" in buy["result_schema"]["properties"]
+
+
+def test_load_plugins_idempotent():
+    """插件加载幂等：首次调用加载，重复调用返回 0 不重复扫描注册。"""
+    operation_registry.load_plugins()
+    assert operation_registry.load_plugins() == 0
+    assert "account_query" in operation_registry.list_operations()
 
 
 def test_envelope_timestamp_format(client):

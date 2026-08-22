@@ -47,6 +47,7 @@ class TradingAPIApp:
     def create_app(self) -> FastAPI:
         """创建FastAPI应用"""
         # 操作路由按注册表生成，必须先加载插件
+        # （幂等：main 启动流程已加载过则此处为 no-op，独立创建应用时自动加载）
         operation_registry.load_plugins()
 
         self.app = FastAPI(

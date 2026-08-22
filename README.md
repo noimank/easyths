@@ -83,6 +83,20 @@ easyths
 | **止盈止损 (stop_loss_profit)**                      | 设置止盈止损策略    | 2.6~3.2   |
 | **条件单查询 (condition_order_query)**                | 查询现有的条件单    | 1.7~2.1   |
 | **条件单删除 (condition_order_cancel)**               | 删除指定条件单     | 2.0~2.5   |
+| **账户列表查询 (account_query)**                     | 获取所有已登录账户（含当前账户） | -         |
+| **账户切换 (account_switch)**                        | 切换当前交易账户（幂等，含有效性校验） | -  |
+
+**多账户**：所有交易/查询接口均支持可选 `account_name` 参数——显式传入时，
+服务端先切换到该账户再执行操作（两步原子完成），**操作必然落在该账户上**；
+不传则默认使用当前账户。两种方式的语义区别详见
+[API 文档 - 多账户支持](https://noimank.github.io/easyths/getting-started/api/#多账户支持)。
+
+```python
+# 显式指定账户：必然落在「模拟账户」上
+result = client.buy("000001", 10.50, 100, account_name="模拟账户")
+# 终态结果携带 current_used_account，可核对实际落在的账户
+assert result["current_used_account"] == "模拟账户"
+```
 
 详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/getting-started/api/)。
 
@@ -144,7 +158,7 @@ EasyTHS 支持 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/)�
 **Claude Code 连接示例**（原生支持远程 HTTP MCP，一条命令完成）：
 
 ```bash
-claude mcp add --transport http easyths http://localhost:7648/api/mcp-server/ \
+claude mcp add --transport http easyths http://localhost:7648/api/mcp-server \
   --header "Authorization: Bearer your-api-key"
 ```
 

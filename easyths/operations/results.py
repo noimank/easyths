@@ -134,6 +134,36 @@ class ReverseRepoBuyResult(ResultModel):
     annual_rate: Num = Field(description="成交年化利率（百分数值，如 2.5 表示 2.5%）")
 
 
+# ============ 账户类结果 ============
+
+
+class AccountRow(ResultModel):
+    """账户行（account_query）：账户名 + 客户端列表序号"""
+
+    account_name: Text = Field(
+        description="账户名（客户端展示名的前缀标识，如 平安证券-王*明 取 平安证券）"
+    )
+    account_index: int = Field(description="账户序号（客户端列表位置）")
+
+
+class AccountsResult(ResultModel):
+    """账户列表结果（account_query）"""
+
+    available_accounts: list[AccountRow] = Field(description="客户端全部可用账户记录")
+    current_used_account: Text | None = Field(
+        description="当前使用账户（读取时借下拉选中项识别，未确认过为 null）"
+    )
+
+
+class AccountSwitchResult(ResultModel):
+    """账户切换结果（account_switch）"""
+
+    previous_used_account: Text | None = Field(
+        description="切换前使用的账户（此前未确认过为 null）"
+    )
+    current_used_account: Text = Field(description="切换后使用的账户")
+
+
 # ============ 查询类结果 ============
 
 
@@ -220,6 +250,9 @@ class ConditionOrderRow(ResultModel):
 
 
 __all__ = [
+    "AccountRow",
+    "AccountSwitchResult",
+    "AccountsResult",
     "ConditionOrderCancelResult",
     "ConditionOrderResult",
     "ConditionOrderRow",

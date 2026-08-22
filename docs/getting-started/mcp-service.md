@@ -46,13 +46,13 @@ port = 7648
 MCP 服务默认运行在以下路径：
 
 ```
-http://localhost:7648/api/mcp-server/
+http://localhost:7648/api/mcp-server
 ```
 
 完整的端点 URL 格式：
 
 ```
-http://{host}:{port}/api/mcp-server/
+http://{host}:{port}/api/mcp-server
 ```
 
 ## 使用 MCP 客户端连接
@@ -67,7 +67,7 @@ import asyncio
 async def main():
     # 基础连接
     transport = StreamableHttpTransport(
-        url="http://localhost:7648/api/mcp-server/"
+        url="http://localhost:7648/api/mcp-server"
     )
     async with Client(transport) as client:
         # 调用工具
@@ -85,7 +85,7 @@ from fastmcp.client.transports import StreamableHttpTransport
 
 async def main():
     transport = StreamableHttpTransport(
-        url="http://localhost:7648/api/mcp-server/",
+        url="http://localhost:7648/api/mcp-server",
         headers={
             "Authorization": "Bearer your-api-key-here"  # Bearer 和 key 之间只有一个空格
         }
@@ -123,7 +123,7 @@ Claude Desktop 的配置文件不支持远程 HTTP 服务器的自定义认证�
       "command": "npx",
       "args": [
         "mcp-remote",
-        "http://localhost:7648/api/mcp-server/",
+        "http://localhost:7648/api/mcp-server",
         "--header",
         "Authorization: Bearer your-api-key-here"
       ]
@@ -147,7 +147,7 @@ Claude Desktop 的配置文件不支持远程 HTTP 服务器的自定义认证�
 {
   "mcpServers": {
     "easyths": {
-      "url": "http://localhost:7648/api/mcp-server/",
+      "url": "http://localhost:7648/api/mcp-server",
       "headers": {
         "Authorization": "Bearer your-api-key-here"
       }
@@ -159,7 +159,7 @@ Claude Desktop 的配置文件不支持远程 HTTP 服务器的自定义认证�
 **Claude Code**：
 
 ```bash
-claude mcp add --transport http easyths http://localhost:7648/api/mcp-server/ \
+claude mcp add --transport http easyths http://localhost:7648/api/mcp-server \
   --header "Authorization: Bearer your-api-key-here"
 ```
 
@@ -213,10 +213,21 @@ MCP 服务提供以下交易工具：
 | `reverse_repo_buy` | 国债逆回购（出借资金） |
 | `reverse_repo_query` | 查询国债逆回购利率 |
 
+### 账户管理
+
+| 工具名 | 说明 |
+|--------|------|
+| `account_query` | 获取客户端所有已登录账户（含当前账户） |
+| `account_switch` | 切换当前交易账户（幂等，含账户有效性校验） |
+
 ## 工具参数与返回格式
 
 每个工具的入参与同名 REST 操作的请求参数一致，完整参数约束与
 `data` 返回字段见 [API 文档 - 可用操作](api.md#available-operations)。
+此外，除 `account_switch` 外的所有工具都接受可选的 `account_name` 参数
+（执行前先切换到该账户再执行操作，语义见
+[API 文档 - 多账户支持](api.md#多账户支持)）：让 AI 助手在多账户场景下
+明确指定目标账户，操作必然落在该账户上。
 
 工具内部会提交操作并**同步等待终态结果**（最长 30 秒），返回统一信封并附带
 `operation_id`：
@@ -246,7 +257,7 @@ MCP 服务提供以下交易工具：
 
 ```bash
 # curl 示例
-curl -X POST http://localhost:7648/api/mcp-server/ \
+curl -X POST http://localhost:7648/api/mcp-server \
   -H "Authorization: Bearer your-api-key-here" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'

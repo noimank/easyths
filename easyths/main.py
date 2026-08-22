@@ -20,8 +20,11 @@ import structlog
 
 from easyths import __version__
 from easyths.api.app import TradingAPIApp
+from easyths.core import operation_registry
+from easyths.core.account_state import account_state
 from easyths.core.operation_queue import OperationQueue
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
+from easyths.models.operations import Operation
 from easyths.utils import project_config_instance
 from easyths.utils.logger import setup_logging
 
@@ -202,12 +205,38 @@ def check_running_env():
     return True
 
 
+def initialize_account_state(operation_queue: OperationQueue) -> None:
+    """启动即执行一次 account_query，完成账户列表与当前账户的缓存初始化。
+
+    失败不影响启动（客户端弹窗等干扰），后续账户操作会惰性重查；
+    看门狗保证 get_result 有界返回。
+    """
+    op_id = operation_queue.submit(Operation(name="account_query", params={}))
+    result = operation_queue.get_result(op_id)
+    assert result is not None  # 无超时等待终态，看门狗保证有界
+    if result.success:
+        logger.info(
+            "账户信息初始化完成",
+            available_accounts=account_state.available_accounts,
+            current_used_account=account_state.current_used_account,
+        )
+    else:
+        logger.warning(
+            "账户信息初始化失败，将由首次账户操作惰性重查",
+            message=result.message,
+        )
+
+
 def initialize_components():
     """初始化组件 - 同步初始化
 
     Returns:
         tuple: (automator, operation_queue)
     """
+    # 加载操作插件：队列执行、启动账户初始化与路由生成均依赖注册表
+    # （幂等，create_app 中的再次调用不会重复加载）
+    operation_registry.load_plugins()
+
     # 创建自动化器并连接（连接失败直接终止启动，避免带病运行）
     automator = TonghuashunAutomator()
     if not automator.connect():
@@ -217,6 +246,9 @@ def initialize_components():
     # 创建操作队列
     operation_queue = OperationQueue(automator)
     operation_queue.start()
+
+    # 账户缓存初始化（启动即预取可用账户与当前使用账户）
+    initialize_account_state(operation_queue)
 
     return automator, operation_queue
 

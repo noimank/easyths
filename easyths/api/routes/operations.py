@@ -1,11 +1,16 @@
 """操作路由 - 按注册表为每个操作生成带参数校验的执行端点。
 
 POST /api/v1/operations/{name} 的请求体即该操作的参数模型字段
-（可附带可选的 priority 字段），非法/未知参数在提交时即返回 422，
-而不是排队执行后才失败。
+（可附带可选的 priority 与 account_name 字段），非法/未知参数在提交时
+即返回 422，而不是排队执行后才失败。
+
+account_name 为执行前指令：队列在执行目标操作前先切换到该账户
+（不指定则用当前账户）。account_switch 自身的 account_name 是业务参数，
+该端点不注入此指令字段。
 """
 
 import asyncio
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import Field, create_model
@@ -24,14 +29,28 @@ from easyths.operations.results import SubmitResult
 
 
 def _build_execute_route(router: APIRouter, name: str) -> None:
-    """为单个操作生成类型化的 POST 端点（继承参数模型 + priority）"""
+    """为单个操作生成类型化的 POST 端点（继承参数模型 + priority + account_name）"""
     operation_class = operation_registry.get_operation_class(name)
-    request_model = create_model(
-        f"Execute{''.join(part.title() for part in name.split('_'))}Request",
-        priority=(
+    fields: dict[str, Any] = {
+        "priority": (
             int,
             Field(default=0, ge=0, le=10, description="优先级，越大越先执行"),
         ),
+    }
+    # account_switch 的 account_name 是业务参数，不注入执行指令字段
+    inject_account = "account_name" not in operation_class.Params.model_fields
+    if inject_account:
+        fields["account_name"] = (
+            str | None,
+            Field(
+                default=None,
+                min_length=1,
+                description="执行前切换到该账户（不指定则用当前账户）",
+            ),
+        )
+    request_model = create_model(
+        f"Execute{''.join(part.title() for part in name.split('_'))}Request",
+        **fields,
         __base__=operation_class.Params,
     )
 
@@ -45,10 +64,12 @@ def _build_execute_route(router: APIRouter, name: str) -> None:
         request: request_model,  # type: ignore[valid-type]
         queue=Depends(get_operation_queue),
     ) -> Response | APIResponse[SubmitResult]:
+        exclude = {"priority", "account_name"} if inject_account else {"priority"}
         operation = Operation(
             name=name,
-            params=request.model_dump(exclude={"priority"}),  # type: ignore[attr-defined]
+            params=request.model_dump(exclude=exclude),  # type: ignore[attr-defined]
             priority=request.priority,  # type: ignore[attr-defined]
+            account_name=request.account_name if inject_account else None,  # type: ignore[attr-defined]
         )
         try:
             operation_id = queue.submit(operation)

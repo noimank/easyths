@@ -33,9 +33,12 @@ def set_queue(queue) -> None:
     _operation_queue = queue
 
 
-def _execute_operation(operation_name: str, params: dict) -> dict:
+def _execute_operation(
+    operation_name: str, params: dict, account_name: str | None = None
+) -> dict:
     """提交操作并等待终态结果，返回统一信封形状（与 REST 一致）
 
+    account_name 为执行前指令：先切换到该账户再执行目标操作。
     超时时明确区分「操作仍在执行」与「记录已失效」，避免调用方误判后重复下单。
     """
     if _operation_queue is None:
@@ -46,7 +49,9 @@ def _execute_operation(operation_name: str, params: dict) -> dict:
             "message": "操作队列未初始化",
         }
 
-    operation = Operation(name=operation_name, params=params, priority=0)
+    operation = Operation(
+        name=operation_name, params=params, priority=0, account_name=account_name
+    )
     operation_id = _operation_queue.submit(operation)
 
     result = _operation_queue.get_result(operation_id, timeout=_OPERATION_TIMEOUT)
@@ -77,41 +82,56 @@ def _execute_operation(operation_name: str, params: dict) -> dict:
 
 
 @mcp_server.tool
-def buy(stock_code: str, price: float, quantity: int) -> dict:
+def buy(
+    stock_code: str, price: float, quantity: int, account_name: str | None = None
+) -> dict:
     """买入股票
 
     Args:
         stock_code: 股票代码（6位数字）
         price: 买入价格
         quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         买入结果
     """
     return _execute_operation(
-        "buy", {"stock_code": stock_code, "price": price, "quantity": quantity}
+        "buy",
+        {"stock_code": stock_code, "price": price, "quantity": quantity},
+        account_name=account_name,
     )
 
 
 @mcp_server.tool
-def sell(stock_code: str, price: float, quantity: int) -> dict:
+def sell(
+    stock_code: str, price: float, quantity: int, account_name: str | None = None
+) -> dict:
     """卖出股票
 
     Args:
         stock_code: 股票代码（6位数字）
         price: 卖出价格
         quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         卖出结果
     """
     return _execute_operation(
-        "sell", {"stock_code": stock_code, "price": price, "quantity": quantity}
+        "sell",
+        {"stock_code": stock_code, "price": price, "quantity": quantity},
+        account_name=account_name,
     )
 
 
 @mcp_server.tool
-def market_buy(stock_code: str, quantity: int, execution_strategy: int = 3) -> dict:
+def market_buy(
+    stock_code: str,
+    quantity: int,
+    execution_strategy: int = 3,
+    account_name: str | None = None,
+) -> dict:
     """市价买入股票，无需指定价格，通过成交策略决定成交方式。
     注意：并不是所有类型的标的都支持市价交易；若请求策略不被该标的支持，
     系统会自动改用「五档即成剩撤」提交。
@@ -120,6 +140,7 @@ def market_buy(stock_code: str, quantity: int, execution_strategy: int = 3) -> d
         stock_code: 股票代码（6位数字）
         quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
         execution_strategy: 成交策略编号（1-6），默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         市价买入结果
@@ -131,11 +152,17 @@ def market_buy(stock_code: str, quantity: int, execution_strategy: int = 3) -> d
             "quantity": quantity,
             "execution_strategy": execution_strategy,
         },
+        account_name=account_name,
     )
 
 
 @mcp_server.tool
-def market_sell(stock_code: str, quantity: int, execution_strategy: int = 3) -> dict:
+def market_sell(
+    stock_code: str,
+    quantity: int,
+    execution_strategy: int = 3,
+    account_name: str | None = None,
+) -> dict:
     """市价卖出股票，无需指定价格，通过成交策略决定成交方式。
     注意：并不是所有类型的标的都支持市价交易；若请求策略不被该标的支持，
     系统会自动改用「五档即成剩撤」提交。
@@ -144,6 +171,7 @@ def market_sell(stock_code: str, quantity: int, execution_strategy: int = 3) -> 
         stock_code: 股票代码（6位数字）
         quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
         execution_strategy: 成交策略编号（1-6），默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         市价卖出结果
@@ -155,15 +183,50 @@ def market_sell(stock_code: str, quantity: int, execution_strategy: int = 3) -> 
             "quantity": quantity,
             "execution_strategy": execution_strategy,
         },
+        account_name=account_name,
     )
+
+
+# ============= 账户管理工具 =============
+
+
+@mcp_server.tool
+def account_query(account_name: str | None = None) -> dict:
+    """获取客户端所有已登录账户
+
+    Args:
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
+
+    Returns:
+        账户列表信息：available_accounts 可用账户记录列表（account_name 账户名 /
+        account_index 账户序号）, current_used_account 当前使用账户（未确认过为 null）
+    """
+    return _execute_operation("account_query", {}, account_name=account_name)
+
+
+@mcp_server.tool
+def account_switch(account_name: str) -> dict:
+    """切换当前交易账户
+
+    Args:
+        account_name: 目标账户名（客户端展示的账户标识）
+
+    Returns:
+        切换结果：previous_used_account 切换前使用的账户（未确认过为 null）,
+        current_used_account 切换后使用的账户
+    """
+    return _execute_operation("account_switch", {"account_name": account_name})
 
 
 # ============= 查询操作工具 =============
 
 
 @mcp_server.tool
-def holding_query() -> dict:
+def holding_query(account_name: str | None = None) -> dict:
     """查询股票持仓信息
+
+    Args:
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         持仓记录列表，字段：stock_code, stock_name, quantity, available_quantity,
@@ -171,27 +234,31 @@ def holding_query() -> dict:
         daily_profit, daily_profit_ratio, market_value, position_ratio,
         daily_bought, daily_sold, market（数值型，无该项业务时为 null）
     """
-    return _execute_operation("holding_query", {})
+    return _execute_operation("holding_query", {}, account_name=account_name)
 
 
 @mcp_server.tool
-def funds_query() -> dict:
+def funds_query(account_name: str | None = None) -> dict:
     """查询账户资金信息
+
+    Args:
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         资金信息（单位元，数值型）：balance 资金余额, frozen_amount 冻结金额,
         market_value 股票市值, total_assets 总资产, available_amount 可用金额,
         withdrawable_amount 可取金额, holding_profit 持仓盈亏
     """
-    return _execute_operation("funds_query", {})
+    return _execute_operation("funds_query", {}, account_name=account_name)
 
 
 @mcp_server.tool
-def order_query(stock_code: str | None = None) -> dict:
+def order_query(stock_code: str | None = None, account_name: str | None = None) -> dict:
     """查询股票委托订单信息
 
     Args:
         stock_code: 股票代码（6位数字），不指定则查询所有股票的委托
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         委托记录列表，字段：order_time, stock_code, stock_name, operation(买入/卖出),
@@ -201,18 +268,21 @@ def order_query(stock_code: str | None = None) -> dict:
     params = {}
     if stock_code:
         params["stock_code"] = stock_code
-    return _execute_operation("order_query", params)
+    return _execute_operation("order_query", params, account_name=account_name)
 
 
 @mcp_server.tool
 def historical_commission_query(
-    stock_code: str | None = None, time_range: str = "当日"
+    stock_code: str | None = None,
+    time_range: str = "当日",
+    account_name: str | None = None,
 ) -> dict:
     """查询股票历史委托订单信息
 
     Args:
         stock_code: 股票代码（6位数字），不指定则查询所有股票的历史委托
         time_range: 查询时间范围，可选值: 当日, 近一周, 近一月, 近三月, 近一年
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         历史委托记录列表，字段同 order_query，另加 order_date 委托日期
@@ -220,19 +290,26 @@ def historical_commission_query(
     params = {"time_range": time_range}
     if stock_code:
         params["stock_code"] = stock_code
-    return _execute_operation("historical_commission_query", params)
+    return _execute_operation(
+        "historical_commission_query", params, account_name=account_name
+    )
 
 
 # ============= 委托管理工具 =============
 
 
 @mcp_server.tool
-def order_cancel(stock_code: str | None = None, cancel_type: str = "all") -> dict:
+def order_cancel(
+    stock_code: str | None = None,
+    cancel_type: str = "all",
+    account_name: str | None = None,
+) -> dict:
     """撤销委托订单
 
     Args:
         stock_code: 股票代码（6位数字），不指定则撤销所有待成交委托
         cancel_type: 撤单类型，可选值: all(全部), sell(卖出), buy(买入)
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         撤单结果：stock_code, cancel_type, cancelled_count 撤销笔数
@@ -240,7 +317,7 @@ def order_cancel(stock_code: str | None = None, cancel_type: str = "all") -> dic
     params = {"cancel_type": cancel_type}
     if stock_code:
         params["stock_code"] = stock_code
-    return _execute_operation("order_cancel", params)
+    return _execute_operation("order_cancel", params, account_name=account_name)
 
 
 # ============= 条件单工具 =============
@@ -248,7 +325,11 @@ def order_cancel(stock_code: str | None = None, cancel_type: str = "all") -> dic
 
 @mcp_server.tool
 def condition_buy(
-    stock_code: str, target_price: float, quantity: int, expire_days: int = 30
+    stock_code: str,
+    target_price: float,
+    quantity: int,
+    expire_days: int = 30,
+    account_name: str | None = None,
 ) -> dict:
     """条件买入股票
 
@@ -256,9 +337,10 @@ def condition_buy(
 
     Args:
         stock_code: 股票代码（6位数字）
-        target_price: 目标触发价格
+        target_price: 目标价格
         quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
         expire_days: 策略有效期（天），可选值: 1, 3, 5, 10, 20, 30
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         条件单创建结果
@@ -271,12 +353,17 @@ def condition_buy(
             "quantity": quantity,
             "expire_days": expire_days,
         },
+        account_name=account_name,
     )
 
 
 @mcp_server.tool
 def condition_sell(
-    stock_code: str, target_price: float, quantity: int, expire_days: int = 30
+    stock_code: str,
+    target_price: float,
+    quantity: int,
+    expire_days: int = 30,
+    account_name: str | None = None,
 ) -> dict:
     """条件卖出股票
 
@@ -284,9 +371,10 @@ def condition_sell(
 
     Args:
         stock_code: 股票代码（6位数字）
-        target_price: 目标触发价格
+        target_price: 目标价格
         quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
         expire_days: 策略有效期（天），可选值: 1, 3, 5, 10, 20, 30
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         条件单创建结果
@@ -299,30 +387,37 @@ def condition_sell(
             "quantity": quantity,
             "expire_days": expire_days,
         },
+        account_name=account_name,
     )
 
 
 @mcp_server.tool
-def condition_order_query() -> dict:
+def condition_order_query(account_name: str | None = None) -> dict:
     """查询条件单信息
+
+    Args:
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         条件单记录列表，字段：status, condition_type, direction(买入/卖出), target,
-        trigger_condition, latest_price, change_ratio, order_detail, created_at,
+        latest_price, change_ratio, order_detail, created_at,
         monitor_cycle（数值型，无该项业务时为 null）
     """
-    return _execute_operation("condition_order_query", {})
+    return _execute_operation("condition_order_query", {}, account_name=account_name)
 
 
 @mcp_server.tool
 def condition_order_cancel(
-    stock_code: str | None = None, order_type: str | None = None
+    stock_code: str | None = None,
+    order_type: str | None = None,
+    account_name: str | None = None,
 ) -> dict:
     """删除条件单
 
     Args:
         stock_code: 股票代码（6位数字），不指定则删除所有条件单
         order_type: 订单类型，可选值: 买入, 卖出
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         删除结果：stock_code, order_type, deleted_count 删除数量
@@ -332,7 +427,9 @@ def condition_order_cancel(
         params["stock_code"] = stock_code
     if order_type:
         params["order_type"] = order_type
-    return _execute_operation("condition_order_cancel", params)
+    return _execute_operation(
+        "condition_order_cancel", params, account_name=account_name
+    )
 
 
 # ============= 止损止盈工具 =============
@@ -345,6 +442,7 @@ def stop_loss_profit(
     stop_profit_percent: float,
     quantity: int | None = None,
     expire_days: int = 30,
+    account_name: str | None = None,
 ) -> dict:
     """设置止损止盈
 
@@ -354,6 +452,7 @@ def stop_loss_profit(
         stop_profit_percent: 止盈百分比（如5表示5%）
         quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数），不指定则使用全部持仓
         expire_days: 策略有效期（天），可选值: 1, 3, 5, 10, 20, 30
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         设置结果
@@ -366,20 +465,23 @@ def stop_loss_profit(
     }
     if quantity:
         params["quantity"] = quantity
-    return _execute_operation("stop_loss_profit", params)
+    return _execute_operation("stop_loss_profit", params, account_name=account_name)
 
 
 # ============= 国债逆回购工具 =============
 
 
 @mcp_server.tool
-def reverse_repo_buy(market: str, time_range: str, amount: int) -> dict:
+def reverse_repo_buy(
+    market: str, time_range: str, amount: int, account_name: str | None = None
+) -> dict:
     """国债逆回购（出借资金）
 
     Args:
         market: 交易市场，可选值: 上海, 深圳
         time_range: 回购期限，可选值: 1天期, 2天期, 3天期, 4天期, 7天期
         amount: 出借金额（必须是1000的倍数）
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         逆回购结果：market, time_range, amount, annual_rate 成交年化利率（百分数值）
@@ -387,17 +489,21 @@ def reverse_repo_buy(market: str, time_range: str, amount: int) -> dict:
     return _execute_operation(
         "reverse_repo_buy",
         {"market": market, "time_range": time_range, "amount": amount},
+        account_name=account_name,
     )
 
 
 @mcp_server.tool
-def reverse_repo_query() -> dict:
+def reverse_repo_query(account_name: str | None = None) -> dict:
     """查询国债逆回购年化利率
+
+    Args:
+        account_name: 执行前切换到该账户（可选，默认用当前账户）
 
     Returns:
         各期限利率行情列表，字段：market(上海/深圳), term 期限, annual_rate 年化利率（百分数值）
     """
-    return _execute_operation("reverse_repo_query", {})
+    return _execute_operation("reverse_repo_query", {}, account_name=account_name)
 
 
 # 创建 ASGI 应用用于挂载

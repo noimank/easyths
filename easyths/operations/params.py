@@ -166,6 +166,21 @@ class HistoricalQueryParams(StockQueryParams):
     )
 
 
+class AccountSwitchParams(OperationParams):
+    """账户切换参数"""
+
+    account_name: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "目标账户名（客户端展示名的前缀标识，如 平安证券-王*明 取 平安证券，"
+                "取值见 account_query 返回）"
+            ),
+        ),
+    ]
+
+
 class ReverseRepoBuyParams(OperationParams):
     """国债逆回购参数"""
 
@@ -181,6 +196,7 @@ class ReverseRepoBuyParams(OperationParams):
 
 
 __all__ = [
+    "AccountSwitchParams",
     "ConditionOrderCancelParams",
     "ConditionOrderParams",
     "EmptyParams",

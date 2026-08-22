@@ -11,6 +11,7 @@ easyths 客户端模块
         "message": str,             # 错误信息或成功消息
         "error_code": str | None,   # invalid_params / not_connected / client_rejected /
                                     # ui_error / cancelled / timeout / not_found / internal
+        "current_used_account": str | None,  # 操作执行时的当前使用账户（未确认过为 None）
         "data": Any,                # 业务数据（查询类为记录列表）
         "timestamp": str            # 北京时间，格式 "2026-08-22 06:46:56"
     }
@@ -152,6 +153,38 @@ class TradeClient:
         """获取所有可用操作（含参数 schema）"""
         return self._request("GET", "/api/v1/operations/")
 
+    # ==================== 账户操作便捷方法 ====================
+
+    def query_accounts(
+        self, timeout: float | None = None, account_name: str | None = None
+    ) -> APIResponse:
+        """查询客户端所有已登录账户，数据在 result["data"]
+
+        字段：available_accounts 可用账户记录列表（每行 account_name 账户名 /
+        account_index 账户序号）, current_used_account 当前使用账户（未确认过为 None）
+
+        Args:
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
+        """
+        operation_id = self.execute_operation(
+            "account_query", {}, account_name=account_name
+        )
+        return self.get_operation_result(operation_id, timeout=timeout)
+
+    def switch_account(
+        self, account_name: str, timeout: float | None = None
+    ) -> APIResponse:
+        """切换当前交易账户
+
+        Args:
+            account_name: 目标账户名（客户端展示的账户标识）
+        """
+        operation_id = self.execute_operation(
+            "account_switch", {"account_name": account_name}
+        )
+        return self.get_operation_result(operation_id, timeout=timeout)
+
     # ==================== 通用操作方法 ====================
 
     def execute_operation(
@@ -159,6 +192,7 @@ class TradeClient:
         operation_name: str,
         params: dict[str, Any] | None = None,
         priority: int = 0,
+        account_name: str | None = None,
     ) -> str:
         """执行操作（提交到队列，立即返回操作 ID）
 
@@ -166,11 +200,15 @@ class TradeClient:
             operation_name: 操作名称
             params: 操作参数（非法参数提交时即抛出 TradeClientError，422）
             priority: 优先级（0-10），数字越大优先级越高
+            account_name: 执行前切换到该账户（不指定则用当前账户）；
+                account_switch 的同名业务参数优先，此时指令不生效
 
         Returns:
             操作 ID
         """
         data: dict[str, Any] = {**(params or {}), "priority": priority}
+        if account_name is not None and "account_name" not in data:
+            data["account_name"] = account_name
         result = self._request(
             "POST", f"/api/v1/operations/{operation_name}", json=data
         )
@@ -221,7 +259,12 @@ class TradeClient:
     # ==================== 交易操作便捷方法 ====================
 
     def buy(
-        self, stock_code: str, price: float, quantity: int, timeout: float | None = None
+        self,
+        stock_code: str,
+        price: float,
+        quantity: int,
+        timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """买入股票
 
@@ -230,6 +273,7 @@ class TradeClient:
             price: 买入价格
             quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
             timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
 
         Examples:
             >>> result = client.buy("600000", 10.50, 100)
@@ -239,6 +283,7 @@ class TradeClient:
         operation_id = self.execute_operation(
             "buy",
             {"stock_code": stock_code, "price": price, "quantity": quantity},
+            account_name=account_name,
         )
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -248,6 +293,7 @@ class TradeClient:
         quantity: int,
         execution_strategy: Literal[1, 2, 3, 4, 5, 6] = 3,
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """市价买入股票，无需指定价格，通过成交策略决定成交方式。
 
@@ -259,6 +305,7 @@ class TradeClient:
             quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
             execution_strategy: 成交策略（1-6），默认 3（五档即成剩撤）
             timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         operation_id = self.execute_operation(
             "market_buy",
@@ -267,6 +314,7 @@ class TradeClient:
                 "quantity": quantity,
                 "execution_strategy": execution_strategy,
             },
+            account_name=account_name,
         )
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -276,6 +324,7 @@ class TradeClient:
         quantity: int,
         execution_strategy: Literal[1, 2, 3, 4, 5, 6] = 3,
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """市价卖出股票，参数与返回同 market_buy"""
         operation_id = self.execute_operation(
@@ -285,11 +334,17 @@ class TradeClient:
                 "quantity": quantity,
                 "execution_strategy": execution_strategy,
             },
+            account_name=account_name,
         )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def sell(
-        self, stock_code: str, price: float, quantity: int, timeout: float | None = None
+        self,
+        stock_code: str,
+        price: float,
+        quantity: int,
+        timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """卖出股票
 
@@ -298,10 +353,12 @@ class TradeClient:
             price: 卖出价格
             quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
             timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         operation_id = self.execute_operation(
             "sell",
             {"stock_code": stock_code, "price": price, "quantity": quantity},
+            account_name=account_name,
         )
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -310,6 +367,7 @@ class TradeClient:
         stock_code: str | None = None,
         cancel_type: Literal["all", "buy", "sell"] = "all",
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """撤销委托单
 
@@ -317,11 +375,14 @@ class TradeClient:
             stock_code: 股票代码，不指定则撤销所有委托
             cancel_type: 撤单类型，"all" 全部, "buy" 买单, "sell" 卖单
             timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         params: dict[str, Any] = {"cancel_type": cancel_type}
         if stock_code:
             params["stock_code"] = stock_code
-        operation_id = self.execute_operation("order_cancel", params)
+        operation_id = self.execute_operation(
+            "order_cancel", params, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def condition_buy(
@@ -331,6 +392,7 @@ class TradeClient:
         quantity: int,
         expire_days: int = 30,
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """条件买入股票（股价达到触发价自动买入）
 
@@ -340,6 +402,7 @@ class TradeClient:
             quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
             expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
             timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         operation_id = self.execute_operation(
             "condition_buy",
@@ -349,6 +412,7 @@ class TradeClient:
                 "quantity": quantity,
                 "expire_days": expire_days,
             },
+            account_name=account_name,
         )
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -359,6 +423,7 @@ class TradeClient:
         quantity: int,
         expire_days: int = 30,
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """条件卖出股票（股价达到触发价自动卖出），参数同 condition_buy"""
         operation_id = self.execute_operation(
@@ -369,6 +434,7 @@ class TradeClient:
                 "quantity": quantity,
                 "expire_days": expire_days,
             },
+            account_name=account_name,
         )
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -380,6 +446,7 @@ class TradeClient:
         quantity: int | None = None,
         expire_days: int = 30,
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """设置止盈止损
 
@@ -390,6 +457,7 @@ class TradeClient:
             quantity: 卖出数量，可选，不指定则使用全部可卖持仓
             expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
             timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         params: dict[str, Any] = {
             "stock_code": stock_code,
@@ -399,33 +467,54 @@ class TradeClient:
         }
         if quantity is not None:
             params["quantity"] = quantity
-        operation_id = self.execute_operation("stop_loss_profit", params)
+        operation_id = self.execute_operation(
+            "stop_loss_profit", params, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     # ==================== 查询操作便捷方法 ====================
 
-    def query_holdings(self, timeout: float | None = None) -> APIResponse:
+    def query_holdings(
+        self, timeout: float | None = None, account_name: str | None = None
+    ) -> APIResponse:
         """查询持仓，持仓数据在 result["data"]（记录列表）
 
         字段：stock_code, stock_name, quantity, available_quantity, frozen_quantity,
         cost_price, current_price, floating_profit, profit_ratio, daily_profit,
         daily_profit_ratio, market_value, position_ratio, daily_bought, daily_sold, market
+
+        Args:
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
-        operation_id = self.execute_operation("holding_query", {})
+        operation_id = self.execute_operation(
+            "holding_query", {}, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
-    def query_funds(self, timeout: float | None = None) -> APIResponse:
+    def query_funds(
+        self, timeout: float | None = None, account_name: str | None = None
+    ) -> APIResponse:
         """查询资金，数据在 result["data"]（单位元，数值型）
 
         字段：balance 资金余额, frozen_amount 冻结金额, market_value 股票市值,
         total_assets 总资产, available_amount 可用金额, withdrawable_amount 可取金额,
         holding_profit 持仓盈亏
+
+        Args:
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
-        operation_id = self.execute_operation("funds_query", {})
+        operation_id = self.execute_operation(
+            "funds_query", {}, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def query_orders(
-        self, stock_code: str | None = None, timeout: float | None = None
+        self,
+        stock_code: str | None = None,
+        timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """查询委托单，委托数据在 result["data"]（记录列表）
 
@@ -435,11 +524,15 @@ class TradeClient:
 
         Args:
             stock_code: 股票代码，不指定则查询所有委托
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         params: dict[str, Any] = {}
         if stock_code:
             params["stock_code"] = stock_code
-        operation_id = self.execute_operation("order_query", params)
+        operation_id = self.execute_operation(
+            "order_query", params, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def query_historical_commission(
@@ -447,17 +540,22 @@ class TradeClient:
         stock_code: str | None = None,
         time_range: Literal["当日", "近一周", "近一月", "近三月", "近一年"] = "当日",
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """查询历史委托，数据在 result["data"]（记录列表），字段同 query_orders 另加 order_date
 
         Args:
             stock_code: 股票代码（6位数字），不指定则查询所有股票
             time_range: 查询时间范围，默认"当日"
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         params: dict[str, Any] = {"time_range": time_range}
         if stock_code is not None:
             params["stock_code"] = stock_code
-        operation_id = self.execute_operation("historical_commission_query", params)
+        operation_id = self.execute_operation(
+            "historical_commission_query", params, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def reverse_repo_buy(
@@ -466,6 +564,7 @@ class TradeClient:
         time_range: Literal["1天期", "2天期", "3天期", "4天期", "7天期"],
         amount: int,
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """购买国债逆回购
 
@@ -473,28 +572,47 @@ class TradeClient:
             market: 交易市场，"上海" 或 "深圳"
             time_range: 回购期限，"1天期"/"2天期"/"3天期"/"4天期"/"7天期"
             amount: 出借金额（必须是1000的倍数）
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         operation_id = self.execute_operation(
             "reverse_repo_buy",
             {"market": market, "time_range": time_range, "amount": amount},
+            account_name=account_name,
         )
         return self.get_operation_result(operation_id, timeout=timeout)
 
-    def query_reverse_repo(self, timeout: float | None = None) -> APIResponse:
+    def query_reverse_repo(
+        self, timeout: float | None = None, account_name: str | None = None
+    ) -> APIResponse:
         """查询国债逆回购年化利率，数据在 result["data"]（记录列表）
 
         字段：market(上海/深圳), term 期限, annual_rate 年化利率（百分数值，如 2.5 表示 2.5%）
+
+        Args:
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
-        operation_id = self.execute_operation("reverse_repo_query", {})
+        operation_id = self.execute_operation(
+            "reverse_repo_query", {}, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
-    def query_condition_orders(self, timeout: float | None = None) -> APIResponse:
+    def query_condition_orders(
+        self, timeout: float | None = None, account_name: str | None = None
+    ) -> APIResponse:
         """查询条件单，数据在 result["data"]（记录列表）
 
         字段：status, condition_type, direction(买入/卖出), target, trigger_condition,
         latest_price, change_ratio, order_detail, created_at, monitor_cycle
+
+        Args:
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
-        operation_id = self.execute_operation("condition_order_query", {})
+        operation_id = self.execute_operation(
+            "condition_order_query", {}, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def cancel_condition_orders(
@@ -502,19 +620,24 @@ class TradeClient:
         stock_code: str | None = None,
         order_type: Literal["买入", "卖出"] | None = None,
         timeout: float | None = None,
+        account_name: str | None = None,
     ) -> APIResponse:
         """删除条件单
 
         Args:
             stock_code: 股票代码（6位数字），不指定则删除所有条件单
             order_type: 订单类型，"买入" 或 "卖出"
+            timeout: 等待操作结果的超时时间（秒）
+            account_name: 执行前切换到该账户（不指定则用当前账户）
         """
         params: dict[str, Any] = {}
         if stock_code is not None:
             params["stock_code"] = stock_code
         if order_type is not None:
             params["order_type"] = order_type
-        operation_id = self.execute_operation("condition_order_cancel", params)
+        operation_id = self.execute_operation(
+            "condition_order_cancel", params, account_name=account_name
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     # ==================== 连接管理 ====================
