@@ -70,13 +70,13 @@ class ConditionSellOperation(BaseOperation[ConditionOrderParams]):
         )
         self.sleep(0.3)
 
-        # 下一步（按钮不可用说明没有持仓）
+        # 下一步（按钮不可用说明没有持仓），模拟账户在非交易日也是灰色
         next_btn = self.get_control_with_children(
             document_panel, control_type="Button", title="下一步"
         )
         if not next_btn.is_enabled():
             return self._fail(
-                "条件卖出设置失败，请检查是否持有该标的",
+                "条件卖出设置失败，请检查是否持有该标的或者交易日再尝试",
                 ErrorCode.CLIENT_REJECTED,
             )
         next_btn.click()

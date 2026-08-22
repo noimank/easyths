@@ -65,9 +65,16 @@ class ConditionBuyOperation(BaseOperation[ConditionOrderParams]):
         )
         self.sleep(0.3)
 
-        self.get_control_with_children(
+        next_step_btn = self.get_control_with_children(
             document_panel, control_type="Button", title="下一步"
-        ).click()
+        )
+        # 实测非交易日 模拟账户条件买入的下一步按钮不可用
+        if not next_step_btn.is_enabled():
+            return self._fail(
+                "条件买入功能暂不可用，交易日再试", ErrorCode.CLIENT_REJECTED
+            )
+
+        next_step_btn.click()
         # 等页面重绘渲染
         self.sleep(0.5)
 
