@@ -61,6 +61,11 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
         account_state.set_current_used_account(params.account_name)
         # 给点缓冲，增加稳定性
         self.sleep(0.3)
+        if not self._check_already_change(account_name_unverified=params.account_name):
+            return self._fail(
+                f"账户切换失败，保持当前账户：{params.account_name} 不变",
+                ErrorCode.INTERNAL,
+            )
 
         return self._ok(
             data=AccountSwitchResult(
@@ -72,3 +77,40 @@ class AccountSwitchOperation(BaseOperation[AccountSwitchParams]):
                 + f"，耗时{time.time() - start_time:.2f}秒"
             ),
         )
+
+    def _check_already_change(self, account_name_unverified) -> bool:
+        """检查是否真的已经切换到位。
+
+        账户名只取前面的标识（如 "平安证券-王*明" -> "平安证券"），
+        条目与当前使用账户使用同一清洗规则，保证后者必在可用账户列表中。
+        """
+        main_window = self.get_main_window(wrapper_obj=True)
+        toolbar_ctl = self.get_control_with_children(
+            parent_control=main_window, control_type="ToolBar", auto_id="59392"
+        )
+        combobox_ctl = self.get_control_with_children(
+            toolbar_ctl, control_type="ComboBox", auto_id="2322"
+        )
+        dropdown_btn = self.get_control_with_children(
+            combobox_ctl, control_type="Button", auto_id="DropDown"
+        )
+        dropdown_btn.click()
+        # 等待界面渲染
+        self.sleep(0.4)
+
+        list_box = self.automator.app.windows(
+            class_name="ComboLBox", control_type="List"
+        )[0]
+        items = list_box.children()
+        for item in items:
+            account_name = item.window_text()
+            if account_name == "编辑账户":
+                continue
+            # 只取前面的标识 如 "平安证券-王*明" -> "平安证券"
+            clean_account_name = account_name.strip().split("-")[0]
+            if item.is_selected() and clean_account_name == account_name_unverified:
+                main_window.type_keys("{ESC}")
+                return True
+        # 退出下拉框
+        main_window.type_keys("{ESC}")
+        return False
