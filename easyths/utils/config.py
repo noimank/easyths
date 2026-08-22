@@ -1,143 +1,95 @@
-import os
+"""项目配置：TOML 配置文件是唯一配置来源，未配置的项使用内置默认值。"""
+
+import tomllib
 from pathlib import Path
 
-import toml
+# MCP 服务器传输类型可选值
+VALID_MCP_SERVER_TYPES = ("http", "streamable-http", "sse")
+
+# 日志文件默认路径（用户主目录下）
+DEFAULT_LOG_FILE = str(Path("~/easyths/log.txt").expanduser())
 
 
 class ProjectConfig:
+    """项目配置
+
+    类属性即默认值，可通过 load_toml_file 加载 TOML 配置文件覆盖。
+    """
+
     # App配置
-    app_name = os.getenv("APP_NAME", "同花顺交易自动化程序")
-    app_version = os.getenv("APP_VERSION", "1.0.0")
-    onnx_model_dir = os.getenv("APP_ONNX_MODEL_DIR", None)
+    onnx_model_dir: str | None = None
     # 默认保存
-    save_error_captcha_image = (
-        os.getenv("APP_SAVE_ERROR_CAPTCHA_IMAGE", "true").lower() == "true"
-    )
+    save_error_captcha_image: bool = True
 
     # Trading配置
-    trading_app_path = os.getenv(
-        "TRADING_APP_PATH", "C:/同花顺远航版/transaction/xiadan.exe"
-    )
-    # Queue
-    queue_max_size = int(os.getenv("QUEUE_MAX_SIZE", 1000))
-    queue_priority_levels = int(os.getenv("QUEUE_PRIORITY_LEVELS", 5))
-    queue_batch_size = int(os.getenv("QUEUE_BATCH_SIZE", 10))
+    trading_app_path: str = "C:/同花顺远航版/transaction/xiadan.exe"
+
+    # Queue配置
+    queue_max_size: int = 1000
+    # 单操作执行硬超时（秒），界面卡死时以 TIMEOUT 收尾并断开同花顺连接
+    queue_operation_timeout: float = 10.0
 
     # API配置
-    api_host = os.getenv("API_HOST", "0.0.0.0")
-    api_port = int(os.getenv("API_PORT", 7648))
-    api_rate_limit = int(os.getenv("API_RATE_LIMIT", 10))
-    api_cors_origins = os.getenv("API_CORS_ORIGINS", "*")
-    api_key = os.getenv("API_KEY", None)
-    api_ip_whitelist = os.getenv(
-        "API_IP_WHITELIST", None
-    )  # None表示允许所有，逗号分隔如"127.0.0.1,192.168.1.*"
-    api_mcp_server_type = os.getenv(
-        "API_MCP_SERVER_TYPE", "streamable-http"
-    )  # MCP服务器传输类型: http, streamable-http, sse
+    api_host: str = "0.0.0.0"
+    api_port: int = 7648
+    api_rate_limit: int = 100
+    api_cors_origins: str = "*"
+    api_key: str | None = None
+    api_ip_whitelist: str | None = (
+        None  # None表示允许所有，逗号分隔如"127.0.0.1,192.168.1.*"
+    )
+    api_mcp_server_type: str = "streamable-http"
 
     # Logging配置
-    logging_level = os.getenv("LOGGING_LEVEL", "INFO")
-    # 默认为用户主目录下
-    logging_file = (
-        str(Path("~/easyths/log.txt").expanduser())
-        if os.getenv("LOGGING_FILE", "") == ""
-        else os.getenv("LOGGING_FILE", "")
-    )
+    logging_level: str = "INFO"
+    logging_file: str = DEFAULT_LOG_FILE
 
-    def __init__(self):
-        if self.save_error_captcha_image:
-            pa = Path("~/easyths/captcha_error").expanduser()
-            if not pa.exists():
-                pa.mkdir(parents=True, exist_ok=True)
+    def load_toml_file(self, toml_file_path: str | Path) -> None:
+        """从 TOML 配置文件加载配置
 
-    def update_from_toml_file(
-        self, toml_file_path: str, exe_path: str | None = None
-    ) -> None:
-        """从 TOML 配置文件更新配置
+        文件中未出现的配置项保持当前值；字符串配置项的空字符串视为未配置。
 
         Args:
             toml_file_path: TOML 配置文件路径
-            exe_path: 可选的交易程序路径，优先级高于配置文件中的设置
         """
-        config = toml.load(toml_file_path)
+        with open(toml_file_path, "rb") as f:
+            config = tomllib.load(f)
 
         # 处理 [app] 部分
-        if "app" in config:
-            app_config = config["app"]
-            if "name" in app_config:
-                self.app_name = app_config["name"]
-            if "version" in app_config:
-                self.app_version = app_config["version"]
-            if "onnx_model_dir" in app_config:
-                # 空字符串转换为 None
-                self.onnx_model_dir = app_config["onnx_model_dir"] or None
-
-            if "save_error_captcha_image" in app_config:
-                self.save_error_captcha_image = app_config["save_error_captcha_image"]
-                pa = Path("~/easyths/captcha_error").expanduser()
-                if not pa.exists():
-                    pa.mkdir(parents=True, exist_ok=True)
+        app = config.get("app", {})
+        self.onnx_model_dir = app.get("onnx_model_dir") or None
+        self.save_error_captcha_image = app.get("save_error_captcha_image", True)
 
         # 处理 [trading] 部分
-        if "trading" in config:
-            trading_config = config["trading"]
-            if "app_path" in trading_config:
-                self.trading_app_path = trading_config["app_path"]
+        trading = config.get("trading", {})
+        self.trading_app_path = trading.get("app_path") or self.trading_app_path
 
         # 处理 [queue] 部分
-        if "queue" in config:
-            queue_config = config["queue"]
-            if "max_size" in queue_config:
-                self.queue_max_size = queue_config["max_size"]
-            if "priority_levels" in queue_config:
-                self.queue_priority_levels = queue_config["priority_levels"]
-            if "batch_size" in queue_config:
-                self.queue_batch_size = queue_config["batch_size"]
+        queue = config.get("queue", {})
+        self.queue_max_size = queue.get("max_size", self.queue_max_size)
+        self.queue_operation_timeout = queue.get(
+            "operation_timeout", self.queue_operation_timeout
+        )
 
         # 处理 [api] 部分
-        if "api" in config:
-            api_config = config["api"]
-            if "host" in api_config:
-                self.api_host = api_config["host"]
-            if "port" in api_config:
-                self.api_port = api_config["port"]
-            if "rate_limit" in api_config:
-                self.api_rate_limit = api_config["rate_limit"]
-            if "cors_origins" in api_config:
-                self.api_cors_origins = api_config["cors_origins"]
-            if "key" in api_config:
-                # 空字符串转换为 None
-                self.api_key = api_config["key"] or None
-            if "ip_whitelist" in api_config:
-                # 空字符串转换为 None
-                self.api_ip_whitelist = api_config["ip_whitelist"] or None
-            if "mcp_server_type" in api_config:
-                # 验证 MCP 服务器类型
-                valid_types = ["http", "streamable-http", "sse"]
-                mcp_type = api_config["mcp_server_type"]
-                if mcp_type in valid_types:
-                    self.api_mcp_server_type = mcp_type
-                else:
-                    raise ValueError(
-                        f"无效的 mcp_server_type: {mcp_type}，可选值: {valid_types}"
-                    )
+        api = config.get("api", {})
+        self.api_host = api.get("host", self.api_host)
+        self.api_port = api.get("port", self.api_port)
+        self.api_rate_limit = api.get("rate_limit", self.api_rate_limit)
+        self.api_cors_origins = api.get("cors_origins", self.api_cors_origins)
+        self.api_key = api.get("key") or None
+        self.api_ip_whitelist = api.get("ip_whitelist") or None
+        mcp_type = api.get("mcp_server_type", self.api_mcp_server_type)
+        if mcp_type not in VALID_MCP_SERVER_TYPES:
+            raise ValueError(
+                f"无效的 mcp_server_type: {mcp_type}，可选值: {VALID_MCP_SERVER_TYPES}"
+            )
+        self.api_mcp_server_type = mcp_type
 
         # 处理 [logging] 部分
-        if "logging" in config:
-            logging_config = config["logging"]
-            if "level" in logging_config:
-                self.logging_level = logging_config["level"]
-            if "file" in logging_config:
-                self.logging_file = (
-                    str(Path("~/easyths/log.txt").expanduser())
-                    if logging_config["file"] == ""
-                    else logging_config["file"]
-                )
-
-        # exe_path 参数优先级最高
-        if exe_path:
-            self.trading_app_path = exe_path
+        logging_config = config.get("logging", {})
+        self.logging_level = logging_config.get("level", self.logging_level)
+        self.logging_file = logging_config.get("file") or DEFAULT_LOG_FILE
 
     @property
     def api_ip_whitelist_list(self) -> list[str] | None:

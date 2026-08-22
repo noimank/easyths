@@ -5,8 +5,6 @@
 # ==============================================
 
 [app]
-name = "同花顺交易自动化"
-version = "1.0.0"
 #自己训练的验证码识别模型目录，目录下必须有captcha_ocr.onnx和captcha_ocr.onnx.data
 onnx_model_dir = ""
 # 是否保存识别错误的验证码图片，图片保存在 C:\Users\你的用户名\easyths\captcha_error\目录下，收集好之后，重命名为：{验证码}_{uuid}.png, 发送到邮箱noimank@163.com
@@ -19,8 +17,9 @@ app_path = "C:/同花顺远航版/transaction/xiadan.exe"
 
 [queue]
 max_size = 1000
-priority_levels = 5
-batch_size = 10
+# 单操作执行硬超时（秒）：超时后操作以 TIMEOUT 失败收尾并自动断开同花顺连接，
+# 后续操作将快速失败，需恢复客户端后调用 /api/v1/system/reconnect 重连
+operation_timeout = 10.0
 
 [api]
 host = "0.0.0.0"

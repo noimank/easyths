@@ -16,9 +16,9 @@ import shutil
 import sys
 from pathlib import Path
 
-import psutil
 import structlog
 
+from easyths import __version__
 from easyths.api.app import TradingAPIApp
 from easyths.core.operation_queue import OperationQueue
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
@@ -29,10 +29,12 @@ from easyths.utils.logger import setup_logging
 PROJECT_NAME = "EasyTHS"
 PROJECT_AUTHOR = "noimank"
 PROJECT_EMAIL = "noimank@163.com"
-PROJECT_VERSION = "1.7.5"
+PROJECT_VERSION = __version__
 PROJECT_REPO = "https://github.com/noimank/easyths"
 PROJECT_DOCS = "https://noimank.github.io/easyths/"
 PROJECT_ISSUES = "https://github.com/noimank/easyths/issues"
+
+logger = structlog.get_logger(__name__)
 
 
 def get_asset_path() -> Path:
@@ -172,10 +174,8 @@ def check_running_env():
     3. 是否存在对应的进程
 
     Returns:
-        bool: 如果运行环境可用返回 True，否则返回 False
+        bool: 如果运行环境可用返回 True，否则 False
     """
-    logger = structlog.get_logger(__name__)
-
     # 检查是否为 Windows 系统
     if platform.system() != "Windows":
         logger.error(
@@ -190,24 +190,15 @@ def check_running_env():
         logger.error("同花顺交易程序不存在，无法启动系统", app_path=app_path)
         return False
 
-    # 获取进程名
-    process_name = Path(app_path).name
-
     # 检查进程是否运行
-    is_running = False
-    for proc in psutil.process_iter(["name"]):
-        try:
-            if proc.info["name"] == process_name:
-                is_running = True
-                break
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
-
-    if not is_running:
-        logger.error("同花顺交易程序未运行，无法启动系统", process_name=process_name)
+    if not TonghuashunAutomator.is_process_running(app_path):
+        logger.error(
+            "同花顺交易程序未运行，无法启动系统",
+            process_name=Path(app_path).name,
+        )
         return False
 
-    logger.info("运行环境检查通过", app_path=app_path, process_name=process_name)
+    logger.info("运行环境检查通过", app_path=app_path)
     return True
 
 
@@ -217,11 +208,11 @@ def initialize_components():
     Returns:
         tuple: (automator, operation_queue)
     """
-    # 创建自动化器
+    # 创建自动化器并连接（连接失败直接终止启动，避免带病运行）
     automator = TonghuashunAutomator()
-
-    # 连接到同花顺
-    automator.connect()
+    if not automator.connect():
+        logger.error("连接同花顺失败，系统退出")
+        sys.exit(1)
 
     # 创建操作队列
     operation_queue = OperationQueue(automator)
@@ -251,28 +242,24 @@ def main():
         return
 
     # 加载配置文件
-    config_loaded = False
     if args.config:
         config_path = Path(args.config)
         if not config_path.exists():
             print(f"错误: 配置文件不存在: {config_path}")
             sys.exit(1)
-        project_config_instance.update_from_toml_file(
-            str(config_path), exe_path=args.exe_path
-        )
-        config_loaded = True
-    elif args.exe_path:
-        # 只指定了 exe_path，不使用配置文件
+        project_config_instance.load_toml_file(config_path)
+
+    # 命令行指定的交易程序路径优先级最高
+    if args.exe_path:
         project_config_instance.trading_app_path = args.exe_path
 
     # 初始化日志（在配置加载后）
     setup_logging()
-    logger = structlog.get_logger(__name__)
 
-    if config_loaded:
+    if args.config:
         logger.info("已加载配置文件", config_file=args.config)
 
-    logger.info("系统启动", version=project_config_instance.app_version)
+    logger.info("系统启动", version=PROJECT_VERSION)
 
     # 打印项目信息
     print_project_info()

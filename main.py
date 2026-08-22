@@ -8,9 +8,6 @@ Email: noimank@163.com
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 

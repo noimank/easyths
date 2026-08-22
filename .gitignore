@@ -93,6 +93,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# 本地测试配置（conftest 自动加载，可能含 api_key）
+/config.toml
+
 # Spyder project settings
 .spyderproject
 .spyproject

@@ -8,6 +8,7 @@ Email: noimank@163.com
 
 from pathlib import Path
 
+import psutil
 import structlog
 from pywinauto.application import Application
 
@@ -19,11 +20,8 @@ logger = structlog.get_logger(__name__)
 class TonghuashunAutomator:
     """同花顺交易自动化器 - 核心GUI自动化类
 
-    所有方法都是同步的，由调用方决定执行方式（直接调用或通过COM执行器）
+    所有方法都是同步的，由调用方决定执行方式（直接调用或通过队列执行）
     """
-
-    # 修改为 正则匹配 网上股票交易系统.*  避免可能未来版本更新导致找不到窗口的问题
-    # APP_TITLE_NAME = "网上股票交易系统5.0"
 
     def __init__(self):
         """初始化自动化器"""
@@ -33,6 +31,22 @@ class TonghuashunAutomator:
         self.main_window_wrapper_object = None
         self._connected = False
         self.logger = structlog.get_logger(__name__)
+
+    @staticmethod
+    def is_process_running(app_path: str) -> bool:
+        """检查指定路径的交易程序进程是否在运行"""
+        process_name = Path(app_path).name
+        for proc in psutil.process_iter(["name"]):
+            try:
+                if proc.info["name"] == process_name:
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return False
+
+    def is_process_alive(self) -> bool:
+        """检查同花顺交易程序进程是否存活（真实探活，不依赖连接标志）"""
+        return bool(self.app_path) and self.is_process_running(self.app_path)
 
     def connect(self) -> bool:
         """连接到同花顺交易客户端
@@ -70,9 +84,15 @@ class TonghuashunAutomator:
         """断开连接"""
         self._connected = False
         self.main_window = None
+        self.main_window_wrapper_object = None
         self.app = None
         self.logger.info("已断开同花顺连接")
 
+    def reconnect(self) -> bool:
+        """重连同花顺（断开后重新连接，供客户端重启后恢复）"""
+        self.disconnect()
+        return self.connect()
+
     def is_connected(self) -> bool:
-        """检查是否已连接"""
+        """检查是否已连接（仅检查标志位，真实探活用 is_process_alive）"""
         return self._connected and self.app is not None

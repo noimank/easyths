@@ -1,225 +1,153 @@
 import time
-from typing import Any
 
 from easyths.core import BaseOperation
-from easyths.models.operations import OperationResult, PluginMetadata
+from easyths.models.operations import ErrorCode, OperationResult
+from easyths.operations.params import ReverseRepoBuyParams
+from easyths.operations.results import ReverseRepoBuyResult
 
 
-class ReverseRepoBuyOperation(BaseOperation):
+class ReverseRepoBuyOperation(BaseOperation[ReverseRepoBuyParams]):
     """国债逆回购操作"""
 
-    def _get_metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="ReverseRepoOperation",
-            version="1.0.0",
-            description="国债逆回购操作,购买后可用在订单查询中查看购买情况",
-            author="noimank",
-            operation_name="reverse_repo_buy",
-            parameters={
-                "market": {
-                    "type": "string",
-                    "required": True,
-                    "description": "交易市场",
-                    "enum": ["上海", "深圳"],
-                },
-                "time_range": {
-                    "type": "string",
-                    "required": True,
-                    "description": "回购期限",
-                    "enum": ["1天期", "2天期", "3天期", "4天期", "7天期"],
-                },
-                "amount": {
-                    "type": "integer",
-                    "required": True,
-                    "description": "出借金额（必须是1000的倍数）",
-                    "minimum": 1000,
-                    "multiple_of": 1000,
-                },
-            },
-        )
+    operation_name = "reverse_repo_buy"
+    description = "国债逆回购（出借资金），购买后可在委托查询中查看"
+    Params = ReverseRepoBuyParams
+    Result = ReverseRepoBuyResult
 
-    def validate(self, params: dict[str, Any]) -> bool:
-        """验证国债逆回购参数"""
-        try:
-            # 检查必需参数
-            required_params = ["market", "time_range", "amount"]
-            for param in required_params:
-                if param not in params:
-                    self.logger.error(f"缺少必需参数: {param}")
-                    return False
+    # 期限 → 回购代码后缀
+    _CODE_MAP = {
+        "1天期": "001",
+        "2天期": "002",
+        "3天期": "003",
+        "4天期": "004",
+        "7天期": "007",
+    }
 
-            market = params["market"]
-            time_range = params["time_range"]
-            amount = params["amount"]
-
-            # 验证市场
-            if market not in ["上海", "深圳"]:
-                self.logger.error("市场参数无效，有效值为：上海、深圳")
-                return False
-
-            # 验证期限
-            if time_range not in ["1天期", "2天期", "3天期", "4天期", "7天期"]:
-                self.logger.error(
-                    "期限参数无效，有效值为：1天期、2天期、3天期、4天期、7天期"
-                )
-                return False
-
-            # 验证出借金额
-            if not isinstance(amount, int) or amount < 1000 or amount % 1000 != 0:
-                self.logger.error("出借金额必须是1000的倍数且不小于1000")
-                return False
-
-            self.logger.info("国债逆回购参数验证通过")
-            return True
-
-        except Exception as e:
-            self.logger.exception("参数验证异常", error=str(e))
-            return False
-
-    def select_target_area(self, table_contrls, key_word):
-        """
-        根据关键字比如 GC001，这种特定的标识
-        返回目标控件
-        """
-        for table_item in table_contrls:
-            cc = (
+    def select_target_area(self, table_controls, key_word):
+        """根据关键字（如 GC001）点击并返回目标行控件，未找到返回 None"""
+        for table_item in table_controls:
+            texts = (
                 table_item.children(control_type="Custom")[0]
                 .children(control_type="DataItem")[0]
                 .children(control_type="Text")
             )
-            content = "".join([c.window_text() for c in cc])
-            if key_word in content:
+            if key_word in "".join(t.window_text() for t in texts):
                 table_item.click_input()
                 self.sleep(0.05)
                 return table_item
         return None
 
-    def execute(self, params: dict[str, Any]) -> OperationResult:
-        """执行国债逆回购操作 - 占位实现"""
-        market = params["market"]
-        time_range = params["time_range"]
-        amount = params["amount"]
+    def execute(self, params: ReverseRepoBuyParams) -> OperationResult:
         start_time = time.time()
+        self.logger.info(
+            "执行国债逆回购操作",
+            market=params.market,
+            time_range=params.time_range,
+            amount=params.amount,
+        )
+        target_keyword = ("GC" if params.market == "上海" else "R-") + self._CODE_MAP[
+            params.time_range
+        ]
 
-        try:
-            self.logger.info(
-                "执行国债逆回购操作",
-                market=market,
-                time_range=time_range,
-                amount=amount,
+        main_window = self.get_main_window(wrapper_obj=True)
+        # 先跳到其他页面，要是停留在国债逆回购的话，再次点击可能没反应
+        main_window.type_keys("{F3}")
+        self.sleep(0.2)
+        self.switch_left_menus("通用回购")
+
+        if not self.wait_for_pop_dialog(5):
+            return self._fail("国债逆回购下单窗口未打开")
+        pop_dialog_title, pop_control = self.get_pop_dialog()
+        if pop_dialog_title != "通用回购":
+            return self._fail(f"国债逆回购下单窗口异常: {pop_dialog_title}")
+
+        AfxWnd140s_pane = self.get_control_with_children(
+            pop_control,
+            control_type="Pane",
+            auto_id="3001",
+            class_name="AfxWnd140s",
+        )
+        CefBrowserWindow_pane = self.get_control_with_children(
+            AfxWnd140s_pane, control_type="Pane", class_name="CefBrowserWindow"
+        )
+        Chrome_WidgetWin_0_pane = self.get_control_with_children(
+            CefBrowserWindow_pane, control_type="Pane", class_name="Chrome_WidgetWin_0"
+        )
+        document_panel = self.get_control_with_children(
+            Chrome_WidgetWin_0_pane,
+            control_type="Document",
+            class_name="Chrome_RenderWidgetHostHWND",
+        )
+
+        def close_window():
+            self.get_control_with_children(
+                pop_control,
+                control_type="Button",
+                auto_id="1008",
+                class_name="Button",
+            ).click()
+
+        # 会有10个元素
+        table_panel = document_panel.children(control_type="Table")
+        if self.select_target_area(table_panel, target_keyword) is None:
+            close_window()
+            return self._fail(
+                f"国债逆回购操作失败，未找到{target_keyword}对应的回购品种",
+                ErrorCode.CLIENT_REJECTED,
             )
-            main_window = self.get_main_window(wrapper_obj=True)
-            # 先跳到其他页面，要是停留在国债逆回购的话，再次点击可能没反应
-            main_window.type_keys("{F3}")
-            self.sleep(0.2)
-            self.switch_left_menus("通用回购")
 
-            # 1. 根据 market 和 time_range 获取对应的国债逆回购代码
-            code_map = {
-                "1天期": "001",
-                "2天期": "002",
-                "3天期": "003",
-                "4天期": "004",
-                "7天期": "007",
-            }
+        # 输入金额
+        self.get_control_with_children(
+            document_panel, control_type="Edit", auto_id="shuru"
+        ).set_text(str(params.amount))
+        self.sleep(0.1)
+        # 点击出借，这个是文本渲染的，如果出借金额不足，马上会变成灰色，
+        # 此时无法触发出借并关闭窗口的事件
+        chujie_btn = self.get_control_with_children(
+            document_panel, control_type="Text", title="出借"
+        )
+        chujie_btn.click_input()
+        self.sleep(0.1)
+        # 是否出现确认询问
+        ask_pop_dialog = self.get_control_with_children(
+            document_panel, control_type="Text", title_contains="您是否确认以上"
+        )
+        self.sleep(0.1)
 
-            target_keyword = (
-                "GC" + code_map[time_range]
-                if market == "上海"
-                else "R-" + code_map[time_range]
+        if ask_pop_dialog is None:
+            # 定位元素属性缺乏，只能顺序取，可能不保证是对应的元素，实测其实也还行，
+            # 可能后面遇到同花顺界面重构会要修改
+            available_amount = document_panel.children(control_type="Text")[10]
+            op_message = (
+                f"国债逆回购操作失败，计划出借金额：{params.amount} 元，"
+                f"可用金额：{available_amount.window_text()} 元"
             )
-            # 5. 确认下单
-            is_pop_up = self.wait_for_pop_dialog(5)
             is_op_success = False
-            op_message = "国债逆回购操作成功"
-            if is_pop_up:
-                pop_dialog_title, pop_control = self.get_pop_dialog()
-                if pop_dialog_title == "通用回购":
-                    AfxWnd140s_pane = self.get_control_with_children(
-                        pop_control,
-                        control_type="Pane",
-                        auto_id="3001",
-                        class_name="AfxWnd140s",
-                    )
-                    CefBrowserWindow_pane = self.get_control_with_children(
-                        AfxWnd140s_pane,
-                        control_type="Pane",
-                        class_name="CefBrowserWindow",
-                    )
-                    Chrome_WidgetWin_0_pane = self.get_control_with_children(
-                        CefBrowserWindow_pane,
-                        control_type="Pane",
-                        class_name="Chrome_WidgetWin_0",
-                    )
-                    document_panel = self.get_control_with_children(
-                        Chrome_WidgetWin_0_pane,
-                        control_type="Document",
-                        class_name="Chrome_RenderWidgetHostHWND",
-                    )
-
-                    # 会有10个元素
-                    table_panel = document_panel.children(control_type="Table")
-                    # 选择对应的选择
-                    self.select_target_area(table_panel, target_keyword)
-                    # 输入金额
-                    self.get_control_with_children(
-                        document_panel, control_type="Edit", auto_id="shuru"
-                    ).set_text(str(amount))
-                    self.sleep(0.1)
-                    # 点击出借，这个是文本渲染的，如果出借金额不足，马上会变成灰色，此时无法触发出借并关闭窗口的实践
-                    chujie_btn = self.get_control_with_children(
-                        document_panel, control_type="Text", title="出借"
-                    )
-                    # 模拟物理点击
-                    chujie_btn.click_input()
-                    self.sleep(0.1)
-                    ask_pop_dialog = self.get_control_with_children(
-                        document_panel, control_type="Text", title_re="您是否确认以上"
-                    )
-                    self.sleep(0.1)
-                    # 是否出现询问窗口
-                    if ask_pop_dialog is None:
-                        is_op_success = False
-                        # 定位元素属性缺乏，只能顺序取，可能不保证是对应的元素,实测其实也还行，可能后面遇到同花顺界面重构会要修改
-                        available_amount = document_panel.children(control_type="Text")[
-                            10
-                        ]
-                        available_amount_text = available_amount.window_text()
-                        op_message = f"国债逆回购操作失败，计划出借金额：{amount} 元， 可用金额：{available_amount_text} 元"
-
-                    else:
-                        # 点击确认
-                        op_message = f"国债逆回购操作成功， 成功出借:{amount} 元， 年化利率为：{self.get_control_with_children(document_panel, control_type='Text', title_re='%').window_text().replace('\xa0', '')}"
-                        self.get_control_with_children(
-                            document_panel, control_type="Text", title="确定"
-                        ).click_input()
-                        is_op_success = True
-
-                    # 成功与否都需要把窗口关闭
-                    self.get_control_with_children(
-                        pop_control,
-                        control_type="Button",
-                        auto_id="1008",
-                        class_name="Button",
-                    ).click()
-            # 占位实现
-            result_data = {
-                "market": market,
-                "time_range": time_range,
-                "amount": amount,
-            }
-
-            self.logger.info(
-                f"国债逆回购操作完成，耗时{time.time() - start_time}s, 操作结果：",
-                **result_data,
+        else:
+            annual_rate = (
+                self.get_control_with_children(
+                    document_panel, control_type="Text", title_contains="%"
+                )
+                .window_text()
+                .replace("\xa0", "")
             )
-            return OperationResult(
-                message=op_message,
-                success=is_op_success,
-                data=result_data,
-            )
+            op_message = f"国债逆回购操作成功，成功出借:{params.amount} 元，年化利率为：{annual_rate}"
+            self.get_control_with_children(
+                document_panel, control_type="Text", title="确定"
+            ).click_input()
+            is_op_success = True
 
-        except Exception as e:
-            error_msg = f"国债逆回购操作异常: {str(e)}"
-            self.logger.exception(error_msg)
-            return OperationResult(success=False, message=error_msg)
+        # 成功与否都需要把窗口关闭
+        close_window()
+
+        if is_op_success:
+            return self._ok(
+                data=ReverseRepoBuyResult(
+                    market=params.market,
+                    time_range=params.time_range,
+                    amount=params.amount,
+                    annual_rate=annual_rate,
+                ).model_dump(),
+                message=f"{op_message}，耗时{time.time() - start_time:.2f}秒",
+            )
+        return self._fail(op_message, ErrorCode.CLIENT_REJECTED)

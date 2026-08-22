@@ -7,9 +7,11 @@ Email: noimank@163.com
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+from easyths import __version__
 from easyths.api.dependencies.common import set_global_instances
 from easyths.api.middleware import (
     APIKeyAuthMiddleware,
@@ -17,9 +19,12 @@ from easyths.api.middleware import (
     LoggingMiddleware,
     RateLimitMiddleware,
 )
-from easyths.api.routes import operations_router, queue_router, system_router
+from easyths.api.responses import error_response
+from easyths.api.routes import queue_router, system_router
 from easyths.api.routes.mcp_server import mcp_asgi_app, set_queue
+from easyths.api.routes.operations import create_operations_router
 from easyths.core.base_operation import operation_registry
+from easyths.models.operations import ErrorCode
 from easyths.utils import project_config_instance
 
 logger = structlog.get_logger(__name__)
@@ -41,16 +46,25 @@ class TradingAPIApp:
 
     def create_app(self) -> FastAPI:
         """创建FastAPI应用"""
-        # 创建应用实例
+        # 操作路由按注册表生成，必须先加载插件
+        operation_registry.load_plugins()
+
         self.app = FastAPI(
             title="同花顺交易自动化API",
             description="提供同花顺交易软件自动化操作接口",
-            version=project_config_instance.app_version,
+            version=__version__,
             lifespan=self.lifespan,
         )
 
         # 设置全局实例
         set_global_instances(self.operation_queue, self.automator)
+
+        # 参数校验失败也用统一信封返回
+        @self.app.exception_handler(RequestValidationError)
+        async def validation_error_handler(
+            request: Request, exc: RequestValidationError
+        ):
+            return error_response(422, "请求参数校验失败", ErrorCode.INVALID_PARAMS)
 
         # 添加中间件
         self._add_middleware()
@@ -61,17 +75,16 @@ class TradingAPIApp:
         return self.app
 
     def _add_middleware(self):
-        """添加中间件"""
-        # IP白名单中间件（最先执行）
-        self.app.add_middleware(
-            IPWhitelistMiddleware,
-            allowed_hosts=project_config_instance.api_ip_whitelist_list,
-        )
+        """添加中间件
 
-        # API密钥认证中间件
+        Starlette 中后 add_middleware 的中间件位于外层，实际请求处理顺序与
+        添加顺序相反。目标执行顺序（外→内）：
+            IPWhitelist → Logging → RateLimit → CORS → APIKeyAuth
+        - 白名单最外层：非法IP不消耗任何后续处理
+        - CORS 在认证外层：预检 OPTIONS 请求不携带凭据，不会被 401 拦截
+        """
         self.app.add_middleware(APIKeyAuthMiddleware)
 
-        # CORS中间件
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=project_config_instance.api_cors_origins_list,
@@ -80,12 +93,16 @@ class TradingAPIApp:
             allow_headers=["*"],
         )
 
-        # 日志中间件
-        self.app.add_middleware(LoggingMiddleware)
         rate_limit = project_config_instance.api_rate_limit
-        # 速率限制中间件
         if rate_limit > 0:
             self.app.add_middleware(RateLimitMiddleware, calls=rate_limit, period=1)
+
+        self.app.add_middleware(LoggingMiddleware)
+
+        self.app.add_middleware(
+            IPWhitelistMiddleware,
+            allowed_hosts=project_config_instance.api_ip_whitelist_list,
+        )
 
     def _add_routes(self):
         """添加路由"""
@@ -95,27 +112,20 @@ class TradingAPIApp:
         async def root():
             return {
                 "message": "同花顺交易自动化API",
-                "version": project_config_instance.app_version,
+                "version": __version__,
                 "docs": "/docs",
             }
 
         # API路由
         self.app.include_router(system_router)
-        self.app.include_router(operations_router)
+        self.app.include_router(create_operations_router())
         self.app.include_router(queue_router)
-
-        # MCP 服务器路由 (在插件加载后挂载)
-        # 注意：MCP 应用需要在插件加载完成后初始化，因此在 lifespan 中挂载
-        self._mcp_app = None
 
     @asynccontextmanager
     async def lifespan(self, app: FastAPI):
         """应用生命周期管理 - 整合 FastAPI 和 MCP 服务器的生命周期"""
 
-        # ========== 启动阶段 ==========
         logger.info("正在启动交易API服务...")
-        # 加载插件
-        operation_registry.load_plugins()
 
         # 设置 MCP 服务器的队列引用并挂载
         set_queue(self.operation_queue)

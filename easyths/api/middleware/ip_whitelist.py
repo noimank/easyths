@@ -68,9 +68,10 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
         )
 
     def _get_client_host(self, request: Request) -> str:
-        """获取客户端真实IP
+        """获取客户端IP
 
-        支持代理服务器转发的真实IP
+        直接使用 TCP 连接对端地址。X-Forwarded-For / X-Real-IP 等
+        请求头可被任意伪造，只有直连地址才可作为白名单判断依据。
 
         Args:
             request: 请求对象
@@ -78,18 +79,6 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
         Returns:
             str: 客户端IP地址
         """
-        # 检查是否通过代理，优先从X-Forwarded-For获取真实IP
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            # X-Forwarded-For可能包含多个IP，取第一个
-            return forwarded_for.split(",")[0].strip()
-
-        # 检查X-Real-IP头
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip.strip()
-
-        # 从直接连接获取IP
         return request.client.host if request.client else "unknown"
 
     def _is_host_allowed(self, host: str) -> bool:

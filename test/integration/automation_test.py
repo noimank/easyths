@@ -7,9 +7,7 @@ Email: noimank@163.com
 """
 
 import pytest
-from dotenv import load_dotenv
 
-load_dotenv("../.env")
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.operations.buy import BuyOperation
 from easyths.operations.condition_buy import ConditionBuyOperation
@@ -163,9 +161,7 @@ def test_holding_query_op():
         op = HoldingQueryOperation(automator)
 
         # 执行操作（同步）
-        params = {
-            "return_type": "json",
-        }
+        params = {}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -187,7 +183,7 @@ def test_order_query_op():
         op = OrderQueryOperation(automator)
 
         # 执行操作（同步）
-        params = {"return_type": "json", "stock_code": "000001"}
+        params = {"stock_code": "000001"}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -210,7 +206,6 @@ def test_historical_commission_query_op():
 
         # 执行操作（同步）
         params = {
-            "return_type": "json",
             # "stock_code": "000001"
         }
 
@@ -364,7 +359,7 @@ def test_condition_order_query_op():
         op = ConditionOrderQueryOperation(automator)
 
         # 执行操作（同步）
-        params = {"return_type": "json"}
+        params = {}
 
         result = op.run(params)
         print(f"操作结果: {result.success}, data: {result.data}")
@@ -444,23 +439,3 @@ def test_market_sell_op():
     finally:
         # 断开连接
         automator.disconnect()
-
-
-if __name__ == "__main__":
-    # test_automator_basic()
-    # test_buy_op()
-    # test_sell_op()
-    # test_funds_query_op()
-    # test_order_cancel_op()
-    # test_holding_query_op()
-    # test_order_query_op()
-    # test_historical_commission_query_op()
-    # test_reverse_repo_buy_op()
-    # test_reverse_repo_query_op()
-    # test_condition_buy_op()
-    # test_stop_loss_profit_op()
-    # test_condition_order_query_op()
-    # test_condition_order_cancel_op()
-    test_market_buy_op()
-    # test_market_sell_op()
-    # test_condition_sell_op()

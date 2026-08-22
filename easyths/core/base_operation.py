@@ -4,35 +4,60 @@ Author: noimank
 Email: noimank@163.com
 """
 
-import importlib.util
+import importlib
+import pkgutil
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from uuid import uuid4
 
 import pyperclip
 import pywinauto
 import structlog
 from PIL import Image
+from pydantic import ValidationError
 
 if TYPE_CHECKING:
     from pywinauto.base_wrapper import BaseWrapper
 
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
-from easyths.models.operations import OperationResult, PluginMetadata
+from easyths.models.operations import (
+    ErrorCode,
+    OperationParams,
+    OperationResult,
+    OperationStatus,
+)
+from easyths.operations.results import ResultModel
 from easyths.utils import get_captcha_ocr_server
 from easyths.utils.config import project_config_instance
 
 logger = structlog.get_logger(__name__)
 
 
-class BaseOperation(ABC):
-    """操作插件基类 - 同步执行模式
+class BaseOperation[Ps: OperationParams](ABC):
+    """操作插件基类 - 同步执行模式。
 
-    所有业务操作都是同步函数，由队列负责调度执行。
+    子类契约（全部为类属性，无需实例方法元数据）::
+
+        class BuyOperation(LimitOrderOperation):
+            operation_name = "buy"          # 注册名（对外 API 路径）
+            description = "买入股票"         # 文档描述
+            Params = LimitOrderParams       # 参数模型（校验+文档唯一来源）
+            Result = LimitOrderResult       # 结果模型（构造+文档唯一来源）
+
+            def execute(self, params: LimitOrderParams) -> OperationResult: ...
+
+    执行流水线（``run``）：参数校验（pydantic）→ 环境准备（``pre_execute``）
+    → ``execute``。各阶段失败分别映射为带错误码的终态结果，业务代码内
+    无需书写兜底 try/except。
     """
+
+    operation_name: ClassVar[str]
+    description: ClassVar[str] = ""
+    Params: ClassVar[type[OperationParams]]
+    Result: ClassVar[type[ResultModel]]
 
     def __init__(self, automator: TonghuashunAutomator | None = None):
         """初始化操作
@@ -41,169 +66,82 @@ class BaseOperation(ABC):
             automator: 同花顺自动化器实例
         """
         self.automator: TonghuashunAutomator | None = automator
-        self.metadata = self._get_metadata()
         self.logger = structlog.get_logger(f"{__name__}.{self.__class__.__name__}")
 
-    @abstractmethod
-    def _get_metadata(self) -> PluginMetadata:
-        """获取插件元数据
+    # ============ 结果构造 ============
 
-        Returns:
-            PluginMetadata: 插件元数据信息
-        """
-        pass
+    def _ok(self, data: Any = None, message: str = "") -> OperationResult:
+        """构造成功结果"""
+        return OperationResult(
+            status=OperationStatus.COMPLETED, success=True, data=data, message=message
+        )
 
-    @abstractmethod
-    def validate(self, params: dict[str, Any]) -> bool:
-        """验证操作参数
+    def _fail(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.UI_ERROR,
+        status: OperationStatus = OperationStatus.FAILED,
+    ) -> OperationResult:
+        """构造失败结果"""
+        return OperationResult(
+            status=status, success=False, message=message, error_code=error_code
+        )
 
-        Args:
-            params: 操作参数
+    # ============ 执行流水线 ============
 
-        Returns:
-            bool: 验证是否通过
-        """
-        pass
-
-    @abstractmethod
-    def execute(self, params: dict[str, Any]) -> OperationResult:
-        """执行操作 - 同步方法
-
-        Args:
-            params: 操作参数
-
-        Returns:
-            OperationResult: 操作结果
-        """
-        pass
-
-    def pre_execute(self, params: dict[str, Any]) -> bool:
-        """执行前钩子 - 同步方法
-
-        Args:
-            params: 操作参数
-
-        Returns:
-            bool: 是否继续执行
-        """
-        # 默认实现：检查同花顺是否已连接
-        if self.automator and not self.automator.is_connected():
+    def pre_execute(self) -> bool:
+        """执行前钩子：检查同花顺连接、聚焦主窗口、清理残留弹窗"""
+        if not self.automator or not self.automator.is_connected():
             self.logger.error("同花顺未连接，无法执行操作")
             return False
 
-        # 设置主窗口焦点
         self.set_main_window_focus()
-        # 关闭存在的弹窗
         self.close_pop_dialog()
-
         return True
 
-    def post_execute(
-        self, params: dict[str, Any], result: OperationResult
-    ) -> OperationResult:
-        """执行后钩子 - 同步方法
+    def run(self, params: dict[str, Any]) -> OperationResult:
+        """运行操作的完整流程：参数校验 → 环境准备 → 核心执行"""
+        start_time = datetime.now()
 
-        Args:
-            params: 操作参数
-            result: 执行结果
+        self.logger.info(f"开始执行操作: {self.operation_name}", params=params)
 
-        Returns:
-            OperationResult: 最终结果
-        """
+        # 阶段1：参数验证
+        try:
+            model = cast(Ps, self.Params.model_validate(params))
+        except ValidationError as e:
+            message = f"参数验证失败: {e.error_count()}处错误"
+            self.logger.error(
+                message, params=params, errors=e.errors(include_url=False)
+            )
+            return self._fail(message, ErrorCode.INVALID_PARAMS)
+
+        # 阶段2：执行前检查
+        try:
+            if not self.pre_execute():
+                return self._fail("同花顺未连接或环境准备失败", ErrorCode.NOT_CONNECTED)
+        except Exception as e:
+            self.logger.exception("执行前检查异常", params=params)
+            return self._fail(f"执行前检查异常: {e}", ErrorCode.UI_ERROR)
+
+        # 阶段3：核心操作（execute 内部的业务拒绝自行返回 _fail，
+        # 未捕获异常在此兜底为 UI_ERROR）
+        try:
+            result = self.execute(model)
+        except Exception as e:
+            self.logger.exception(f"{self.operation_name}执行异常", params=params)
+            return self._fail(f"{self.operation_name}执行异常: {e}", ErrorCode.UI_ERROR)
+
+        duration = (datetime.now() - start_time).total_seconds()
+        self.logger.info(
+            f"操作执行完成: {self.operation_name}",
+            success=result.success,
+            duration=duration,
+        )
         return result
 
-    def run(self, params: dict[str, Any]) -> OperationResult:
-        """运行操作的完整流程 - 同步方法
-
-        Args:
-            params: 操作参数
-
-        Returns:
-            OperationResult: 操作结果
-        """
-        start_time = datetime.now()
-        operation_name = self.metadata.operation_name
-        stage = "初始化"
-
-        try:
-            self.logger.info(f"开始执行操作: {operation_name}", params=params)
-
-            # 阶段1：参数验证
-            stage = "参数验证"
-            try:
-                is_param_valid = self.validate(params)
-                if not is_param_valid:
-                    error_msg = f"{stage}失败：参数验证失败，请检查接口参数"
-                    self.logger.error(error_msg, params=params)
-                    return OperationResult(
-                        success=False, message=error_msg, timestamp=start_time
-                    )
-            except Exception as e:
-                error_msg = f"{stage}异常: {str(e)}"
-                self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(
-                    success=False, message=error_msg, timestamp=start_time
-                )
-
-            # 阶段2：执行前检查
-            stage = "执行前检查"
-            try:
-                pre_execute_result = self.pre_execute(params)
-                if not pre_execute_result:
-                    error_msg = f"{stage}失败：同花顺未连接或环境准备失败"
-                    self.logger.error(error_msg, params=params)
-                    return OperationResult(
-                        success=False, message=error_msg, timestamp=start_time
-                    )
-            except Exception as e:
-                error_msg = f"{stage}异常: {str(e)}"
-                self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(
-                    success=False, message=error_msg, timestamp=start_time
-                )
-
-            # 阶段3：执行核心操作
-            stage = "核心操作执行"
-            try:
-                result = self.execute(params)
-            except Exception as e:
-                error_msg = f"{stage}异常: {str(e)}"
-                self.logger.error(error_msg, params=params, exc_info=True)
-                return OperationResult(
-                    success=False, message=error_msg, timestamp=start_time
-                )
-
-            # 阶段4：执行后处理
-            stage = "执行后处理"
-            try:
-                result = self.post_execute(params, result)
-            except Exception as e:
-                error_msg = f"{stage}异常: {str(e)}"
-                self.logger.error(error_msg, params=params, exc_info=True)
-                if result.success:
-                    self.logger.warning(f"操作成功但{stage}失败: {error_msg}")
-                else:
-                    return OperationResult(
-                        success=False, message=error_msg, timestamp=start_time
-                    )
-
-            # 记录执行结果
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
-            self.logger.info(
-                f"操作执行完成: {operation_name}",
-                success=result.success,
-                duration=duration,
-            )
-
-            return result
-
-        except Exception as e:
-            error_msg = f"操作执行异常（{stage}阶段）: {str(e)}"
-            self.logger.exception(error_msg, params=params)
-            return OperationResult(
-                success=False, message=error_msg, timestamp=start_time
-            )
+    @abstractmethod
+    def execute(self, params: Ps) -> OperationResult:
+        """执行核心操作 - 同步方法，参数已通过 Params 模型校验"""
 
     # ============ 辅助方法 ============
 
@@ -274,7 +212,7 @@ class BaseOperation(ABC):
         Returns:
             主窗口对象
         """
-        if not self.automator.is_connected():
+        if not self.automator or not self.automator.is_connected():
             return None
 
         try:
@@ -282,7 +220,7 @@ class BaseOperation(ABC):
                 return self.automator.main_window_wrapper_object
             return self.automator.main_window
         except Exception as ex:
-            logger.error("获取同花顺主窗口失败: ", ex)
+            logger.error("获取同花顺主窗口失败", error=str(ex))
             return None
 
     def sleep(self, seconds: float = 0.1) -> None:
@@ -320,7 +258,6 @@ class BaseOperation(ABC):
         childrens = main_window.children(control_type="Pane", class_name="#32770")
         # 可能会出现多个（概率很小），但是不管，找到一个直接返回，由上层应用兜底和判断
         for children in childrens:
-            # 根据
             sub_childrens = children.children(class_name="Static")
             content = "".join([child.window_text() for child in sub_childrens])
             return content
@@ -340,7 +277,6 @@ class BaseOperation(ABC):
         childrens = main_window.children(control_type="Pane", class_name="#32770")
         # 可能会出现多个（概率很小），但是不管，找到一个直接返回，由上层应用兜底和判断
         for children in childrens:
-            # 根据
             sub_childrens = children.children(class_name="Static")
             # 有些内嵌的浏览器窗口（也是弹窗）
             pane_childrens = children.children(control_type="Pane")
@@ -499,9 +435,9 @@ class BaseOperation(ABC):
                     and project_config_instance.save_error_captcha_image
                 ):
                     # 保存错误的图片
-                    captcha_image.save(
-                        f"{str(Path('~/easyths/captcha_error').expanduser())}/{uuid4().hex[:12]}.png"
-                    )
+                    error_dir = Path("~/easyths/captcha_error").expanduser()
+                    error_dir.mkdir(parents=True, exist_ok=True)
+                    captcha_image.save(str(error_dir / f"{uuid4().hex[:12]}.png"))
 
                 code_edit = self.get_control_with_children(
                     pop_control, control_type="Edit", auto_id="2404", class_name="Edit"
@@ -533,7 +469,7 @@ class BaseOperation(ABC):
         parent_control: Any,
         class_name: str | None = None,
         title: str | None = None,
-        title_re: str | None = None,
+        title_contains: str | None = None,
         control_type: str | None = None,
         auto_id: str | None = None,
     ) -> Optional["BaseWrapper"]:
@@ -561,8 +497,8 @@ class BaseOperation(ABC):
             # 逐项比对（如果参数不为 None 且不匹配，则跳过）
             if auto_id and info.automation_id != auto_id:
                 continue
-            # title_re 需要用到 re.match， 包含就是匹配
-            if title_re and title_re not in info.name:
+            # title_contains 按子串包含匹配
+            if title_contains and title_contains not in info.name:
                 continue
             # 匹配成功，立刻返回第一个
             return child
@@ -589,121 +525,95 @@ class OperationRegistry:
     """操作注册表 - 管理所有已注册的操作插件"""
 
     def __init__(self):
-        self._operations: dict[str, type] = {}
+        self._operations: dict[str, type[BaseOperation]] = {}
         self._instances: dict[str, BaseOperation] = {}
         self.logger = structlog.get_logger(__name__)
 
-    def register(self, operation_class: type) -> None:
-        """注册操作类
+    def register(self, operation_class: type[BaseOperation]) -> None:
+        """注册操作类（契约：必须声明 operation_name 与 Params）"""
+        if not (
+            isinstance(operation_class, type)
+            and issubclass(operation_class, BaseOperation)
+        ):
+            raise ValueError(f"{operation_class} 必须继承自 BaseOperation")
+        if not getattr(operation_class, "operation_name", None):
+            raise ValueError(f"{operation_class.__name__} 缺少 operation_name 声明")
+        if not getattr(operation_class, "Result", None):
+            raise ValueError(f"{operation_class.__name__} 缺少 Result 声明")
 
-        Args:
-            operation_class: 操作类
-        """
-
-        if not issubclass(operation_class, BaseOperation):
-            raise ValueError(f"{operation_class.__name__} 必须继承自 BaseOperation")
-
-        temp_instance = operation_class()
-        operation_name = temp_instance.metadata.operation_name
-
-        self._operations[operation_name] = operation_class
+        self._operations[operation_class.operation_name] = operation_class
         self.logger.info(
-            f"注册操作: {operation_name}", class_name=operation_class.__name__
+            f"注册操作: {operation_class.operation_name}",
+            class_name=operation_class.__name__,
         )
 
-    def get_operation_class(self, name: str) -> type | None:
-        """获取操作类
-
-        Args:
-            name: 操作名称
-
-        Returns:
-            操作类
-        """
+    def get_operation_class(self, name: str) -> type[BaseOperation] | None:
+        """获取操作类"""
         return self._operations.get(name)
 
     def get_operation_instance(self, name: str, automator=None) -> BaseOperation | None:
-        """获取操作实例（单例模式）
-
-        Args:
-            name: 操作名称
-            automator: 自动化器实例
-
-        Returns:
-            操作实例
-        """
-        if name in self._instances:
-            return self._instances[name]
+        """获取操作实例（同名实例缓存，automator 变化时重建）"""
+        cached = self._instances.get(name)
+        if cached is not None and cached.automator is automator:
+            return cached
 
         operation_class = self.get_operation_class(name)
-        if operation_class:
-            self._instances[name] = operation_class(automator)
-            self.logger.info(f"创建操作实例: {name}")
+        if operation_class is None:
+            return None
 
-        return self._instances.get(name)
+        instance = operation_class(automator)
+        self._instances[name] = instance
+        self.logger.info(f"创建操作实例: {name}")
+        return instance
 
-    def list_operations(self) -> dict[str, PluginMetadata]:
-        """列出所有已注册的操作
-
-        Returns:
-            操作元数据字典
-        """
-        result = {}
-        for name, operation_class in self._operations.items():
-            temp_instance = operation_class()
-            result[name] = temp_instance.metadata
-        return result
+    def list_operations(self) -> dict[str, dict[str, Any]]:
+        """列出所有已注册操作的描述信息（含参数/结果 schema）"""
+        return {
+            cls.operation_name: {
+                "name": cls.operation_name,
+                "description": cls.description,
+                "parameters": cls.Params.model_json_schema(),
+                "result_schema": cls.Result.model_json_schema(),
+            }
+            for cls in self._operations.values()
+        }
 
     @staticmethod
     def load_plugins() -> int:
-        """自动扫描并加载目录下的所有插件
+        """自动扫描并加载 operations 包下的所有插件
 
         Returns:
             int: 成功加载的插件数量
         """
-        # 使用包内 operations 目录
-        plugin_path = Path(__file__).parent.parent / "operations"
-        if not plugin_path.exists():
-            structlog.get_logger(__name__).warning(
-                "插件目录不存在", plugin_dir=str(plugin_path)
-            )
-            return 0
+        import easyths.operations as operations_package
 
         loaded_count = 0
 
-        # 遍历Python文件
-        for py_file in plugin_path.glob("*.py"):
-            if py_file.name.startswith("_"):
+        for module_info in pkgutil.iter_modules(operations_package.__path__):
+            if module_info.name.startswith("_"):
                 continue
 
+            module_name = f"easyths.operations.{module_info.name}"
             try:
-                # 动态导入模块
-                spec = importlib.util.spec_from_file_location(
-                    "plugin_module", str(py_file)
-                )
-                if not spec or not spec.loader:
-                    logger.error("无法创建模块规范", file_path=str(py_file))
-                    continue
+                module = importlib.import_module(module_name)
 
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-
-                # 查找BaseOperation子类并注册
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
+                # 只注册定义在该模块内的 BaseOperation 子类，
+                # 避免把 import 进来的其他操作类重复注册
+                for attr_name, attr in vars(module).items():
                     if (
                         isinstance(attr, type)
                         and issubclass(attr, BaseOperation)
-                        and attr != BaseOperation
+                        and attr is not BaseOperation
+                        and attr.__module__ == module_name
                     ):
                         operation_registry.register(attr)
                         loaded_count += 1
                         logger.info(
-                            "成功加载插件", file=py_file.name, class_name=attr_name
+                            "成功加载插件", file=module_info.name, class_name=attr_name
                         )
 
             except Exception as e:
-                logger.error("加载插件文件失败", file=str(py_file), error=str(e))
+                logger.error("加载插件文件失败", file=module_name, error=str(e))
 
         logger.info("插件加载完成", loaded_count=loaded_count)
         return loaded_count

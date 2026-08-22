@@ -8,7 +8,7 @@ import structlog
 from PIL import Image
 
 from .config import project_config_instance
-from .screen_capture import get_mss_instance
+from .screen_capture import grab_screen
 
 logger = structlog.get_logger(f"{__file__}")
 
@@ -114,11 +114,11 @@ def _get_ocr_instance() -> ONNXCaptchaRecognizer:
                 Path(project_config_instance.onnx_model_dir) / "captcha_ocr.onnx.data"
             )
             if (not onnx_model_path.exists()) or (not onnx_model_data_path.exists()):
-                logger.warn(
+                logger.warning(
                     f"指定的ONNX模型目录：{project_config_instance.onnx_model_dir}中缺少captcha_ocr.onnx或captcha_ocr.onnx.data文件,将使用项目默认模型权重"
                 )
         else:
-            logger.warn(
+            logger.warning(
                 f"指定的ONNX模型目录：{project_config_instance.onnx_model_dir}不存在,将使用项目默认模型权重"
             )
 
@@ -155,7 +155,7 @@ class CaptchaOCR:
             # 定义截图区域
             monitor = {"top": top, "left": left, "width": width, "height": height}
             # 截取屏幕区域
-            sct_img = get_mss_instance().grab(monitor)
+            sct_img = grab_screen(monitor)
             # 转换为PIL Image
             image = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
             # 获取 OCR 实例并识别

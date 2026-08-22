@@ -11,6 +11,16 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = structlog.get_logger(__name__)
 
+# 敏感请求头：明文记录会泄漏凭据，统一脱敏
+_SENSITIVE_HEADERS = {"authorization", "cookie", "x-api-key"}
+
+
+def _sanitize_headers(headers) -> dict[str, str]:
+    return {
+        key: "***" if key.lower() in _SENSITIVE_HEADERS else value
+        for key, value in headers.items()
+    }
+
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     """请求日志中间件"""
@@ -19,12 +29,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         # 记录请求开始
         start_time = time.time()
 
-        # 记录请求信息
+        # 记录请求信息（敏感头脱敏）
         logger.info(
             "API请求开始",
             method=request.method,
             url=str(request.url),
-            headers=dict(request.headers),
+            headers=_sanitize_headers(request.headers),
             query_params=dict(request.query_params),
         )
 

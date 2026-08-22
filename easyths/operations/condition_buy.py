@@ -1,250 +1,125 @@
 import time
-from typing import Any
 
 from easyths.core import BaseOperation
-from easyths.models.operations import OperationResult, PluginMetadata
+from easyths.models.operations import ErrorCode, OperationResult
+from easyths.operations.params import ConditionOrderParams, format_price
+from easyths.operations.results import ConditionOrderResult
+
+# 策略有效期在下拉列表中的索引（客户端固定档位 1/3/5/10/20/30）
+_EXPIRE_INDEX = {"1": 0, "3": 1, "5": 2, "10": 3, "20": 4, "30": 5}
 
 
-class ConditionBuyOperation(BaseOperation):
-    """条件买入股票操作 - 同步执行模式"""
+class ConditionBuyOperation(BaseOperation[ConditionOrderParams]):
+    """条件买入股票操作（股价达到触发价自动买入）"""
 
-    def _get_metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="ConditionBuyOperation",
-            version="1.0.0",
-            description="条件买入股票操作",
-            author="noimank",
-            operation_name="condition_buy",
-            parameters={
-                "stock_code": {
-                    "type": "string",
-                    "required": True,
-                    "description": "股票代码（6位数字）",
-                    "min_length": 6,
-                    "max_length": 6,
-                    "pattern": "^[0-9]{6}$",
-                },
-                "target_price": {
-                    "type": "number",
-                    "required": True,
-                    "description": "目标价格（触发价格）",
-                    "minimum": 0.01,
-                    "maximum": 10000,
-                },
-                "quantity": {
-                    "type": "integer",
-                    "required": True,
-                    "description": "买入数量（股票必须是100的倍数，可转债必须是10的倍数）",
-                    "minimum": 10,
-                    "multiple_of": 10,
-                },
-                "expire_days": {
-                    "type": "integer",
-                    "required": False,
-                    "description": "止盈止损策略有效期，单位为自然日",
-                    "default": 30,
-                    "enum": [1, 3, 5, 10, 20, 30],
-                },
-            },
+    operation_name = "condition_buy"
+    description = "条件买入股票（股价达到触发价自动买入）"
+    Params = ConditionOrderParams
+    Result = ConditionOrderResult
+
+    def execute(self, params: ConditionOrderParams) -> OperationResult:
+        start_time = time.time()
+        stock_code = params.stock_code
+        target_price = format_price(stock_code, params.target_price)
+
+        self.logger.info(
+            "执行条件买入操作",
+            stock_code=stock_code,
+            target_price=target_price,
+            quantity=params.quantity,
         )
 
-    def validate(self, params: dict[str, Any]) -> bool:
-        """验证条件买入参数"""
-        try:
-            # 检查必需参数
-            required_params = ["stock_code", "target_price", "quantity"]
-            for param in required_params:
-                if param not in params:
-                    self.logger.error(f"缺少必需参数: {param}")
-                    return False
+        main_window = self.get_main_window(wrapper_obj=True)
+        # 先跳到其他页面，要是停留在国债逆回购的话，再次点击可能没反应
+        main_window.type_keys("{F3}")
+        self.sleep(0.2)
+        self.switch_left_menus("条件单", "股价条件")
+        self.wait_for_pop_dialog(2.5)
 
-            stock_code = params["stock_code"]
-            target_price = params["target_price"]
-            quantity = params["quantity"]
-            expire_days = params.get("expire_days", 30)
+        pop_dialog_title, _ = self.get_pop_dialog()
+        if pop_dialog_title != "ConditionToolBar":
+            return self._fail(
+                f"条件单窗口未打开: {pop_dialog_title}", ErrorCode.UI_ERROR
+            )
 
-            # 验证股票代码
-            if (
-                not isinstance(stock_code, str)
-                or len(stock_code) != 6
-                or not stock_code.isdigit()
-            ):
-                self.logger.error("股票代码格式错误，必须是6位数字")
-                return False
+        main_panel = main_window.children(control_type="Pane", class_name="#32770")[
+            0
+        ].children(control_type="Pane", class_name="AfxWnd140s")[0]
+        inner_panel2 = main_panel.children(
+            control_type="Pane", class_name="CefBrowserWindow"
+        )[0].children(control_type="Pane", class_name="Chrome_WidgetWin_0")[0]
+        document_panel = self.get_control_with_children(
+            inner_panel2,
+            control_type="Document",
+            class_name="Chrome_RenderWidgetHostHWND",
+        )
 
-            # 验证目标价格
-            if not isinstance(target_price, (int, float)) or target_price <= 0:
-                self.logger.error("目标价格必须大于0")
-                return False
+        combox = self.get_control_with_children(document_panel, control_type="ComboBox")
+        stock_edit = self.get_control_with_children(
+            combox, control_type="Edit", title_contains="代码"
+        )
+        stock_edit.set_text(stock_code)
+        # 设置触发价格
+        self.get_control_with_children(document_panel, control_type="Edit").set_text(
+            target_price
+        )
+        self.sleep(0.3)
 
-            # 验证数量（可转债11/12开头为10的倍数，其余为100的倍数）
-            is_convertible_bond = stock_code.startswith(("11", "12"))
-            min_qty = 10 if is_convertible_bond else 100
-            multiple = 10 if is_convertible_bond else 100
-            if (
-                not isinstance(quantity, int)
-                or quantity < min_qty
-                or quantity % multiple != 0
-            ):
-                self.logger.error(
-                    f"数量必须是{multiple}的倍数且不小于{min_qty}"
-                    + ("（可转债）" if is_convertible_bond else "")
-                )
-                return False
-            # 验证有效期
-            if expire_days not in [1, 3, 5, 10, 20, 30]:
-                self.logger.error("有效期必须是1,3,5,10,20,30中的任意一个")
-                return False
-            # 验证价格和数量的合理性
-            if target_price * quantity > 10000000:  # 单笔不超过1000万
-                self.logger.error("单笔金额过大")
-                return False
+        self.get_control_with_children(
+            document_panel, control_type="Button", title="下一步"
+        ).click()
+        # 等页面重绘渲染
+        self.sleep(0.5)
 
-            self.logger.info("条件买入参数验证通过")
-            return True
+        # 只能根据序号定位数量输入框
+        document_panel.children(control_type="Edit")[2].set_text(str(params.quantity))
+        self.sleep(0.15)
 
-        except Exception as e:
-            self.logger.exception("参数验证异常", error=str(e))
-            return False
+        # 选择全自动委托（模拟交易中该项为灰色）
+        weituo_btn = self.get_control_with_children(
+            document_panel, control_type="RadioButton", title="全自动委托"
+        )
+        if not weituo_btn.is_selected() and weituo_btn.is_enabled():
+            weituo_btn.select()
+            self.sleep(0.6)
+            # 可能出现“成功添加到条件单”的温馨提示，勾选不再提醒并关闭
+            inner_pane = self.get_control_with_children(
+                document_panel, control_type="Custom", title="温馨提示"
+            )
+            if inner_pane:
+                self.get_control_with_children(
+                    inner_pane, control_type="CheckBox"
+                ).click()
+                self.sleep(0.2)
+                self.get_control_with_children(
+                    inner_pane, control_type="Button", title="我知道了"
+                ).click()
 
-    def execute(self, params: dict[str, Any]) -> OperationResult:
-        """执行条件买入操作"""
-        stock_code = params["stock_code"]
-        target_price = params["target_price"]
-        # 判断代码是否是etf,股票类别和etf类别精度不一致 https://github.com/noimank/easyths/issues/6
-        if stock_code.startswith("5") or stock_code.startswith("1"):
-            target_price = f"{float(target_price):.3f}"
-        else:
-            target_price = f"{float(target_price):.2f}"
+        # 选择策略有效期
+        expire_choose = document_panel.children(control_type="Edit", title="请选择")[1]
+        expire_choose.click_input()
+        self.sleep(0.3)
+        expire_list_control = self.get_control_with_children(
+            document_panel, control_type="List"
+        )
+        expire_list_control.children(control_type="ListItem")[
+            _EXPIRE_INDEX[str(params.expire_days)]
+        ].invoke()
+        self.sleep(0.2)
+        expire_list_control.type_keys("{ENTER}")
+        self.sleep(0.2)
 
-        quantity = params["quantity"]
-        expire_days = params.get("expire_days", 30)
-        start_time = time.time()
+        self.get_control_with_children(
+            document_panel, control_type="Button", title="提交确认"
+        ).click()
+        # 可能出现的成功提示弹窗无需处理，下一次操作的 close_pop_dialog 会统一清理
 
-        try:
-            self.logger.info(
-                "执行条件买入操作",
+        return self._ok(
+            data=ConditionOrderResult(
                 stock_code=stock_code,
-                target_price=target_price,
-                quantity=quantity,
-            )
-
-            main_window = self.get_main_window(wrapper_obj=True)
-            # 先跳到其他页面，要是停留在国债逆回购的话，再次点击可能没反应
-            main_window.type_keys("{F3}")
-            self.sleep(0.2)
-            self.switch_left_menus("条件单", "股价条件")
-            self.wait_for_pop_dialog(2.5)
-            # 用于控制选择策略有效期索引
-            count_map = {"1": 0, "3": 1, "5": 2, "10": 3, "20": 4, "30": 5}
-            pop_dialog_title, pop_toolbar_control = self.get_pop_dialog()
-            is_op_success = False
-            op_message = f"执行{stock_code}的条件单失败"
-
-            if pop_dialog_title == "ConditionToolBar":
-                # 获取主界面
-                main_panel = main_window.children(
-                    control_type="Pane", class_name="#32770"
-                )[0].children(control_type="Pane", class_name="AfxWnd140s")[0]
-                inner_panel2 = main_panel.children(
-                    control_type="Pane", class_name="CefBrowserWindow"
-                )[0].children(control_type="Pane", class_name="Chrome_WidgetWin_0")[0]
-                document_panel = self.get_control_with_children(
-                    inner_panel2,
-                    control_type="Document",
-                    class_name="Chrome_RenderWidgetHostHWND",
-                )
-
-                combox = self.get_control_with_children(
-                    document_panel, control_type="ComboBox"
-                )
-                stock_edit = self.get_control_with_children(
-                    combox, control_type="Edit", title_re="代码"
-                )
-                # 设置股票代码
-                stock_edit.set_text(stock_code)
-                # 设置目标价格
-                self.get_control_with_children(
-                    document_panel, control_type="Edit"
-                ).set_text(str(target_price))
-                self.sleep(0.2)
-                # 下一步
-                self.get_control_with_children(
-                    document_panel, control_type="Button", title="下一步"
-                ).click()
-                # 等页面重绘渲染
-                self.sleep(0.5)
-                # 只能根据序号定位
-                document_panel.children(control_type="Edit")[2].set_text(str(quantity))
-                self.sleep(0.15)
-                # 选择全自动委托
-                weituo_btn = self.get_control_with_children(
-                    document_panel, control_type="RadioButton", title="全自动委托"
-                )
-                # 模拟交易中全自动委托是灰色的
-                if not weituo_btn.is_selected() and weituo_btn.is_enabled():
-                    weituo_btn.select()
-                    self.sleep(0.6)
-                    # 等待弹窗出现，看是否会出现提示成功添加到条件单的窗口，也可以勾选不再提醒
-                    inner_pane = self.get_control_with_children(
-                        document_panel, control_type="Custom", title="温馨提示"
-                    )
-                    if inner_pane:
-                        # 勾选不再提醒
-                        self.get_control_with_children(
-                            inner_pane, control_type="CheckBox"
-                        ).click()
-                        # 点击我知道了按钮
-                        self.sleep(0.2)
-                        self.get_control_with_children(
-                            inner_pane, control_type="Button", title="我知道了"
-                        ).click()
-
-                # 策略有效期
-                expire_choose = document_panel.children(
-                    control_type="Edit", title="请选择"
-                )[1]
-                expire_choose.click_input()
-                # 等待渲染
-                self.sleep(0.3)
-                expire_list_control = self.get_control_with_children(
-                    document_panel, control_type="List"
-                )
-                expire_list_control.children(control_type="ListItem")[
-                    count_map.get(str(expire_days))
-                ].invoke()
-
-                self.sleep(0.2)
-                expire_list_control.type_keys("{ENTER}")
-                self.sleep(0.2)
-                self.get_control_with_children(
-                    document_panel, control_type="Button", title="提交确认"
-                ).click()
-                # 等待弹窗出现，看是否会出现提示成功添加到条件单的窗口，直接关闭，关不关都无所谓了，反正会被close_pop_dailog函数关闭，这里还省掉sleep呢
-                # 关闭可能出现的成功提示弹窗
-                # self.sleep(0.2)
-                # self.get_pop_dialog()[1].type_keys("{ESC}", pause=0.15)
-                is_op_success = True
-                op_message = f"执行{stock_code}的条件买入成功"
-
-            result_data = {
-                "stock_code": stock_code,
-                "target_price": target_price,
-                "quantity": quantity,
-                "message": op_message,
-                "expire_days": expire_days,
-            }
-
-            self.logger.info(
-                f"条件买入操作耗时{time.time() - start_time}, 操作结果：", **result_data
-            )
-            return OperationResult(
-                message=op_message,
-                success=is_op_success,
-                data=result_data,
-            )
-
-        except Exception as e:
-            error_msg = f"条件买入操作异常: {str(e)}"
-            self.logger.exception(error_msg)
-            return OperationResult(success=False, message=error_msg)
+                target_price=params.target_price,
+                quantity=params.quantity,
+                expire_days=params.expire_days,
+            ).model_dump(),
+            message=f"执行{stock_code}的条件买入成功，耗时{time.time() - start_time:.2f}秒",
+        )

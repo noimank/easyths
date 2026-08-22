@@ -2,197 +2,119 @@ import time
 from typing import Any
 
 from easyths.core import BaseOperation
-from easyths.models.operations import OperationResult, PluginMetadata
-from easyths.utils import df_format_convert, text2df
+from easyths.models.operations import OperationResult
+from easyths.operations.params import HistoricalQueryParams
+from easyths.operations.results import HistoricalOrderRow
+from easyths.utils import df_to_records, text2df
 
 
-class HistoricalCommissionQueryOperation(BaseOperation):
+class HistoricalCommissionQueryOperation(BaseOperation[HistoricalQueryParams]):
     """历史委托查询操作"""
 
-    def _get_metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="HistoricalCommissionQueryOperation",
-            version="1.0.0",
-            description="查询股票历史委托订单信息",
-            author="noimank",
-            operation_name="historical_commission_query",
-            parameters={
-                "return_type": {
-                    "type": "string",
-                    "required": True,
-                    "description": "返回数据格式",
-                    "enum": ["str", "markdown", "json", "dict"],
-                },
-                "stock_code": {
-                    "type": "string",
-                    "required": False,
-                    "description": "股票代码（6位数字），不指定则查询所有股票的历史委托",
-                    "min_length": 6,
-                    "max_length": 6,
-                    "pattern": "^[0-9]{6}$",
-                },
-                "time_range": {
-                    "type": "string",
-                    "required": False,
-                    "description": "查询时间范围，不指定则默认为当日",
-                    "default": "当日",
-                    "enum": ["当日", "近一周", "近一月", "近三月", "近一年"],
-                },
-            },
+    operation_name = "historical_commission_query"
+    description = "查询股票历史委托订单信息"
+    Params = HistoricalQueryParams
+    Result = HistoricalOrderRow
+
+    def parse_historical_row(self, record: dict[str, Any]) -> HistoricalOrderRow:
+        """剪贴板历史委托记录 → 行模型（显式字段装配，列名差异在此适配）"""
+        return HistoricalOrderRow(
+            order_date=record["委托日期"],
+            order_time=record["委托时间"],
+            stock_code=record["证券代码"],
+            stock_name=record["证券名称"],
+            operation=record["操作"],
+            remark=record["备注"],
+            quantity=record["委托数量"],
+            filled_quantity=record["成交数量"],
+            price=record["委托价格"],
+            avg_fill_price=record["成交均价"],
+            cancelled_quantity=record["撤销数量"],
+            contract_no=record["合同编号"],
+            market=record["交易市场"],
         )
 
-    def validate(self, params: dict[str, Any]) -> bool:
-        """验证查询参数"""
-        try:
-            stock_code = params.get("stock_code")
-            time_range = params.get("time_range", "当日")
-
-            # 验证股票代码格式（如果提供了的话）
-            if stock_code is not None and (
-                not isinstance(stock_code, str)
-                or len(stock_code) != 6
-                or not stock_code.isdigit()
-            ):
-                self.logger.error("股票代码格式错误，必须是6位数字")
-                return False
-
-            # 验证日期格式（如果提供了的话）
-            if time_range not in ["当日", "近一周", "近一月", "近三月", "近一年"]:
-                self.logger.error(
-                    "时间范围参数无效，有效值为：当日、近一周、近一月、近三月、近一年"
-                )
-                return False
-
-            # 验证返回类型
-            return_type = params.get("return_type", "str")
-            if return_type not in ["str", "json", "dict", "markdown"]:
-                self.logger.error(
-                    "参数return_type无效，有效值为：str、json、dict、markdown"
-                )
-                return False
-
-            return True
-
-        except Exception as e:
-            self.logger.exception("参数验证异常", error=str(e))
-            return False
-
-    def execute(self, params: dict[str, Any]) -> OperationResult:
-        """执行历史委托查询操作"""
+    def execute(self, params: HistoricalQueryParams) -> OperationResult:
         start_time = time.time()
-        stock_code = params.get("stock_code")
-        return_type = params.get("return_type")
-        time_range = params.get("time_range", "当日")
+        stock_code = params.stock_code
+        self.logger.info("执行历史委托查询操作", stock_code=stock_code or "全部")
 
-        try:
-            self.logger.info(f"执行历史委托查询操作，股票代码: {stock_code or '全部'}")
-            self.switch_left_menus("查询[F4]", "历史委托")
-            # self.sleep(0.2)
+        self.switch_left_menus("查询[F4]", "历史委托")
+        main_window = self.get_main_window(wrapper_obj=True)
+        main_panel = self.get_control_with_children(
+            main_window,
+            class_name="AfxMDIFrame140s",
+            control_type="Pane",
+            auto_id="59648",
+        ).children(class_name="AfxMDIFrame140s")[0]
 
-            # 1. 打开历史委托查询界面（通常是F7或Ctrl+F7）
-            main_window = self.get_main_window(wrapper_obj=True)
-            # 尝试使用Ctrl+F7打开历史委托，如果不行再尝试其他快捷键
-            main_panel = self.get_control_with_children(
-                main_window,
-                class_name="AfxMDIFrame140s",
-                control_type="Pane",
-                auto_id="59648",
-            ).children(class_name="AfxMDIFrame140s")[0]
+        # 时间范围单选按钮 auto_id 映射
+        control_map = {
+            "当日": "5315",
+            "近一周": "5308",
+            "近一月": "5309",
+            "近三月": "5310",
+            "近一年": "5311",
+        }
+        self.get_control_with_children(
+            main_panel,
+            auto_id=control_map[params.time_range],
+            control_type="Button",
+            class_name="Button",
+        ).click()
 
-            # auto_id
-            control_map = {
-                "当日": "5315",
-                "近一周": "5308",
-                "近一月": "5309",
-                "近三月": "5310",
-                "近一年": "5311",
-            }
-            # 2. 选择时间范围
-            self.get_control_with_children(
+        # 指定股票代码则输入过滤，否则点击查询按钮刷新
+        if stock_code:
+            combox = self.get_control_with_children(
                 main_panel,
-                auto_id=control_map[time_range],
-                control_type="Button",
-                class_name="Button",
+                control_type="ComboBox",
+                class_name="ComboBox",
+                auto_id="1337",
+            )
+            edit_stock_code = self.get_control_with_children(
+                combox, auto_id="1001", control_type="Edit", class_name="Edit"
+            )
+            edit_stock_code.type_keys("{BACKSPACE 7}")
+            time.sleep(0.05)
+            edit_stock_code.type_keys(stock_code)
+            time.sleep(0.1)
+        else:
+            self.get_control_with_children(
+                main_panel, class_name="Button", auto_id="2449"
             ).click()
 
-            # 3. 如果指定了股票代码，输入股票代码进行查询
-            if stock_code:
-                combox = self.get_control_with_children(
-                    main_panel,
-                    control_type="ComboBox",
-                    class_name="ComboBox",
-                    auto_id="1337",
-                )
-                edit_stock_code = self.get_control_with_children(
-                    combox, auto_id="1001", control_type="Edit", class_name="Edit"
-                )
-                # 清空并输入股票代码
-                edit_stock_code.type_keys("{BACKSPACE 7}")
-                time.sleep(0.05)
-                edit_stock_code.type_keys(str(stock_code))
-                time.sleep(0.1)
-            else:
-                query_btn = self.get_control_with_children(
-                    main_panel, class_name="Button", auto_id="2449"
-                )
-                query_btn.click()
+        time.sleep(0.2)
+        # 复制表格数据
+        table_panel = (
+            main_panel.children(control_type="Pane", title="HexinScrollWnd")[0]
+            .children(control_type="Pane", title="HexinScrollWnd2")[0]
+            .children(class_name="CVirtualGridCtrl")[0]
+        )
+        table_panel.click_input()
+        time.sleep(0.01)
+        table_panel.type_keys("^a")
+        time.sleep(0.02)
+        table_panel.type_keys("^c")
+        time.sleep(0.15)
+        # 处理触发复制的限制提示框
+        self.process_captcha_dialog()
 
-            # 4. 点击查询按钮
-            # 等待加载数据
-            time.sleep(0.2)
-            # 获取表格控件
-            # table_control = self.get_control(control_id=0x417, class_name="CVirtualGridCtrl")
-            table_panel = (
-                main_panel.children(control_type="Pane", title="HexinScrollWnd")[0]
-                .children(control_type="Pane", title="HexinScrollWnd2")[0]
-                .children(class_name="CVirtualGridCtrl")[0]
+        table_df = text2df(self.get_clipboard_data())
+
+        # 没有弹窗了，说明没有其他意外情况发生
+        is_op_success = not self.is_exist_pop_dialog()
+        # 逐行显式装配，缺列会在此明确报错，多余列自然忽略
+        historical_orders = [
+            self.parse_historical_row(record).model_dump()
+            for record in df_to_records(table_df)
+        ]
+
+        if not is_op_success:
+            return self._fail(
+                f"历史委托查询存在未处理弹窗: {self.get_pop_dialog_content()}"
             )
 
-            # 鼠标左键点击
-            table_panel.click_input()
-            time.sleep(0.01)
-
-            # 按下 Ctrl+A Ctrl+C 触发复制
-            table_panel.type_keys("^a")
-            time.sleep(0.02)
-            table_panel.type_keys("^c")
-            time.sleep(0.15)
-            # 处理触发复制的限制提示框
-            self.process_captcha_dialog()
-            # 获取剪贴板数据
-            table_data = self.get_clipboard_data()
-            table_data = text2df(table_data)
-            # 丢弃多余列
-            table_data = table_data.drop(columns=["Unnamed: 13"], errors="ignore")
-
-            is_op_success = (
-                not self.is_exist_pop_dialog()
-            )  # 没有弹窗了，说明没有其他意外情况发生
-            if is_op_success:
-                # 获取表格数据
-                table_data = df_format_convert(table_data, return_type)
-
-            # 6. 准备返回数据
-            result_data = {
-                "historical_orders": "没有对应的历史委托订单"
-                if len(table_data) == 0
-                else table_data,
-                "stock_code": stock_code,
-                "time_range": time_range,
-            }
-
-            self.logger.info(
-                f"历史委托查询完成，耗时{time.time() - start_time}秒",
-                stock_code=stock_code or "全部",
-            )
-
-            return OperationResult(
-                message=f"历史委托查询完成，耗时{time.time() - start_time}秒",
-                success=is_op_success,
-                data=result_data,
-            )
-
-        except Exception as e:
-            error_msg = f"历史委托查询操作异常: {str(e)}"
-            self.logger.exception(error_msg)
-            return OperationResult(success=False, message=error_msg)
+        return self._ok(
+            data=historical_orders,
+            message=f"历史委托查询完成，耗时{time.time() - start_time:.2f}秒",
+        )

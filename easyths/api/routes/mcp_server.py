@@ -14,6 +14,9 @@ from easyths.utils import project_config_instance
 
 logger = get_logger(__name__)
 
+# MCP 工具等待操作完成的超时时间（秒）
+_OPERATION_TIMEOUT = 30.0
+
 # 创建 MCP 服务器实例
 mcp_server = FastMCP(
     name="EasyTHS Trading Server",
@@ -31,43 +34,43 @@ def set_queue(queue) -> None:
 
 
 def _execute_operation(operation_name: str, params: dict) -> dict:
-    """执行操作的辅助函数
+    """提交操作并等待终态结果，返回统一信封形状（与 REST 一致）
 
-    Args:
-        operation_name: 操作名称
-        params: 操作参数
-
-    Returns:
-        执行结果字典
+    超时时明确区分「操作仍在执行」与「记录已失效」，避免调用方误判后重复下单。
     """
     if _operation_queue is None:
         return {
             "success": False,
-            "error": "操作队列未初始化",
+            "status": None,
+            "error_code": "internal",
+            "message": "操作队列未初始化",
         }
 
-    # 创建操作对象
     operation = Operation(name=operation_name, params=params, priority=0)
-
-    # 提交操作到队列
     operation_id = _operation_queue.submit(operation)
 
-    # 等待操作完成
-    result = _operation_queue.get_result(operation_id, timeout=30.0)
-
+    result = _operation_queue.get_result(operation_id, timeout=_OPERATION_TIMEOUT)
     if result is None:
+        state = _operation_queue.get_state(operation_id)
+        if state is None:
+            return {
+                "success": False,
+                "status": None,
+                "error_code": "timeout",
+                "message": "等待操作结果超时，且操作记录已失效",
+                "operation_id": operation_id,
+            }
         return {
             "success": False,
-            "error": "操作超时或未完成",
+            "status": state.status.value,
+            "error_code": "timeout",
+            "message": f"等待超时，操作仍在{state.status.value}，请勿重复提交，可稍后重查",
             "operation_id": operation_id,
         }
 
-    return {
-        "success": result.success,
-        "data": result.data,
-        "message": result.message,
-        "operation_id": operation_id,
-    }
+    response = result.model_dump(mode="json")
+    response["operation_id"] = operation_id
+    return response
 
 
 # ============= 交易操作工具 =============
@@ -110,13 +113,13 @@ def sell(stock_code: str, price: float, quantity: int) -> dict:
 @mcp_server.tool
 def market_buy(stock_code: str, quantity: int, execution_strategy: int = 3) -> dict:
     """市价买入股票，无需指定价格，通过成交策略决定成交方式。
-    注意：并不是所有类型的标的都支持市价交易，且可用成交策略因标的而异。
-    如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
+    注意：并不是所有类型的标的都支持市价交易；若请求策略不被该标的支持，
+    系统会自动改用「五档即成剩撤」提交。
 
     Args:
         stock_code: 股票代码（6位数字）
         quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
-        execution_strategy: 成交策略，默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
+        execution_strategy: 成交策略编号（1-6），默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
 
     Returns:
         市价买入结果
@@ -134,13 +137,13 @@ def market_buy(stock_code: str, quantity: int, execution_strategy: int = 3) -> d
 @mcp_server.tool
 def market_sell(stock_code: str, quantity: int, execution_strategy: int = 3) -> dict:
     """市价卖出股票，无需指定价格，通过成交策略决定成交方式。
-    注意：并不是所有类型的标的都支持市价交易，且可用成交策略因标的而异。
-    如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
+    注意：并不是所有类型的标的都支持市价交易；若请求策略不被该标的支持，
+    系统会自动改用「五档即成剩撤」提交。
 
     Args:
         stock_code: 股票代码（6位数字）
         quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
-        execution_strategy: 成交策略，默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
+        execution_strategy: 成交策略编号（1-6），默认3：1-对手方最优 2-本方最优 3-五档即成剩撤 4-即成剩撤 5-全额成交或撤 6-五档即成剩转限
 
     Returns:
         市价卖出结果
@@ -159,16 +162,16 @@ def market_sell(stock_code: str, quantity: int, execution_strategy: int = 3) -> 
 
 
 @mcp_server.tool
-def holding_query(return_type: str = "json") -> dict:
+def holding_query() -> dict:
     """查询股票持仓信息
 
-    Args:
-        return_type: 结果返回类型，可选值: str, json, dict, markdown
-
     Returns:
-        持仓信息
+        持仓记录列表，字段：stock_code, stock_name, quantity, available_quantity,
+        frozen_quantity, cost_price, current_price, floating_profit, profit_ratio,
+        daily_profit, daily_profit_ratio, market_value, position_ratio,
+        daily_bought, daily_sold, market（数值型，无该项业务时为 null）
     """
-    return _execute_operation("holding_query", {"return_type": return_type})
+    return _execute_operation("holding_query", {})
 
 
 @mcp_server.tool
@@ -176,23 +179,26 @@ def funds_query() -> dict:
     """查询账户资金信息
 
     Returns:
-        资金信息，包含资金余额、可用金额、总资产等
+        资金信息（单位元，数值型）：balance 资金余额, frozen_amount 冻结金额,
+        market_value 股票市值, total_assets 总资产, available_amount 可用金额,
+        withdrawable_amount 可取金额, holding_profit 持仓盈亏
     """
     return _execute_operation("funds_query", {})
 
 
 @mcp_server.tool
-def order_query(return_type: str = "json", stock_code: str | None = None) -> dict:
+def order_query(stock_code: str | None = None) -> dict:
     """查询股票委托订单信息
 
     Args:
-        return_type: 结果返回类型，可选值: str, json, dict, markdown
         stock_code: 股票代码（6位数字），不指定则查询所有股票的委托
 
     Returns:
-        委托订单信息
+        委托记录列表，字段：order_time, stock_code, stock_name, operation(买入/卖出),
+        remark, quantity, filled_quantity, price, avg_fill_price, cancelled_quantity,
+        contract_no, market（数值型，无该项业务时为 null）
     """
-    params = {"return_type": return_type}
+    params = {}
     if stock_code:
         params["stock_code"] = stock_code
     return _execute_operation("order_query", params)
@@ -200,19 +206,18 @@ def order_query(return_type: str = "json", stock_code: str | None = None) -> dic
 
 @mcp_server.tool
 def historical_commission_query(
-    return_type: str, stock_code: str | None = None, time_range: str = "当日"
+    stock_code: str | None = None, time_range: str = "当日"
 ) -> dict:
     """查询股票历史委托订单信息
 
     Args:
-        return_type: 结果返回类型，可选值: str, json, dict, markdown
         stock_code: 股票代码（6位数字），不指定则查询所有股票的历史委托
         time_range: 查询时间范围，可选值: 当日, 近一周, 近一月, 近三月, 近一年
 
     Returns:
-        历史委托订单信息
+        历史委托记录列表，字段同 order_query，另加 order_date 委托日期
     """
-    params = {"return_type": return_type, "time_range": time_range}
+    params = {"time_range": time_range}
     if stock_code:
         params["stock_code"] = stock_code
     return _execute_operation("historical_commission_query", params)
@@ -230,7 +235,7 @@ def order_cancel(stock_code: str | None = None, cancel_type: str = "all") -> dic
         cancel_type: 撤单类型，可选值: all(全部), sell(卖出), buy(买入)
 
     Returns:
-        撤单结果
+        撤单结果：stock_code, cancel_type, cancelled_count 撤销笔数
     """
     params = {"cancel_type": cancel_type}
     if stock_code:
@@ -298,16 +303,15 @@ def condition_sell(
 
 
 @mcp_server.tool
-def condition_order_query(return_type: str = "json") -> dict:
+def condition_order_query() -> dict:
     """查询条件单信息
 
-    Args:
-        return_type: 结果返回类型，可选值: str, json, dict, markdown
-
     Returns:
-        条件单信息
+        条件单记录列表，字段：status, condition_type, direction(买入/卖出), target,
+        trigger_condition, latest_price, change_ratio, order_detail, created_at,
+        monitor_cycle（数值型，无该项业务时为 null）
     """
-    return _execute_operation("condition_order_query", {"return_type": return_type})
+    return _execute_operation("condition_order_query", {})
 
 
 @mcp_server.tool
@@ -321,7 +325,7 @@ def condition_order_cancel(
         order_type: 订单类型，可选值: 买入, 卖出
 
     Returns:
-        删除结果
+        删除结果：stock_code, order_type, deleted_count 删除数量
     """
     params = {}
     if stock_code:
@@ -378,7 +382,7 @@ def reverse_repo_buy(market: str, time_range: str, amount: int) -> dict:
         amount: 出借金额（必须是1000的倍数）
 
     Returns:
-        逆回购结果
+        逆回购结果：market, time_range, amount, annual_rate 成交年化利率（百分数值）
     """
     return _execute_operation(
         "reverse_repo_buy",
@@ -391,7 +395,7 @@ def reverse_repo_query() -> dict:
     """查询国债逆回购年化利率
 
     Returns:
-        各期限国债逆回购年化利率信息
+        各期限利率行情列表，字段：market(上海/深圳), term 期限, annual_rate 年化利率（百分数值）
     """
     return _execute_operation("reverse_repo_query", {})
 

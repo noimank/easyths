@@ -2,6 +2,18 @@
 easyths 客户端模块
 
 提供与 easyths 服务端的通信接口，支持远程调用交易操作。
+
+所有方法返回统一的响应信封（与服务端 REST / MCP 一致）::
+
+    {
+        "success": bool | None,     # 操作类方法的业务结果；快照类可能为 None
+        "status": str | None,       # queued / running / completed / failed / cancelled
+        "message": str,             # 错误信息或成功消息
+        "error_code": str | None,   # invalid_params / not_connected / client_rejected /
+                                    # ui_error / cancelled / timeout / not_found / internal
+        "data": Any,                # 业务数据（查询类为记录列表）
+        "timestamp": str            # 北京时间，格式 "2026-08-22 06:46:56"
+    }
 """
 
 from typing import Any, Literal, TypedDict
@@ -23,10 +35,12 @@ class TradeClientError(Exception):
 
 
 class APIResponse(TypedDict):
-    """API 响应格式"""
+    """统一响应信封格式"""
 
-    success: bool
+    success: bool | None
+    status: str | None
     message: str
+    error_code: str | None
     data: Any
     timestamp: str
 
@@ -55,12 +69,12 @@ class TradeClient:
         >>> # 买入股票
         >>> result = client.buy("600000", 10.50, 100)
         >>> if result["success"]:
-        ...     print(result["data"]["message"])
+        ...     print(result["message"])
         >>>
         >>> # 查询持仓
         >>> result = client.query_holdings()
         >>> if result["success"]:
-        ...     holdings = result["data"]["holdings"]
+        ...     holdings = result["data"]
         >>>
         >>> # 使用上下文管理器
         >>> with TradeClient(...) as client:
@@ -90,16 +104,7 @@ class TradeClient:
         return self._client
 
     def _request(self, method: str, path: str, **kwargs: Any) -> APIResponse:
-        """
-        发送 HTTP 请求
-
-        Args:
-            method: HTTP 方法
-            path: 请求路径
-            **kwargs: 其他请求参数
-
-        Returns:
-            响应数据
+        """发送 HTTP 请求
 
         Raises:
             TradeClientError: 请求失败
@@ -128,48 +133,23 @@ class TradeClient:
     # ==================== 系统管理 ====================
 
     def health_check(self) -> APIResponse:
-        """
-        健康检查
-
-        Returns:
-            健康检查结果，包含系统状态信息
-        """
+        """健康检查（真实探活：连接标志 + 同花顺进程存活）"""
         return self._request("GET", "/api/v1/system/health")
 
     def get_system_status(self) -> APIResponse:
-        """
-        获取系统详细状态
-
-        Returns:
-            系统状态信息
-        """
+        """获取系统详细状态（含插件清单与参数 schema）"""
         return self._request("GET", "/api/v1/system/status")
 
-    def get_system_info(self) -> APIResponse:
-        """
-        获取系统信息
-
-        Returns:
-            系统信息
-        """
-        return self._request("GET", "/api/v1/system/info")
+    def reconnect(self) -> APIResponse:
+        """重连同花顺（客户端重启后恢复服务）"""
+        return self._request("POST", "/api/v1/system/reconnect")
 
     def get_queue_stats(self) -> APIResponse:
-        """
-        获取队列统计信息
-
-        Returns:
-            队列统计信息
-        """
+        """获取队列统计信息"""
         return self._request("GET", "/api/v1/queue/stats")
 
     def list_operations(self) -> APIResponse:
-        """
-        获取所有可用操作
-
-        Returns:
-            可用操作列表
-        """
+        """获取所有可用操作（含参数 schema）"""
         return self._request("GET", "/api/v1/operations/")
 
     # ==================== 通用操作方法 ====================
@@ -180,55 +160,37 @@ class TradeClient:
         params: dict[str, Any] | None = None,
         priority: int = 0,
     ) -> str:
-        """
-        执行操作
+        """执行操作（提交到队列，立即返回操作 ID）
 
         Args:
             operation_name: 操作名称
-            params: 操作参数
+            params: 操作参数（非法参数提交时即抛出 TradeClientError，422）
             priority: 优先级（0-10），数字越大优先级越高
 
         Returns:
             操作 ID
         """
-        data: dict[str, Any] = {"params": params or {}, "priority": priority}
+        data: dict[str, Any] = {**(params or {}), "priority": priority}
         result = self._request(
             "POST", f"/api/v1/operations/{operation_name}", json=data
         )
         return result["data"]["operation_id"]
 
     def get_operation_status(self, operation_id: str) -> APIResponse:
-        """
-        获取操作状态
-
-        Args:
-            operation_id: 操作 ID
-
-        Returns:
-            操作状态信息
-        """
+        """获取操作状态快照（非阻塞，未终态时 success 为 None）"""
         return self._request("GET", f"/api/v1/operations/{operation_id}/status")
 
     def get_operation_result(
         self, operation_id: str, timeout: float | None = None
     ) -> APIResponse:
-        """
-        获取操作结果（阻塞等待直到操作完成）
+        """获取操作结果（阻塞等待直到操作完成）
 
         Args:
             operation_id: 操作 ID
             timeout: 超时时间（秒），None 表示使用客户端默认超时时间
 
-        Returns:
-            操作结果（OperationResult），包含 success、message、data、timestamp 等字段
-
         Raises:
-            TradeClientError: 操作超时或其他错误
-
-        Examples:
-            >>> result = client.get_operation_result(op_id)
-            >>> if result["success"]:
-            ...     print("操作成功:", result["data"])
+            TradeClientError: 操作超时（408）、操作不存在（404）或其他错误
         """
         params = {}
         if timeout is not None:
@@ -241,20 +203,18 @@ class TradeClient:
         except TradeClientError as e:
             if e.status_code == 408:
                 raise TradeClientError(
-                    f"操作 {operation_id} 超时", status_code=408
+                    f"操作 {operation_id} 等待超时，仍在执行中，请勿重复提交",
+                    status_code=408,
+                ) from e
+            if e.status_code == 404:
+                raise TradeClientError(
+                    f"操作 {operation_id} 不存在或结果已过期",
+                    status_code=404,
                 ) from e
             raise
 
     def cancel_operation(self, operation_id: str) -> bool:
-        """
-        取消操作
-
-        Args:
-            operation_id: 操作 ID
-
-        Returns:
-            是否成功取消
-        """
+        """取消排队中的操作"""
         self._request("DELETE", f"/api/v1/operations/{operation_id}")
         return True
 
@@ -263,35 +223,23 @@ class TradeClient:
     def buy(
         self, stock_code: str, price: float, quantity: int, timeout: float | None = None
     ) -> APIResponse:
-        """
-        买入股票
+        """买入股票
 
         Args:
             stock_code: 股票代码（6位数字）
             price: 买入价格
             quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式为：
-            {
-                "success": bool,
-                "data": {...},  # 业务数据
-                "message": str | None,  # 错误信息或成功消息
-                "timestamp": str  # ISO 8601 格式时间
-            }
-
-        Raises:
-            TradeClientError: 连接失败、API 错误或操作超时
+            timeout: 等待操作结果的超时时间（秒）
 
         Examples:
-            >>> client = TradeClient(...)
             >>> result = client.buy("600000", 10.50, 100)
             >>> if result["success"]:
-            ...     print(result["data"]["message"])
+            ...     print(result["message"])
         """
-        params = {"stock_code": stock_code, "price": price, "quantity": quantity}
-        operation_id = self.execute_operation("buy", params)
+        operation_id = self.execute_operation(
+            "buy",
+            {"stock_code": stock_code, "price": price, "quantity": quantity},
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def market_buy(
@@ -301,38 +249,25 @@ class TradeClient:
         execution_strategy: Literal[1, 2, 3, 4, 5, 6] = 3,
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        市价买入股票，无需指定价格，通过成交策略决定成交方式。
+        """市价买入股票，无需指定价格，通过成交策略决定成交方式。
 
-        注意：并不是所有类型的标的都支持市价交易，且可用成交策略因标的而异。
-        如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
+        注意：并不是所有类型的标的都支持市价交易；若请求策略不被该标的支持，
+        系统会自动改用「五档即成剩撤」提交。
 
         Args:
             stock_code: 股票代码（6位数字）
             quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
-            execution_strategy: 成交策略，默认 3
-                - 1: 对手方最优
-                - 2: 本方最优
-                - 3: 五档即成剩撤
-                - 4: 即成剩撤
-                - 5: 全额成交或撤
-                - 6: 五档即成剩转限
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式与 buy() 相同
-
-        Examples:
-            >>> result = client.market_buy("600000", 100, 3)
-            >>> if result["success"]:
-            ...     print(result["data"]["message"])
+            execution_strategy: 成交策略（1-6），默认 3（五档即成剩撤）
+            timeout: 等待操作结果的超时时间（秒）
         """
-        params = {
-            "stock_code": stock_code,
-            "quantity": quantity,
-            "execution_strategy": execution_strategy,
-        }
-        operation_id = self.execute_operation("market_buy", params)
+        operation_id = self.execute_operation(
+            "market_buy",
+            {
+                "stock_code": stock_code,
+                "quantity": quantity,
+                "execution_strategy": execution_strategy,
+            },
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def market_sell(
@@ -342,62 +277,32 @@ class TradeClient:
         execution_strategy: Literal[1, 2, 3, 4, 5, 6] = 3,
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        市价卖出股票，无需指定价格，通过成交策略决定成交方式。
-
-        注意：并不是所有类型的标的都支持市价交易，且可用成交策略因标的而异。
-        如果设置了不支持的策略，系统会自动使用「五档即成剩撤」进行提交。
-
-        Args:
-            stock_code: 股票代码（6位数字）
-            quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
-            execution_strategy: 成交策略，默认 3
-                - 1: 对手方最优
-                - 2: 本方最优
-                - 3: 五档即成剩撤
-                - 4: 即成剩撤
-                - 5: 全额成交或撤
-                - 6: 五档即成剩转限
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式与 buy() 相同
-
-        Examples:
-            >>> result = client.market_sell("600000", 100, 3)
-            >>> if result["success"]:
-            ...     print(result["data"]["message"])
-        """
-        params = {
-            "stock_code": stock_code,
-            "quantity": quantity,
-            "execution_strategy": execution_strategy,
-        }
-        operation_id = self.execute_operation("market_sell", params)
+        """市价卖出股票，参数与返回同 market_buy"""
+        operation_id = self.execute_operation(
+            "market_sell",
+            {
+                "stock_code": stock_code,
+                "quantity": quantity,
+                "execution_strategy": execution_strategy,
+            },
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def sell(
         self, stock_code: str, price: float, quantity: int, timeout: float | None = None
     ) -> APIResponse:
-        """
-        卖出股票
+        """卖出股票
 
         Args:
             stock_code: 股票代码（6位数字）
             price: 卖出价格
             quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式与 buy() 相同
-
-        Examples:
-            >>> result = client.sell("600000", 11.00, 100)
-            >>> if result["success"]:
-            ...     print(result["data"]["message"])
+            timeout: 等待操作结果的超时时间（秒）
         """
-        params = {"stock_code": stock_code, "price": price, "quantity": quantity}
-        operation_id = self.execute_operation("sell", params)
+        operation_id = self.execute_operation(
+            "sell",
+            {"stock_code": stock_code, "price": price, "quantity": quantity},
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def cancel_order(
@@ -406,31 +311,16 @@ class TradeClient:
         cancel_type: Literal["all", "buy", "sell"] = "all",
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        撤销委托单
+        """撤销委托单
 
         Args:
             stock_code: 股票代码，不指定则撤销所有委托
             cancel_type: 撤单类型，"all" 全部, "buy" 买单, "sell" 卖单
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果
-
-        Examples:
-            >>> # 撤销所有委托
-            >>> result = client.cancel_order()
-            >>>
-            >>> # 撤销指定股票的委托
-            >>> result = client.cancel_order("600000")
-            >>>
-            >>> # 只撤销买单
-            >>> result = client.cancel_order(cancel_type="buy")
+            timeout: 等待操作结果的超时时间（秒）
         """
         params: dict[str, Any] = {"cancel_type": cancel_type}
         if stock_code:
             params["stock_code"] = stock_code
-
         operation_id = self.execute_operation("order_cancel", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -442,43 +332,24 @@ class TradeClient:
         expire_days: int = 30,
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        条件买入股票
-
-        设置条件买入单，当股价达到目标价格时自动触发买入。
+        """条件买入股票（股价达到触发价自动买入）
 
         Args:
             stock_code: 股票代码（6位数字）
-            target_price: 目标价格（触发价格）
+            target_price: 目标触发价格
             quantity: 买入数量（股票必须是100的倍数，可转债必须是10的倍数）
             expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式为：
-            {
-                "success": bool,
-                "data": {...},  # 业务数据
-                "message": str | None,  # 错误信息或成功消息
-                "timestamp": str  # ISO 8601 格式时间
-            }
-
-        Raises:
-            TradeClientError: 连接失败、API 错误或操作超时
-
-        Examples:
-            >>> client = TradeClient(...)
-            >>> result = client.condition_buy("600000", 10.50, 100, expire_days=30)
-            >>> if result["success"]:
-            ...     print(result["data"]["message"])
+            timeout: 等待操作结果的超时时间（秒）
         """
-        params = {
-            "stock_code": stock_code,
-            "target_price": target_price,
-            "quantity": quantity,
-            "expire_days": expire_days,
-        }
-        operation_id = self.execute_operation("condition_buy", params)
+        operation_id = self.execute_operation(
+            "condition_buy",
+            {
+                "stock_code": stock_code,
+                "target_price": target_price,
+                "quantity": quantity,
+                "expire_days": expire_days,
+            },
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def condition_sell(
@@ -489,43 +360,16 @@ class TradeClient:
         expire_days: int = 30,
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        条件卖出股票
-
-        设置条件卖出单，当股价达到目标价格时自动触发卖出。
-
-        Args:
-            stock_code: 股票代码（6位数字）
-            target_price: 目标价格（触发价格）
-            quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数）
-            expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式为：
+        """条件卖出股票（股价达到触发价自动卖出），参数同 condition_buy"""
+        operation_id = self.execute_operation(
+            "condition_sell",
             {
-                "success": bool,
-                "data": {...},  # 业务数据
-                "message": str | None,  # 错误信息或成功消息
-                "timestamp": str  # ISO 8601 格式时间
-            }
-
-        Raises:
-            TradeClientError: 连接失败、API 错误或操作超时
-
-        Examples:
-            >>> client = TradeClient(...)
-            >>> result = client.condition_sell("600000", 15.00, 100, expire_days=30)
-            >>> if result["success"]:
-            ...     print(result["data"]["message"])
-        """
-        params = {
-            "stock_code": stock_code,
-            "target_price": target_price,
-            "quantity": quantity,
-            "expire_days": expire_days,
-        }
-        operation_id = self.execute_operation("condition_sell", params)
+                "stock_code": stock_code,
+                "target_price": target_price,
+                "quantity": quantity,
+                "expire_days": expire_days,
+            },
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def stop_loss_profit(
@@ -537,32 +381,17 @@ class TradeClient:
         expire_days: int = 30,
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        设置止盈止损
-
-        为持仓股票设置止盈止损策略，当价格达到止盈或止损条件时自动触发卖出。
+        """设置止盈止损
 
         Args:
             stock_code: 股票代码（6位数字）
             stop_loss_percent: 止损百分比（如3表示3%）
             stop_profit_percent: 止盈百分比（如5表示5%）
-            quantity: 卖出数量（股票必须是100的倍数，可转债必须是10的倍数），可选，不指定则使用全部可用持仓
+            quantity: 卖出数量，可选，不指定则使用全部可卖持仓
             expire_days: 有效期（自然日），可选1/3/5/10/20/30，默认30
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式与 condition_buy() 相同
-
-        Raises:
-            TradeClientError: 连接失败、API 错误或操作超时
-
-        Examples:
-            >>> # 设置止盈止损
-            >>> result = client.stop_loss_profit("600000", 3.0, 5.0, quantity=100)
-            >>> if result["success"]:
-            ...     print(result["data"]["message"])
+            timeout: 等待操作结果的超时时间（秒）
         """
-        params = {
+        params: dict[str, Any] = {
             "stock_code": stock_code,
             "stop_loss_percent": stop_loss_percent,
             "stop_profit_percent": stop_profit_percent,
@@ -570,204 +399,64 @@ class TradeClient:
         }
         if quantity is not None:
             params["quantity"] = quantity
-
         operation_id = self.execute_operation("stop_loss_profit", params)
-        return self.get_operation_result(operation_id, timeout=timeout)
-
-    def query_condition_orders(
-        self,
-        return_type: Literal["str", "json", "dict", "markdown"] = "json",
-        timeout: float | None = None,
-    ) -> APIResponse:
-        """
-        查询条件单
-
-        Args:
-            return_type: 结果返回类型
-                - "str": 字符串格式
-                - "json": JSON 格式（默认）
-                - "dict": 字典格式
-                - "markdown": Markdown 表格
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），格式为：
-            {
-                "success": bool,
-                "data": {...},  # 业务数据
-                "message": str | None,  # 错误信息或成功消息
-                "timestamp": str  # ISO 8601 格式时间
-            }
-
-        Raises:
-            TradeClientError: 连接失败、API 错误或操作超时
-
-        Examples:
-            >>> client = TradeClient(...)
-            >>> result = client.query_condition_orders()
-            >>> if result["success"]:
-            ...     orders = result["data"]["condition_orders"]
-            ...     print(orders)
-        """
-        params = {"return_type": return_type}
-        operation_id = self.execute_operation("condition_order_query", params)
-        return self.get_operation_result(operation_id, timeout=timeout)
-
-    def cancel_condition_orders(
-        self,
-        stock_code: str | None = None,
-        order_type: Literal["买入", "卖出"] | None = None,
-        timeout: float | None = None,
-    ) -> APIResponse:
-        """
-        删除条件单
-
-        Args:
-            stock_code: 股票代码（6位数字），不指定则删除所有条件单
-            order_type: 订单类型，"买入" 或 "卖出"
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果，格式与 query_condition_orders() 相同
-
-        Raises:
-            TradeClientError: 连接失败、API 错误或操作超时
-
-        Examples:
-            >>> # 删除所有条件单
-            >>> result = client.cancel_condition_orders()
-            >>>
-            >>> # 删除指定股票的条件单
-            >>> result = client.cancel_condition_orders(stock_code="600000")
-            >>>
-            >>> # 只删除买入条件单
-            >>> result = client.cancel_condition_orders(order_type="买入")
-        """
-        params: dict[str, Any] = {}
-        if stock_code is not None:
-            params["stock_code"] = stock_code
-        if order_type is not None:
-            params["order_type"] = order_type
-
-        operation_id = self.execute_operation("condition_order_cancel", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
     # ==================== 查询操作便捷方法 ====================
 
-    def query_holdings(
-        self,
-        return_type: Literal["str", "json", "dict", "markdown"] = "json",
-        timeout: float | None = None,
-    ) -> APIResponse:
+    def query_holdings(self, timeout: float | None = None) -> APIResponse:
+        """查询持仓，持仓数据在 result["data"]（记录列表）
+
+        字段：stock_code, stock_name, quantity, available_quantity, frozen_quantity,
+        cost_price, current_price, floating_profit, profit_ratio, daily_profit,
+        daily_profit_ratio, market_value, position_ratio, daily_bought, daily_sold, market
         """
-        查询持仓
-
-        Args:
-            return_type: 结果返回类型
-                - "str": 字符串格式
-                - "json": JSON 格式（默认）
-                - "dict": 字典格式
-                - "markdown": Markdown 表格
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），持仓数据在 result["data"]["holdings"]
-
-        Examples:
-            >>> result = client.query_holdings()
-            >>> if result["success"]:
-            ...     holdings = result["data"]["holdings"]
-        """
-        params = {"return_type": return_type}
-        operation_id = self.execute_operation("holding_query", params)
+        operation_id = self.execute_operation("holding_query", {})
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def query_funds(self, timeout: float | None = None) -> APIResponse:
-        """
-        查询资金
+        """查询资金，数据在 result["data"]（单位元，数值型）
 
-        Returns:
-            操作结果（OperationResult），资金数据在 result["data"]
-            包含：资金余额、冻结金额、可用金额、可取金额、股票市值、总资产、持仓盈亏
-
-        Examples:
-            >>> result = client.query_funds()
-            >>> if result["success"]:
-            ...     funds = result["data"]
-            ...     print(funds["总资产"])
+        字段：balance 资金余额, frozen_amount 冻结金额, market_value 股票市值,
+        total_assets 总资产, available_amount 可用金额, withdrawable_amount 可取金额,
+        holding_profit 持仓盈亏
         """
         operation_id = self.execute_operation("funds_query", {})
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def query_orders(
-        self,
-        stock_code: str | None = None,
-        return_type: Literal["str", "json", "dict", "markdown"] = "json",
-        timeout: float | None = None,
+        self, stock_code: str | None = None, timeout: float | None = None
     ) -> APIResponse:
-        """
-        查询委托单
+        """查询委托单，委托数据在 result["data"]（记录列表）
+
+        字段：order_time, stock_code, stock_name, operation(买入/卖出), remark,
+        quantity, filled_quantity, price, avg_fill_price, cancelled_quantity,
+        contract_no, market
 
         Args:
             stock_code: 股票代码，不指定则查询所有委托
-            return_type: 结果返回类型
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），委托单数据在 result["data"]["orders"]
-
-        Examples:
-            >>> # 查询所有委托
-            >>> result = client.query_orders()
-            >>> if result["success"]:
-            ...     orders = result["data"]["orders"]
-            >>>
-            >>> # 查询指定股票的委托
-            >>> result = client.query_orders("600000")
         """
-        params: dict[str, Any] = {"return_type": return_type}
+        params: dict[str, Any] = {}
         if stock_code:
             params["stock_code"] = stock_code
-
         operation_id = self.execute_operation("order_query", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def query_historical_commission(
         self,
-        return_type: Literal["str", "json", "dict", "markdown"] = "json",
         stock_code: str | None = None,
         time_range: Literal["当日", "近一周", "近一月", "近三月", "近一年"] = "当日",
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        查询历史成交
+        """查询历史委托，数据在 result["data"]（记录列表），字段同 query_orders 另加 order_date
 
         Args:
-            return_type: 结果返回类型
-                - "str": 字符串格式
-                - "json": JSON 格式（默认）
-                - "dict": 字典格式
-                - "markdown": Markdown 表格
-            stock_code: 股票代码（6位数字），不指定则查询所有股票的历史成交
-            time_range: 查询时间范围，可选"当日"/"近一周"/"近一月"/"近三月"/"近一年"，默认"当日"
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），历史成交数据在 result["data"]
-
-        Examples:
-            >>> # 查询当日所有历史成交
-            >>> result = client.query_historical_commission()
-            >>> if result["success"]:
-            ...     commissions = result["data"]
-            >>>
-            >>> # 查询指定股票近一周的历史成交
-            >>> result = client.query_historical_commission(stock_code="600000", time_range="近一周")
+            stock_code: 股票代码（6位数字），不指定则查询所有股票
+            time_range: 查询时间范围，默认"当日"
         """
-        params: dict[str, Any] = {"return_type": return_type, "time_range": time_range}
+        params: dict[str, Any] = {"time_range": time_range}
         if stock_code is not None:
             params["stock_code"] = stock_code
-
         operation_id = self.execute_operation("historical_commission_query", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
@@ -778,46 +467,54 @@ class TradeClient:
         amount: int,
         timeout: float | None = None,
     ) -> APIResponse:
-        """
-        购买国债逆回购
+        """购买国债逆回购
 
         Args:
             market: 交易市场，"上海" 或 "深圳"
             time_range: 回购期限，"1天期"/"2天期"/"3天期"/"4天期"/"7天期"
             amount: 出借金额（必须是1000的倍数）
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult）
-
-        Examples:
-            >>> # 购买上海市场1天期国债逆回购，出借10000元
-            >>> result = client.reverse_repo_buy("上海", "1天期", 10000)
-            >>> if result["success"]:
-            ...     print(result["data"]["message"])
         """
-        params = {"market": market, "time_range": time_range, "amount": amount}
-        operation_id = self.execute_operation("reverse_repo_buy", params)
+        operation_id = self.execute_operation(
+            "reverse_repo_buy",
+            {"market": market, "time_range": time_range, "amount": amount},
+        )
         return self.get_operation_result(operation_id, timeout=timeout)
 
     def query_reverse_repo(self, timeout: float | None = None) -> APIResponse:
-        """
-        查询国债逆回购年化利率
+        """查询国债逆回购年化利率，数据在 result["data"]（记录列表）
 
-        Args:
-            timeout: 操作超时时间（秒）
-
-        Returns:
-            操作结果（OperationResult），年化利率数据在 result["data"]["reverse_repo_interest"]
-
-        Examples:
-            >>> result = client.query_reverse_repo()
-            >>> if result["success"]:
-            ...     rates = result["data"]["reverse_repo_interest"]
-            ...     for item in rates:
-            ...         print(f"{item['市场类型']} - {item['时间类型']}: {item['年化利率']}")
+        字段：market(上海/深圳), term 期限, annual_rate 年化利率（百分数值，如 2.5 表示 2.5%）
         """
         operation_id = self.execute_operation("reverse_repo_query", {})
+        return self.get_operation_result(operation_id, timeout=timeout)
+
+    def query_condition_orders(self, timeout: float | None = None) -> APIResponse:
+        """查询条件单，数据在 result["data"]（记录列表）
+
+        字段：status, condition_type, direction(买入/卖出), target, trigger_condition,
+        latest_price, change_ratio, order_detail, created_at, monitor_cycle
+        """
+        operation_id = self.execute_operation("condition_order_query", {})
+        return self.get_operation_result(operation_id, timeout=timeout)
+
+    def cancel_condition_orders(
+        self,
+        stock_code: str | None = None,
+        order_type: Literal["买入", "卖出"] | None = None,
+        timeout: float | None = None,
+    ) -> APIResponse:
+        """删除条件单
+
+        Args:
+            stock_code: 股票代码（6位数字），不指定则删除所有条件单
+            order_type: 订单类型，"买入" 或 "卖出"
+        """
+        params: dict[str, Any] = {}
+        if stock_code is not None:
+            params["stock_code"] = stock_code
+        if order_type is not None:
+            params["order_type"] = order_type
+        operation_id = self.execute_operation("condition_order_cancel", params)
         return self.get_operation_result(operation_id, timeout=timeout)
 
     # ==================== 连接管理 ====================

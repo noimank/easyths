@@ -3,6 +3,7 @@ API密钥认证中间件
 """
 
 import json
+import secrets
 from collections.abc import Callable
 
 import structlog
@@ -78,7 +79,8 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
 
         api_key = credentials.credentials
 
-        if api_key != self.expected_key:
+        # 常数时间比较，避免时序侧信道（auth_enabled 已保证 expected_key 非空）
+        if not secrets.compare_digest(api_key.encode(), self.expected_key.encode()):
             logger.warning(
                 "无效的API密钥访问尝试",
                 path=request.url.path,
