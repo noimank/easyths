@@ -41,6 +41,8 @@ class FundsQueryOperation(BaseOperation[EmptyParams]):
             "1016": "available_amount",
             "1017": "withdrawable_amount",
             "1027": "holding_profit",
+            "1026": "daily_profit",
+            "1029": "daily_profit_ratio",
         }
         raw_funds = {}
         for control in text_controls:

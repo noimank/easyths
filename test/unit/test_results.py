@@ -156,11 +156,15 @@ def test_funds_result_numeric():
             "available_amount": "12345.67",
             "withdrawable_amount": "12345.67",
             "holding_profit": "180.00",
+            "daily_profit": "56.78",
+            "daily_profit_ratio": "0.57%",
         }
     )
     dumped = funds.model_dump()
     assert dumped["balance"] == 12345.67
     assert dumped["frozen_amount"] is None
+    assert dumped["daily_profit"] == 56.78
+    assert dumped["daily_profit_ratio"] == 0.57
 
 
 def test_reverse_repo_quote_strips_percent():
