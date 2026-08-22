@@ -23,6 +23,7 @@
 - **执行看门狗**：单操作硬超时熔断（默认 10 秒，可配置），界面卡死自动断连、后续操作快速失败，重连即恢复，队列不阻塞
 - **实时监控**：详细的日志记录和状态监控
 - **RESTful API**：完整的 HTTP 接口，支持各种语言集成
+- **内嵌 Web 控制台**：浏览器打开即用的操作台，操作表单由接口契约自动生成，无需安装任何前端依赖
 - **MCP 支持**：支持 Model Context Protocol，可被 AI 助手（如 Claude Code、Cursor）直接调用
 - **验证码识别**：内置 CRNN 模型，支持自定义微调适配特定验证码样式
 
@@ -102,6 +103,19 @@ assert result["current_used_account"] == "模拟账户"
 详细的 API 接口和参数说明请参考 [API 文档](https://noimank.github.io/easyths/getting-started/api/)。
 
 ## 快速示例
+
+### 使用 Web 控制台（零代码）
+
+服务启动后，浏览器打开 `http://127.0.0.1:7648/` 即可使用内嵌控制台：
+
+- 操作表单由 `/api/v1/operations/` 返回的参数契约（JSON Schema）自动生成，新增操作插件无需改动控制台
+- 支持执行前指定账户（`account_name` 指令）与优先级，结果以表格/键值形式渲染
+- 顶栏实时展示服务健康、当前账户与队列统计，并提供重连入口
+
+认证方面与 API 调用方一致：服务启用 API Key 时，首次访问会弹出登录页，输入
+`config.toml [api] key` 中配置的密钥即可（仅保存在本机浏览器 localStorage）；
+控制台页面与静态资源本身不含敏感数据，公开访问，所有数据请求仍需通过
+`Authorization: Bearer <key>` 校验。
 
 ### 使用 Python SDK（推荐）
 

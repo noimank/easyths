@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EasyTHS 控制台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- API Key 登录遮罩（服务未启用认证时不出现） -->
+  <div id="login-overlay" class="overlay hidden">
+    <form id="login-form" class="login-card" autocomplete="off">
+      <h1>📈 EasyTHS 控制台</h1>
+      <p class="muted">该服务已启用 API Key 认证，请输入密钥</p>
+      <input type="password" id="api-key-input" placeholder="API Key" required>
+      <button type="submit" class="primary">登录</button>
+      <p id="login-error" class="error-text hidden"></p>
+    </form>
+  </div>
+
+  <!-- 不可恢复错误遮罩（网络不可达 / IP 不在白名单） -->
+  <div id="fatal-overlay" class="overlay hidden">
+    <div class="login-card">
+      <h1>⚠️ 无法连接服务</h1>
+      <p id="fatal-message" class="muted"></p>
+      <button type="button" class="primary" onclick="location.reload()">重试</button>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header>
+      <div class="brand">📈 EasyTHS <span id="version" class="muted"></span></div>
+      <div class="header-status">
+        <span class="dot" id="health-dot"></span><span id="health-text">检测中…</span>
+        <span class="sep"></span>
+        <span>账户 <b id="current-account">—</b></span>
+        <span class="sep"></span>
+        <span>队列 <b id="queue-stats">—</b></span>
+        <button id="logout-btn" class="ghost hidden" type="button">退出登录</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav id="sidebar"></nav>
+
+      <main>
+        <section class="card">
+          <div class="card-head">
+            <h2 id="op-title">—</h2>
+            <span id="op-tag" class="tag hidden"></span>
+          </div>
+          <p id="op-desc" class="muted"></p>
+          <form id="op-form"></form>
+          <div class="form-actions">
+            <button id="submit-btn" class="primary" type="submit" form="op-form">执行</button>
+            <button id="cancel-btn" class="danger hidden" type="button">取消排队</button>
+          </div>
+        </section>
+
+        <section id="result-panel" class="card hidden">
+          <div class="card-head">
+            <h3>执行结果</h3>
+            <span id="result-status" class="badge"></span>
+          </div>
+          <p id="result-message"></p>
+          <div id="result-meta" class="meta-chips"></div>
+          <div id="result-data"></div>
+        </section>
+
+        <section class="card">
+          <h3>最近操作</h3>
+          <ul id="recent-list" class="recent-list"><li class="muted">暂无记录</li></ul>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

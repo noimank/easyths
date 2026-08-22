@@ -20,6 +20,7 @@ from easyths.models.operations import (
     OperationResult,
     OperationStatus,
 )
+from easyths.utils import project_config_instance
 
 
 class StubQueue:
@@ -63,12 +64,20 @@ def client():
     operation_registry.load_plugins()
     stub = StubQueue()
     common.set_global_instances(stub, None)
-    app = TradingAPIApp(stub, None).create_app()
-    # 去掉限流中间件对批量测试请求的干扰（该中间件行为单独测试）
-    app.user_middleware = [
-        m for m in app.user_middleware if "RateLimit" not in str(m.cls)
-    ]
-    app.middleware_stack = app.build_middleware_stack()
+    # 本测试聚焦路由/信封行为（认证有专门用例），构建应用期间关闭认证，
+    # 避免依赖本地 config.toml 是否配置了 api key；中间件在栈构建时快照配置，
+    # 随后恢复原值不影响其他用例
+    original_key = project_config_instance.api_key
+    project_config_instance.api_key = None
+    try:
+        app = TradingAPIApp(stub, None).create_app()
+        # 去掉限流中间件对批量测试请求的干扰（该中间件行为单独测试）
+        app.user_middleware = [
+            m for m in app.user_middleware if "RateLimit" not in str(m.cls)
+        ]
+        app.middleware_stack = app.build_middleware_stack()
+    finally:
+        project_config_instance.api_key = original_key
     return TestClient(app), stub
 
 
@@ -303,6 +312,16 @@ def test_list_operations_contains_schemas(client):
     assert "parameters" in buy
     assert "result_schema" in buy
     assert "price" in buy["result_schema"]["properties"]
+    assert buy["supports_account_directive"] is True
+    # account_switch/account_query 不注入 account_name 指令（契约标志）
+    assert (
+        body["data"]["operations"]["account_switch"]["supports_account_directive"]
+        is False
+    )
+    assert (
+        body["data"]["operations"]["account_query"]["supports_account_directive"]
+        is False
+    )
 
 
 def test_load_plugins_idempotent():
@@ -371,24 +390,62 @@ def test_api_key_auth_returns_unified_envelope(monkeypatch):
 
     app = FastAPI()
 
-    @app.get("/ping")
+    @app.get("/api/ping")
     async def ping():
+        return {"ok": True}
+
+    @app.get("/public")
+    async def public():
         return {"ok": True}
 
     monkeypatch.setattr(project_config_instance, "api_key", "secret-key")
     app.add_middleware(APIKeyAuthMiddleware)
     c = TestClient(app)
 
-    r = c.get("/ping")  # 缺少凭据
+    r = c.get("/api/ping")  # 缺少凭据
     assert r.status_code == 401
     body = r.json()
     assert body["success"] is False
     assert body["error_code"] == "unauthorized"
     assert r.headers["WWW-Authenticate"] == "Bearer"
 
-    r = c.get("/ping", headers={"Authorization": "Bearer wrong"})  # 错误密钥
+    r = c.get("/api/ping", headers={"Authorization": "Bearer wrong"})  # 错误密钥
     assert r.status_code == 401
     assert r.json()["error_code"] == "unauthorized"
+
+    r = c.get("/api/ping", headers={"Authorization": "Bearer secret-key"})
+    assert r.status_code == 200
+
+    # 认证只覆盖 /api 数据面：页面/静态资源/文档公开访问
+    assert c.get("/public").status_code == 200
+
+
+def test_system_status_exposes_account_state(client, monkeypatch):
+    """系统状态直接透出内存账户缓存快照（控制台免执行 account_query 即可取账户）。"""
+
+    class StubAutomator:
+        app_path = "stub"
+
+        def is_connected(self):
+            return True
+
+        def is_process_alive(self):
+            return True
+
+    monkeypatch.setattr(common, "_automator", StubAutomator())
+    c, _ = client
+    account_state.update_available_accounts([("A账户", 1), ("B账户", 2)])
+    account_state.set_current_used_account("A账户")
+    try:
+        body = c.get("/api/v1/system/status").json()
+        account = body["data"]["account"]
+        assert account["current_used_account"] == "A账户"
+        assert account["available_accounts"] == [
+            {"account_name": "A账户", "account_index": 1},
+            {"account_name": "B账户", "account_index": 2},
+        ]
+    finally:
+        account_state.clear()
 
 
 def test_mcp_execute_operation_queue_full_returns_envelope(monkeypatch):

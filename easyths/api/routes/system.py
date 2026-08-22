@@ -44,7 +44,7 @@ async def health_check(automator=Depends(get_automator)):
 
 @router.get("/status", response_model=APIResponse)
 async def get_system_status(automator=Depends(get_automator)) -> APIResponse:
-    """获取系统详细状态（含插件清单与参数 schema）"""
+    """获取系统详细状态（含插件清单、参数 schema 与内存账户缓存快照）"""
     operations = operation_registry.list_operations()
     is_connected = automator.is_connected()
 
@@ -54,12 +54,21 @@ async def get_system_status(automator=Depends(get_automator)) -> APIResponse:
         data={
             "name": "同花顺交易自动化系统",
             "version": __version__,
-            "description": "基于pywinauto的同花顺交易软件自动化系统",
+            "description": "基于pywinauto的同花顺交易自动化系统",
             "automator": {
                 "connected": is_connected,
                 "process_alive": automator.is_process_alive(),
                 "app_path": automator.app_path,
                 "backend": "uia",
+            },
+            # 账户缓存直接读内存（启动时 initialize_account_state 已初始化），
+            # 控制台等调用方无需再执行 account_query 触发 GUI
+            "account": {
+                "available_accounts": [
+                    {"account_name": name, "account_index": index}
+                    for name, index in account_state.available_accounts
+                ],
+                "current_used_account": account_state.current_used_account,
             },
             "plugins": {
                 "loaded_plugins": list(operations.keys()),

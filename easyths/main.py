@@ -26,7 +26,7 @@ from easyths.core.account_state import account_state
 from easyths.core.operation_queue import OperationQueue
 from easyths.core.tonghuashun_automator import TonghuashunAutomator
 from easyths.models.operations import Operation
-from easyths.utils import project_config_instance
+from easyths.utils import get_asset_path, project_config_instance
 from easyths.utils.logger import setup_logging
 
 # 项目元信息
@@ -39,21 +39,6 @@ PROJECT_DOCS = "https://noimank.github.io/easyths/"
 PROJECT_ISSUES = "https://github.com/noimank/easyths/issues"
 
 logger = structlog.get_logger(__name__)
-
-
-def get_asset_path() -> Path:
-    """获取 assets 目录路径
-
-    对于已安装的包，返回包内的 assets 目录
-    对于开发环境，返回包内的 assets 目录
-
-    Returns:
-        Path: assets 目录路径
-    """
-    # 获取当前模块所在的目录（easyths 包目录）
-    current_dir = Path(__file__).parent
-    assets_path = current_dir / "assets"
-    return assets_path
 
 
 def print_project_info():

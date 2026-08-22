@@ -529,6 +529,13 @@ class BaseOperation[Ps: OperationParams](ABC):
 
 # ============ 操作注册表 ============
 
+#: 不注入 account_name 执行指令的操作名（对外契约：/operations/ 列表以此暴露
+#: supports_account_directive 标志）
+#: - account_switch：account_name 是其业务参数（切换目标），不是指令
+#: - account_query：自身负责初始化账户缓存，指令执行依赖该缓存，
+#:   重连后携带指令会因缓存为空而失败（死循环）
+NO_ACCOUNT_DIRECTIVE_OPS = frozenset({"account_switch", "account_query"})
+
 
 class OperationRegistry:
     """操作注册表 - 管理所有已注册的操作插件"""
@@ -584,6 +591,9 @@ class OperationRegistry:
                 "description": cls.description,
                 "parameters": cls.Params.model_json_schema(),
                 "result_schema": cls.Result.model_json_schema(),
+                "supports_account_directive": (
+                    cls.operation_name not in NO_ACCOUNT_DIRECTIVE_OPS
+                ),
             }
             for cls in self._operations.values()
         }

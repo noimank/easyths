@@ -23,7 +23,9 @@ security = HTTPBearer(auto_error=False)
 class APIKeyAuthMiddleware(BaseHTTPMiddleware):
     """API密钥认证中间件
 
-    验证请求中的 Bearer Token 是否与配置的 API Key 一致
+    验证请求中的 Bearer Token 是否与配置的 API Key 一致。
+    认证只覆盖 API 数据面（``/api/*``，REST 与 MCP）；内嵌控制台页面、
+    静态资源与接口文档不含敏感数据，公开访问，凭 API Key 取数。
     """
 
     def __init__(self, app):
@@ -40,7 +42,7 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
             logger.info("API密钥认证已启用")
         else:
             logger.warning(
-                "API_KEY环境变量未设置, 生产环境可能存在被非法调用的风险，请注意"
+                "配置文件 [api] key 未设置, 生产环境可能存在被非法调用的风险，请注意"
             )
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -57,8 +59,8 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         if not self.auth_enabled:
             return await call_next(request)
 
-        # 跳过文档路径的认证
-        if request.url.path in ["/docs", "/redoc", "/openapi.json"]:
+        # 页面/静态资源/文档不在数据面，跳过认证
+        if not request.url.path.startswith("/api"):
             return await call_next(request)
 
         # 获取 Authorization 头

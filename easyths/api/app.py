@@ -10,6 +10,8 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from starlette.staticfiles import StaticFiles
 
 from easyths import __version__
 from easyths.api.dependencies.common import set_global_instances
@@ -25,9 +27,12 @@ from easyths.api.routes.mcp_server import mcp_asgi_app, set_queue
 from easyths.api.routes.operations import create_operations_router
 from easyths.core.base_operation import operation_registry
 from easyths.models.operations import ErrorCode
-from easyths.utils import project_config_instance
+from easyths.utils import get_asset_path, project_config_instance
 
 logger = structlog.get_logger(__name__)
+
+#: 内嵌 Web 控制台的静态资源目录（认证豁免，数据请求凭 API Key 访问 /api）
+WEB_DIR = get_asset_path() / "web"
 
 
 class TradingAPIApp:
@@ -108,14 +113,13 @@ class TradingAPIApp:
     def _add_routes(self):
         """添加路由"""
 
-        # 根路径
-        @self.app.get("/")
+        # 根路径：内嵌 Web 控制台（页面公开，数据请求由认证中间件校验 API Key）
+        @self.app.get("/", include_in_schema=False)
         async def root():
-            return {
-                "message": "同花顺交易自动化API",
-                "version": __version__,
-                "docs": "/docs",
-            }
+            return FileResponse(WEB_DIR / "index.html")
+
+        # 静态资源（前缀与 /api 隔离，不干扰 REST/MCP 路由匹配）
+        self.app.mount("/static", StaticFiles(directory=WEB_DIR), name="web")
 
         # API路由
         self.app.include_router(system_router)

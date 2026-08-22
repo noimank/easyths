@@ -18,6 +18,7 @@ from starlette.responses import Response
 from easyths.api.dependencies.common import get_operation_queue
 from easyths.api.responses import error_response, json_response
 from easyths.core import operation_registry
+from easyths.core.base_operation import NO_ACCOUNT_DIRECTIVE_OPS
 from easyths.models.operations import (
     APIResponse,
     ErrorCode,
@@ -25,12 +26,6 @@ from easyths.models.operations import (
     OperationStatus,
 )
 from easyths.operations.results import SubmitResult
-
-#: 不注入 account_name 执行指令的操作名
-#: - account_switch：account_name 是其业务参数（切换目标），不是指令
-#: - account_query：自身负责初始化账户缓存，指令执行依赖该缓存，
-#:   重连后携带指令会因缓存为空而失败（死循环）
-NO_ACCOUNT_DIRECTIVE_OPS = frozenset({"account_switch", "account_query"})
 
 
 def _build_execute_route(router: APIRouter, name: str) -> None:
