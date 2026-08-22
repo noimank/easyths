@@ -173,8 +173,12 @@ class FundsResult(ResultModel):
     available_amount: Num = Field(description="可用金额")
     withdrawable_amount: Num = Field(description="可取金额")
     holding_profit: Num = Field(description="持仓盈亏")
-    daily_profit: Num = Field(description="当日盈亏")
-    daily_profit_ratio: Num = Field(description="当日盈亏比（%）")
+    daily_profit: Num = Field(
+        default=None, description="当日盈亏；客户端版本无该控件时为 null"
+    )
+    daily_profit_ratio: Num = Field(
+        default=None, description="当日盈亏比（%）；客户端版本无该控件时为 null"
+    )
 
 
 class ReverseRepoQuote(ResultModel):
