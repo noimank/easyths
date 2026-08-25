@@ -88,6 +88,18 @@ def test_holding_row_quantities_simulated_account():
     assert HoldingQueryOperation().parse_holding_row(raw).quantity == 900
 
 
+def test_holding_row_profit_ratio_simulated_account():
+    """模拟账户盈亏比例列为「盈亏比(%)」，实盘为「盈亏比例(%)」；按显式顺序取值。"""
+    raw = _holding_raw()
+    del raw["盈亏比例(%)"]
+    raw["盈亏比(%)"] = "1.8"
+    assert HoldingQueryOperation().parse_holding_row(raw).profit_ratio == 1.8
+
+    # 实盘列存在时优先，即使值为占位符也不回退到模拟列
+    raw["盈亏比例(%)"] = "--"
+    assert HoldingQueryOperation().parse_holding_row(raw).profit_ratio is None
+
+
 def test_holding_row_missing_column_raises():
     """列名不匹配（客户端改版）时明确报错而非静默丢字段。"""
     raw = _holding_raw()
