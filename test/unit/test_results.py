@@ -19,7 +19,11 @@ from easyths.operations.historical_commission_query import (
 from easyths.operations.holding_query import HoldingQueryOperation
 from easyths.operations.order_cancel import _count_cancel_rows
 from easyths.operations.order_query import OrderQueryOperation
-from easyths.operations.results import FundsResult, ReverseRepoQuote
+from easyths.operations.results import (
+    FundsResult,
+    OrderCancelByContractResult,
+    ReverseRepoQuote,
+)
 
 
 def _holding_raw() -> dict:
@@ -230,3 +234,36 @@ def test_count_cancel_rows():
     assert _count_cancel_rows(df, "sell") == 1
     # 空表（text2df 失败/无委托）不报错
     assert _count_cancel_rows(pd.DataFrame(), "buy") == 0
+
+
+def test_order_cancel_by_contract_result():
+    # 正常构造（cancelled_quantity 为 Int，必填）
+    r = OrderCancelByContractResult(
+        contract_no="1234567890",
+        stock_code="600000",
+        cancelled_quantity=100,
+    )
+    assert r.contract_no == "1234567890"
+    assert r.stock_code == "600000"
+    assert r.cancelled_quantity == 100
+
+    # 不可撤时 cancelled_quantity=0
+    r0 = OrderCancelByContractResult(
+        contract_no="x", stock_code="600000", cancelled_quantity=0
+    )
+    assert r0.cancelled_quantity == 0
+
+    # cancelled_quantity 接受 None（Int validator）
+    r_none = OrderCancelByContractResult(
+        contract_no="x", stock_code="600000", cancelled_quantity=None
+    )
+    assert r_none.cancelled_quantity is None
+
+    # 严格模型：未知字段报错
+    with pytest.raises(ValueError):
+        OrderCancelByContractResult(
+            contract_no="x",
+            stock_code="600000",
+            cancelled_quantity=100,
+            extra=1,
+        )

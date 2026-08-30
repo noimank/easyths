@@ -9,6 +9,7 @@ from easyths.operations.params import (
     HistoricalQueryParams,
     LimitOrderParams,
     MarketOrderParams,
+    OrderCancelByContractParams,
     OrderCancelParams,
     ReverseRepoBuyParams,
     StopLossParams,
@@ -131,3 +132,32 @@ def test_format_price_precision():
     assert format_price("510300", 1.2345) == "1.234"
     assert format_price("113000", 100.5) == "100.500"
     assert format_price("600000", 10.5) == "10.50"
+
+
+def test_order_cancel_by_contract_basic():
+    # 正常构造
+    p = OrderCancelByContractParams(contract_no="1234567890")
+    assert p.contract_no == "1234567890"
+
+    # 允许纯数字长字符串（同花顺合同编号通常 8-12 位）
+    OrderCancelByContractParams(contract_no="123456789012")
+
+
+def test_order_cancel_by_contract_rejects_empty():
+    with pytest.raises(ValidationError):
+        OrderCancelByContractParams(contract_no="")
+
+
+def test_order_cancel_by_contract_rejects_too_long():
+    with pytest.raises(ValidationError):
+        OrderCancelByContractParams(contract_no="a" * 33)  # > max_length=32
+
+
+def test_order_cancel_by_contract_strips_whitespace():
+    # Pydantic v2 str 默认不 strip，但我们的 execute() 会 strip；这里只验证构造不抛错
+    OrderCancelByContractParams(contract_no="  1234567890  ")
+
+
+def test_order_cancel_by_contract_rejects_unknown_fields():
+    with pytest.raises(ValidationError):
+        OrderCancelByContractParams(contract_no="123", typo=1)

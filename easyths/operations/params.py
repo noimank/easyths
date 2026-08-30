@@ -139,6 +139,28 @@ class OrderCancelParams(OperationParams):
     )
 
 
+class OrderCancelByContractParams(OperationParams):
+    """按合同编号撤单（精细化撤单）
+
+    与 OrderCancelParams 不同：本操作只撤销**单笔**委托（合同编号 = 委托号），
+    适合「同股多笔委托时只撤其中一笔」的场景。需先通过 order_query 拿到
+    OrderRow.contract_no，再调用本接口。
+
+    实现思路：F3 进入撤单界面 → 按股票代码过滤（同花顺 UI 限制：撤单页只支持
+    按股票代码过滤，不能直接按合同编号过滤）→ 找到 contract_no 匹配的行 →
+    双击该行触发 THS 的「选中 + 准备撤」状态 → 点击单笔撤单按钮完成撤单。
+    """
+
+    contract_no: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=32,
+            description="委托合同编号（同花顺合同编号 = 委托号；取值见 order_query 返回的 contract_no 字段）",
+        ),
+    ]
+
+
 class ConditionOrderCancelParams(OperationParams):
     """条件单删除参数"""
 
@@ -207,6 +229,7 @@ __all__ = [
     "MarketOrderParams",
     "MAX_ORDER_AMOUNT",
     "OrderCancelParams",
+    "OrderCancelByContractParams",
     "ReverseRepoBuyParams",
     "RepoTerm",
     "StockCode",

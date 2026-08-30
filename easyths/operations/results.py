@@ -115,6 +115,16 @@ class OrderCancelResult(ResultModel):
     cancelled_count: int = Field(description="撤销的委托笔数")
 
 
+class OrderCancelByContractResult(ResultModel):
+    """按合同编号撤单结果"""
+
+    contract_no: Text = Field(description="被撤销的委托合同编号")
+    stock_code: Text = Field(description="该笔委托对应的股票代码")
+    cancelled_quantity: Int = Field(
+        description="撤销数量（股）；0 表示该笔不可撤（已成交/已撤/废单）"
+    )
+
+
 class ConditionOrderCancelResult(ResultModel):
     """条件单删除结果"""
 
@@ -266,6 +276,7 @@ __all__ = [
     "MarketOrderResult",
     "Num",
     "OrderCancelResult",
+    "OrderCancelByContractResult",
     "OrderRow",
     "ResultModel",
     "ReverseRepoBuyResult",
