@@ -36,7 +36,7 @@ class HoldingQueryOperation(BaseOperation[EmptyParams]):
             daily_profit_ratio=record.get("当日盈亏比(%)"),
             # 列名差异：实盘为「最新市值」，模拟账户为「市值」
             market_value=record.get("最新市值") or record.get("市值"),
-            position_ratio=record["仓位占比(%)"],
+            position_ratio=record.get("仓位占比(%)"),
             daily_bought=record["当日买入"],
             daily_sold=record["当日卖出"],
             market=record["交易市场"],

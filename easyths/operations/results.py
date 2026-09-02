@@ -207,7 +207,7 @@ class HoldingRow(ResultModel):
     daily_profit: Num = Field(default=None, description="当日盈亏（元）")
     daily_profit_ratio: Num = Field(default=None, description="当日盈亏比（%）")
     market_value: Num = Field(description="最新市值（元）")
-    position_ratio: Num = Field(description="仓位占比（%）")
+    position_ratio: Num = Field(default=None, description="仓位占比（%）")
     daily_bought: Int = Field(description="当日买入（股）")
     daily_sold: Int = Field(description="当日卖出（股）")
     market: Text = Field(description="交易市场")
