@@ -31,8 +31,9 @@ class HoldingQueryOperation(BaseOperation[EmptyParams]):
             # 列名差异：实盘为「浮动盈亏」，模拟账户为「盈亏」
             floating_profit=record.get("浮动盈亏") or record.get("盈亏"),
             profit_ratio=record.get("盈亏比例(%)") or record.get("盈亏比(%)"),
-            daily_profit=record["当日盈亏"],
-            daily_profit_ratio=record["当日盈亏比(%)"],
+            # 有时直接打开下单软件的情况下没有「当日盈亏」和「当日盈亏比(%)」列，默认填充为 null
+            daily_profit=record.get("当日盈亏"),
+            daily_profit_ratio=record.get("当日盈亏比(%)"),
             # 列名差异：实盘为「最新市值」，模拟账户为「市值」
             market_value=record.get("最新市值") or record.get("市值"),
             position_ratio=record["仓位占比(%)"],
