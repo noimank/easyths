@@ -16,7 +16,7 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Generic, TypeVar
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
@@ -110,7 +110,10 @@ class Operation(BaseModel):
             self.completed_at = datetime.now()
 
 
-class APIResponse[DataT](BaseModel):
+DataT = TypeVar("DataT")
+
+
+class APIResponse(BaseModel, Generic[DataT]):
     """对外统一响应信封（REST 全端点 / MCP 工具返回 / SDK 解析目标）。
 
     泛型参数用于 OpenAPI 契约（如 ``APIResponse[SubmitResult]``）；

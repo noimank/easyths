@@ -10,7 +10,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, TypeVar, cast
 from uuid import uuid4
 
 import pyperclip
@@ -37,7 +37,10 @@ from easyths.utils.config import project_config_instance
 logger = structlog.get_logger(__name__)
 
 
-class BaseOperation[Ps: OperationParams](ABC):
+Ps = TypeVar("Ps", bound=OperationParams)
+
+
+class BaseOperation(ABC, Generic[Ps]):
     """操作插件基类 - 同步执行模式。
 
     子类契约（全部为类属性，无需实例方法元数据）::
