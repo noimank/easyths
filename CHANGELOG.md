@@ -4,6 +4,13 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本规范](README.md)。各条目末尾的短哈希为对应提交，可在 Git 历史中溯源。
 
+## [2.0.8] - 2026-11-11
+
+### 变更
+
+- 支持的 Python 版本由仅 3.12 放宽为 3.11–3.14：`requires-python` 调整为 `>=3.11,<3.15`，PEP 695 泛型语法（`BaseOperation` / `APIResponse`）改写为 `TypeVar` + `Generic` 以兼容 3.11 (8b838c8)
+- 依赖适配多版本范围：pandas 提升至 `>=3.1`（2.3.x 无 cp314 wheel）、onnx 锁定 `>=1.21,<1.22`（1.22+ 的 Windows wheel 跳过 cp313）、onnxruntime 提升至 `>=1.25`（1.25 起提供 cp314 wheel）(8b838c8)
+
 ## [2.0.7] - 2026-10-20
 
 ### 修复
