@@ -32,13 +32,36 @@ class BuyOperation(BaseOperation[LimitOrderParams]):
         self.sleep(0.2)
         main_window.type_keys("{F1}")
         # 防抖
-        self.sleep(0.25)
+        self.sleep(0.5)
         main_panel = self.get_control_with_children(
             main_window,
             class_name="AfxMDIFrame140s",
             control_type="Pane",
             auto_id="59648",
         ).children(class_name="AfxMDIFrame140s")[0]
+
+        # 校验是否是真的买入页面
+        i_count = 0
+        while i_count <= 3:
+            i_count += 1
+            op_flag_text = self.get_control_with_children(
+                main_panel, control_type="Image", auto_id="1478"
+            ).element_info.name
+            if op_flag_text == "买入股票":
+                self.logger.info("已切换至买入功能，正在执行买入操作......")
+                break
+            else:
+                main_window.type_keys("{F3}")
+                self.sleep(0.2)
+                main_window.type_keys("{F1}")
+                # 防抖
+                self.sleep(0.5)
+                main_panel = self.get_control_with_children(
+                    main_window,
+                    class_name="AfxMDIFrame140s",
+                    control_type="Pane",
+                    auto_id="59648",
+                ).children(class_name="AfxMDIFrame140s")[0]
 
         # 1. 输入股票代码
         self.get_control_with_children(
