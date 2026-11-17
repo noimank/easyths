@@ -1,0 +1,32 @@
+# easyths 专用 Windows 运行时 — 构建期(dockur/windows 全自动装机)
+#
+services:
+  windows:
+    image: dockurr/windows
+    container_name: easyths-win
+    environment:
+      # 系统固定 tiny10;要换系统参考 dockur/windows 官方仓库
+      VERSION: "tiny10"
+      # 可能有些系统没有中文版，先使用英文版下载，安装好系统之后进入配置中文环境即可
+      LANGUAGE: "English"
+      DISK_SIZE: "32G"
+      RAM_SIZE: "4G"
+      CPU_CORES: "4"
+      USERNAME: "admin"
+      PASSWORD: "admin"
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "8006:8006" # noVNC 网页
+      - "13389:3389" # RDP(POC 操作入口)
+      - "7648:7648" # easyths 服务端口
+    volumes:
+      - ./storage:/storage
+      - ./install.bat:/oem/install.bat # 拷至 C:\OEM,装机最后一步自动执行
+      - ./share_files:/shared  # 挂载进入的共享文件
+      # 中文环境(挂本地 zh ISO 后 VERSION 不生效): - ./storage/tiny10_zh.iso:/custom.iso
+    restart: "no"
+    stop_grace_period: 2m

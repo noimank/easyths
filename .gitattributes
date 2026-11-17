@@ -1,0 +1,2 @@
+# Windows 批处理强制 CRLF(经 bind-mount 直接进 VM 被 cmd.exe 执行)
+runtime/*.bat text eol=crlf

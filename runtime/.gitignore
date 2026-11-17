@@ -1,0 +1,5 @@
+# 构建产物(系统盘镜像)
+storage/
+*.qcow2
+*.img
+*.iso

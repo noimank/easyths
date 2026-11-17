@@ -44,7 +44,7 @@
 - 以管理员身份运行程序
 - 检查防火墙设置，确保端口未被阻止
 
-## onnxruntime DLL 加载失败
+## onnxruntime DLL 加载失败 {#onnxruntime-dll-加载失败}
 
 **问题描述**: 启动时报错 `ImportError: DLL load failed while importing onnxruntime_pybind11_state: 找不到指定的模块。`
 
@@ -60,6 +60,10 @@ ImportError: DLL load failed while importing onnxruntime_pybind11_state: 找不�
 **原因分析**:
 
 onnxruntime 依赖 Microsoft Visual C++ 运行时库，新安装的 Windows 系统可能缺少此依赖。
+
+> **提示**
+>
+> 通过[轻量运行时部署](runtime-deployment.md#onnxruntime-dll-加载失败)部署时，install.bat 会自动检测并安装 VC++ 运行库，无需手动处理。
 
 **解决方案**:
 
