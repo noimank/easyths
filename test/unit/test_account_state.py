@@ -78,6 +78,27 @@ def test_api_response_from_result_passes_current_used_account():
     assert APIResponse.from_result(result).current_used_account == "A账户"
 
 
+# ============ 券商名解析 ============
+
+
+def test_broker_name_from_account_display_name():
+    """账户展示名 "-" 前的部分为券商名（不受券商名长度限制）。"""
+    op = AccountQueryOperation(automator=None)
+    assert op.get_current_account_name() == ""
+    assert op.get_current_broker_name() == ""
+
+    account_state.set_current_used_account("平安证券-王*明")
+    assert op.get_current_account_name() == "平安证券-王*明"
+    assert op.get_current_broker_name() == "平安证券"
+
+
+def test_broker_name_empty_without_separator():
+    """模拟账户等展示名不含 "-" 时没有券商名。"""
+    op = AccountQueryOperation(automator=None)
+    account_state.set_current_used_account("模拟炒股")
+    assert op.get_current_broker_name() == ""
+
+
 # ============ account_query 接线（GUI 桩替换） ============
 
 

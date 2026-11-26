@@ -235,6 +235,22 @@ class BaseOperation(ABC, Generic[Ps]):
             logger.error("获取同花顺主窗口失败", error=str(ex))
             return None
 
+    def get_current_account_name(self) -> str:
+        """当前使用账户的完整展示名，如 "平安证券-王*明"；未初始化时为空字符串。"""
+        return account_state.current_used_account or ""
+
+    def get_current_broker_name(self) -> str:
+        """当前使用账户所属券商名，即展示名 "-" 前的部分，如 "平安证券"。
+
+        模拟账户等展示名不含 "-" 时返回空字符串。
+        """
+        broker_name, separator, _ = self.get_current_account_name().partition("-")
+        if separator != "-":
+            self.logger.error(
+                "同花顺账户编码方式可能已经改变，请发起issue：https://github.com/noimank/easyths/issues"
+            )
+        return broker_name if separator else ""
+
     def sleep(self, seconds: float = 0.1) -> None:
         """睡眠指定秒数"""
         time.sleep(seconds)

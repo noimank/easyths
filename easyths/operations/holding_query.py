@@ -45,8 +45,12 @@ class HoldingQueryOperation(BaseOperation[EmptyParams]):
     def execute(self, params: EmptyParams) -> OperationResult:
         start_time = time.time()
         self.logger.info("执行持仓查询操作")
-        # 切换到持仓菜单并刷新数据
-        self.switch_left_menus("查询[F4]", "资金股票")
+        # 切换到持仓菜单并刷新数据（银河证券的菜单名为「资金股份」）
+        menu_name = (
+            "资金股份" if self.get_current_broker_name() == "银河证券" else "资金股票"
+        )
+        self.switch_left_menus("查询[F4]", menu_name)
+
         self.get_main_window(wrapper_obj=True).type_keys("{F5}")
         # 等待页面加载完成，这个页面还是需要实时的
         self.clear_clipboard()
